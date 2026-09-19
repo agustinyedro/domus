@@ -1,0 +1,259 @@
+---
+// src/pages/admin/index.astro
+// Dashboard de negocio
+export const prerender = false;
+import AdminLayout from '@/layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Dashboard">
+  <h1 style="margin: 0 0 1.5rem; font-size: 1.5rem;">Cómo va el negocio</h1>
+
+  <!-- KPIs -->
+  <div class="admin-metrics" id="kpis">
+    <div class="admin-metric">
+      <p class="admin-metric-label">Ventas del mes</p>
+      <p class="admin-metric-value info" id="k-ventas">–</p>
+      <p class="admin-delta" id="k-ventas-delta"></p>
+    </div>
+    <div class="admin-metric">
+      <p class="admin-metric-label">Ingresos</p>
+      <p class="admin-metric-value success" id="k-ingresos">–</p>
+      <p class="admin-delta" id="k-ingresos-delta"></p>
+    </div>
+    <div class="admin-metric">
+      <p class="admin-metric-label">Egresos</p>
+      <p class="admin-metric-value danger" id="k-egresos">–</p>
+      <p class="admin-metric-sub" id="k-egresos-sub"></p>
+    </div>
+    <div class="admin-metric">
+      <p class="admin-metric-label">Ganancia neta</p>
+      <p class="admin-metric-value success" id="k-neta">–</p>
+      <p class="admin-metric-sub" id="k-neta-sub"></p>
+    </div>
+    <div class="admin-metric">
+      <p class="admin-metric-label">Ticket promedio</p>
+      <p class="admin-metric-value" id="k-ticket">–</p>
+    </div>
+    <div class="admin-metric">
+      <p class="admin-metric-label">Stock total</p>
+      <p class="admin-metric-value warning" id="k-stock">–</p>
+      <p class="admin-metric-sub" id="k-stock-sub"></p>
+    </div>
+  </div>
+
+  <!-- Gráficos -->
+  <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 1rem;" class="dash-charts">
+    <div class="admin-card">
+      <h2 class="admin-card-title" style="margin-bottom: 1rem;">Ingresos por día</h2>
+      <div style="position: relative; height: 260px;">
+        <canvas id="chart-diario"></canvas>
+      </div>
+      <p id="chart-diario-vacio" class="admin-empty" style="display:none; padding: 1rem;">Todavía no hay ventas este mes.</p>
+    </div>
+    <div class="admin-card">
+      <h2 class="admin-card-title" style="margin-bottom: 1rem;">Ingresos vs egresos</h2>
+      <div style="position: relative; height: 260px;">
+        <canvas id="chart-reparto"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estrella + top -->
+  <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; margin-bottom: 1rem;" class="dash-charts">
+    <div class="admin-card" id="estrella-card" style="display:none;">
+      <p class="admin-metric-label">Producto estrella</p>
+      <h2 id="estrella-nombre" style="margin: 0.25rem 0;"></h2>
+      <p style="margin: 0; color: var(--admin-text-muted); font-size: 0.875rem;" id="estrella-detalle"></p>
+    </div>
+    <div class="admin-card">
+      <h2 class="admin-card-title" style="margin-bottom: 1rem;">Top productos del mes</h2>
+      <div class="admin-table-wrapper">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Producto</th><th class="text-right">Uds.</th><th class="text-right">Ingresos</th><th class="text-right">Ganancia</th></tr>
+          </thead>
+          <tbody id="top-body">
+            <tr><td colspan="4" class="text-center">Sin ventas este mes.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Club + actividad -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;" class="dash-charts">
+    <div class="admin-card">
+      <h2 class="admin-card-title" style="margin-bottom: 1rem;">Club</h2>
+      <p style="margin: 0 0 0.5rem;"><strong id="club-subs">0</strong> suscriptores activos</p>
+      <p style="margin: 0 0 1rem;">Ingreso recurrente: <strong id="club-ingresos">$0</strong>/mes</p>
+      <h3 style="font-size: 0.875rem; margin: 0 0 0.5rem;">Próximos envíos (7 días)</h3>
+      <ul id="club-envios" style="margin: 0; padding-left: 1.25rem; font-size: 0.875rem;">
+        <li>Ninguno programado.</li>
+      </ul>
+    </div>
+    <div class="admin-card">
+      <h2 class="admin-card-title" style="margin-bottom: 1rem;">Actividad reciente</h2>
+      <ul id="actividad" style="margin: 0; padding: 0; list-style: none; font-size: 0.875rem;">
+        <li>Sin movimientos todavía.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Stock bajo -->
+  <div id="stock-bajo" style="display:none; margin-bottom: 1rem;" class="admin-card">
+    <h2 style="margin: 0 0 1rem; font-size: 1.125rem;">Stock bajo</h2>
+    <ul id="stock-bajo-list" style="margin: 0; padding-left: 1.25rem;"></ul>
+  </div>
+
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <h2 class="admin-card-title">Accesos rápidos</h2>
+    </div>
+    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+      <a href="/admin/productos" class="admin-btn admin-btn-primary">Productos</a>
+      <a href="/admin/stock" class="admin-btn admin-btn-ghost">Ajustar stock</a>
+      <a href="/admin/gastos" class="admin-btn admin-btn-ghost">Gastos</a>
+      <a href="/admin/productos/nuevo" class="admin-btn admin-btn-success">+ Nuevo producto</a>
+    </div>
+  </div>
+
+  <style>
+    .admin-delta { margin: 0.25rem 0 0; font-size: 0.75rem; font-weight: 600; }
+    .admin-delta.up { color: var(--admin-success); }
+    .admin-delta.down { color: var(--admin-danger); }
+    .admin-metric-sub { margin: 0.25rem 0 0; font-size: 0.75rem; color: var(--admin-text-muted); }
+    .mov-badge { display: inline-block; padding: 0.125rem 0.5rem; border-radius: 999px; font-size: 0.6875rem; font-weight: 700; margin-right: 0.5rem; }
+    .mov-in { background: #f0fff4; color: #22543d; }
+    .mov-out { background: #fff5f5; color: #742a2a; }
+    .mov-sale { background: #ebf8ff; color: #2a4365; }
+    @media (max-width: 900px) {
+      .dash-charts { grid-template-columns: 1fr !important; }
+    }
+  </style>
+
+  <script>
+    import Chart from 'chart.js/auto';
+
+    const fmt$ = (n: number) => `$${Math.round(n).toLocaleString('es-AR')}`;
+    let chartDiario: Chart | null = null;
+    let chartReparto: Chart | null = null;
+
+    function delta(el: HTMLElement | null, v: number, suffix = 'vs mes anterior') {
+      if (!el) return;
+      if (v === 0) { el.textContent = 'sin cambios ' + suffix; el.className = 'admin-delta'; return; }
+      el.textContent = `${v > 0 ? '▲' : '▼'} ${Math.abs(v)}% ${suffix}`;
+      el.className = 'admin-delta ' + (v > 0 ? 'up' : 'down');
+    }
+
+    async function cargar() {
+      let data: any;
+      try {
+        const res = await fetch('/api/admin/dashboard');
+        if (!res.ok) return;
+        data = await res.json();
+      } catch { return; }
+
+      document.getElementById('k-ventas')!.textContent = String(data.cant_ventas ?? 0);
+      document.getElementById('k-ingresos')!.textContent = fmt$(data.ingresos ?? 0);
+      document.getElementById('k-egresos')!.textContent = fmt$(data.egresos ?? 0);
+      document.getElementById('k-egresos-sub')!.textContent =
+        `Compras ${fmt$(data.egresos_compras ?? 0)} · Gastos ${fmt$(data.egresos_gastos ?? 0)}`;
+      const neta = document.getElementById('k-neta')!;
+      neta.textContent = fmt$(data.ganancia_neta ?? 0);
+      neta.className = 'admin-metric-value ' + ((data.ganancia_neta ?? 0) >= 0 ? 'success' : 'danger');
+      document.getElementById('k-neta-sub')!.textContent =
+        `Bruta ${fmt$(data.ganancia_bruta ?? 0)} (ventas − costo)`;
+      document.getElementById('k-ticket')!.textContent = fmt$(data.ticket_promedio ?? 0);
+      document.getElementById('k-stock')!.textContent = `${data.stock_total ?? 0} u.`;
+      document.getElementById('k-stock-sub')!.textContent = `Valorizado ${fmt$(data.valor_stock ?? 0)} (a costo)`;
+
+      delta(document.getElementById('k-ventas-delta'), data.delta_ventas ?? 0);
+      delta(document.getElementById('k-ingresos-delta'), data.delta_ingresos ?? 0);
+
+      // Gráfico diario
+      const serie: Array<{ dia: number; ingresos: number }> = data.serie_diaria || [];
+      const hayVentas = serie.some((d) => d.ingresos > 0);
+      document.getElementById('chart-diario-vacio')!.style.display = hayVentas ? 'none' : 'block';
+      chartDiario?.destroy();
+      chartDiario = new Chart(document.getElementById('chart-diario') as HTMLCanvasElement, {
+        type: 'bar',
+        data: {
+          labels: serie.map((d) => d.dia),
+          datasets: [{
+            label: 'Ingresos',
+            data: serie.map((d) => d.ingresos),
+            backgroundColor: '#988C2D',
+            borderRadius: 3,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { callback: (v) => '$' + Number(v).toLocaleString('es-AR') } } },
+        },
+      });
+
+      // Doughnut ingresos vs egresos
+      chartReparto?.destroy();
+      chartReparto = new Chart(document.getElementById('chart-reparto') as HTMLCanvasElement, {
+        type: 'doughnut',
+        data: {
+          labels: ['Ingresos', 'Compras', 'Gastos'],
+          datasets: [{
+            data: [data.ingresos ?? 0, data.egresos_compras ?? 0, data.egresos_gastos ?? 0],
+            backgroundColor: ['#48bb78', '#ed8936', '#f56565'],
+          }],
+        },
+        options: { responsive: true, maintainAspectRatio: false },
+      });
+
+      // Estrella
+      if (data.producto_estrella) {
+        const e = data.producto_estrella;
+        document.getElementById('estrella-card')!.style.display = 'block';
+        document.getElementById('estrella-nombre')!.textContent = e.nombre;
+        document.getElementById('estrella-detalle')!.textContent =
+          `${e.unidades} u. vendidas · ${fmt$(e.ingresos)} ingresos · ${fmt$(e.ganancia)} ganancia`;
+      }
+
+      // Top 5
+      const top: Array<any> = data.top_productos || [];
+      document.getElementById('top-body')!.innerHTML = top.length
+        ? top.map((t) => `<tr><td>${t.nombre}</td><td class="text-right">${t.unidades}</td><td class="text-right">${fmt$(t.ingresos)}</td><td class="text-right">${fmt$(t.ganancia)}</td></tr>`).join('')
+        : '<tr><td colspan="4" class="text-center">Sin ventas este mes.</td></tr>';
+
+      // Club
+      document.getElementById('club-subs')!.textContent = String(data.club?.suscriptores_activos ?? 0);
+      document.getElementById('club-ingresos')!.textContent = fmt$(data.club?.ingresos_recurrentes ?? 0);
+      const envios: Array<any> = data.club?.proximos_envios || [];
+      document.getElementById('club-envios')!.innerHTML = envios.length
+        ? envios.map((s) => `<li><strong>${s.nombre}</strong> (${s.club}) — ${new Date(s.proximo_envio).toLocaleDateString('es-AR')}</li>`).join('')
+        : '<li>Ninguno programado.</li>';
+
+      // Actividad
+      const act: Array<any> = data.actividad || [];
+      const badge = (t: string) => {
+        if (t === 'VENTA') return '<span class="mov-badge mov-sale">VENTA</span>';
+        if (t === 'ENTRADA' || t === 'AJUSTE_POSITIVO') return '<span class="mov-badge mov-in">ENTRADA</span>';
+        return '<span class="mov-badge mov-out">SALIDA</span>';
+      };
+      document.getElementById('actividad')!.innerHTML = act.length
+        ? act.map((m) => {
+            const signo = (m.tipo === 'VENTA' || m.tipo === 'AJUSTE_NEGATIVO') ? '−' : '+';
+            return `<li style="padding: 0.375rem 0; border-bottom: 1px solid var(--admin-border);">${badge(m.tipo)}${m.producto} · ${signo}${m.cantidad}${m.motivo ? ` · <em>${m.motivo}</em>` : ''}</li>`;
+          }).join('')
+        : '<li>Sin movimientos todavía.';
+
+      // Stock bajo
+      if (data.productos_stock_bajo?.length > 0) {
+        document.getElementById('stock-bajo')!.style.display = 'block';
+        document.getElementById('stock-bajo-list')!.innerHTML = data.productos_stock_bajo
+          .map((p: any) => `<li>${p.nombre}: <strong>${p.stock_actual}</strong> (mínimo ${p.stock_minimo})</li>`)
+          .join('');
+      }
+    }
+
+    cargar();
+  </script>
+</AdminLayout>

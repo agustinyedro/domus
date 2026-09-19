@@ -1,0 +1,42 @@
+---
+// src/pages/admin/productos/[id].astro
+// Editar producto: carga SSR y pasa el producto al formulario Vue
+export const prerender = false;
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import ProductForm from '@/components/admin/ProductForm.vue';
+import { createSupabaseServer, getUsuarioActual } from '@/lib/supabase';
+
+const { id } = Astro.params;
+
+let producto: Record<string, unknown> | null = null;
+
+if (id) {
+  const user = await getUsuarioActual(Astro.request, Astro.cookies);
+  if (user) {
+    const supabase = createSupabaseServer(Astro.request, Astro.cookies);
+    const { data } = await supabase
+      .from('v_stock_actual')
+      .select('*')
+      .eq('producto_id', id)
+      .eq('usuario_id', user.id)
+      .single();
+    // La vista usa producto_id como PK; el form espera id
+    if (data) producto = { ...data, id: (data as Record<string, unknown>).producto_id };
+  }
+}
+---
+
+<AdminLayout title="Editar Producto">
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <h1 style="margin: 0; font-size: 1.5rem;">Editar Producto</h1>
+      <a href="/admin/productos" class="admin-btn admin-btn-ghost">Volver</a>
+    </div>
+
+    {producto ? (
+      <ProductForm client:visible producto={producto} />
+    ) : (
+      <p class="admin-alert admin-alert-error">Producto no encontrado.</p>
+    )}
+  </div>
+</AdminLayout>

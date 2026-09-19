@@ -1,0 +1,420 @@
+<!-- COMPONENTES ACTUALIZADOS CON ANIMACIONES -->
+
+<!-- ===== PACKSSECTION.ASTRO (ACTUALIZADO) ===== -->
+
+---
+interface Props {
+  mercadoPagoId?: string;
+}
+
+const { mercadoPagoId } = Astro.props;
+
+const packs = [
+  {
+    name: "Pack Básico",
+    price: 1500,
+    description: "Tu primer paso en Domus",
+    features: [
+      "3 sahumerios variados",
+      "Acceso a 1 clase de yoga",
+      "Sorpresa sensorial",
+      "Entrega en el mes"
+    ]
+  },
+  {
+    name: "Pack Premium",
+    price: 2500,
+    description: "La experiencia completa",
+    features: [
+      "5 sahumerios curados",
+      "Cartas de tarot mensual",
+      "Acceso ilimitado a yoga",
+      "Descuento en pizzas",
+      "Box exclusivo"
+    ],
+    highlight: true
+  },
+  {
+    name: "Pack Deluxe",
+    price: 3500,
+    description: "Lo máximo de Domus",
+    features: [
+      "Todo lo anterior +",
+      "Pack de 5 pizzas congeladas",
+      "Prenda exclusiva",
+      "Videollamada con instructora",
+      "Sorpresas mensuales"
+    ]
+  }
+];
+---
+
+<section id="packs" class="packs-section">
+  <div class="container">
+    <h2 class="reveal">Domus cada mes</h2>
+    <p class="section-subtitle reveal">Tu caja de sensaciones. Diseñada para ti.</p>
+    
+    <div class="packs-grid">
+      {packs.map((pack, index) => (
+        <div class={`pack-card reveal ${pack.highlight ? 'highlight' : ''}`} style={`animation-delay: ${index * 0.2}s`}>
+          <h3>{pack.name}</h3>
+          <p class="pack-description">{pack.description}</p>
+          
+          <div class="price">
+            ${pack.price}
+            <span class="frequency">/mes</span>
+          </div>
+          
+          <ul class="features">
+            {pack.features.map((feature) => (
+              <li class="reveal">{feature}</li>
+            ))}
+          </ul>
+          
+          <button 
+            class="btn" 
+            data-pack={pack.name}
+            data-price={pack.price}
+          >
+            Comenzar
+          </button>
+        </div>
+      ))}
+    </div>
+    
+    <p class="cta-note reveal">
+      ¿No estás seguro? Prueba un pack regalo. Envíanos a un amigo.
+      <br/>
+      Total, la conexión es lo que importa.
+    </p>
+  </div>
+</section>
+
+<style is:global>
+  @import '../styles/animations.css';
+</style>
+
+---
+
+<!-- ===== HISTORYSECTION.ASTRO (ACTUALIZADO) ===== -->
+
+---
+---
+
+<section id="history" class="history">
+  <div class="container">
+    <h2 class="reveal">Nuestra historia</h2>
+    
+    <div class="story-content">
+      <p class="reveal">
+        Somos una familia que cree que la belleza florece en los desafíos.
+      </p>
+      
+      <p class="reveal">
+        Nos conocimos en el yoga. Formamos un hogar basado en el equilibrio, 
+        la inclusión genuina y la creación consciente. Hoy somos cuatro: 
+        nosotros dos, Nellas y Suri.
+      </p>
+      
+      <p class="highlight reveal">
+        Suri nació con parálisis cerebral, cardiopatía de Fallot 
+        (operada cuatro veces) y otras complejidades que la hacen ÚNICA. 
+        Hoy, con un equipo de profesionales que amamos, Suri sigue siendo 
+        el corazón que mueve todo lo que hacemos.
+      </p>
+      
+      <p class="reveal">
+        <strong>Domus existe porque Suri existe.</strong>
+      </p>
+      
+      <p class="reveal">
+        La marca nace de la necesidad de crear algo que tenga sentido, 
+        que acompañe la vida cotidiana y que, simplemente, haga que un lugar 
+        se sienta como hogar.
+      </p>
+    </div>
+    
+    <div class="pillars">
+      <div class="pillar reveal">
+        <h3>Yoga & Balance</h3>
+        <p>Cada práctica comienza aquí. Equilibrio de mente, cuerpo y espíritu.</p>
+      </div>
+      
+      <div class="pillar reveal">
+        <h3>Inclusión genuina</h3>
+        <p>Nuestras hijas nos enseñan que la diversidad es normalidad.</p>
+      </div>
+      
+      <div class="pillar reveal">
+        <h3>Creación consciente</h3>
+        <p>Cada aroma, cada momento: pensado, creado, amado.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style is:global>
+  @import '../styles/animations.css';
+</style>
+
+---
+
+<!-- ===== HEROSECTION.ASTRO (ACTUALIZADO) ===== -->
+
+---
+---
+
+<section class="hero">
+  <div class="hero-content">
+    <div class="logo-header">
+      <svg viewBox="0 0 200 100" class="logo-roof">
+        <polyline 
+          points="50,50 100,20 150,50" 
+          stroke="currentColor" 
+          stroke-width="2" 
+          fill="none"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </div>
+    
+    <h1>D O M U S</h1>
+    
+    <p class="subtitle">
+      Todo lo que hace de un lugar, hogar.
+    </p>
+    
+    <p class="description">
+      Aromas, momentos y sensaciones diseñadas para que cada espacio se sienta verdaderamente tuyo.
+    </p>
+    
+    <div class="cta-buttons">
+      <button class="btn" onclick="document.getElementById('packs').scrollIntoView({behavior: 'smooth'})">
+        Descubre nuestros packs
+      </button>
+      <button class="btn btn-secondary" onclick="document.getElementById('history').scrollIntoView({behavior: 'smooth'})">
+        Nuestra historia
+      </button>
+    </div>
+  </div>
+</section>
+
+<style is:global>
+  @import '../styles/animations.css';
+</style>
+
+---
+
+<!-- ===== FOOTER.ASTRO (ACTUALIZADO) ===== -->
+
+---
+---
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-content">
+      <div class="footer-section reveal">
+        <h4>D O M U S</h4>
+        <p>Creado por una familia, para sentir más.</p>
+      </div>
+      
+      <div class="footer-section reveal">
+        <h4>Navegación</h4>
+        <ul>
+          <li><a href="#history">Nuestra historia</a></li>
+          <li><a href="#packs">Packs</a></li>
+          <li><a href="#contact">Contacto</a></li>
+        </ul>
+      </div>
+      
+      <div class="footer-section reveal">
+        <h4>Conecta con nosotros</h4>
+        <ul>
+          <li><a href="https://instagram.com" target="_blank">Instagram</a></li>
+          <li><a href="https://wa.me" target="_blank">WhatsApp</a></li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="footer-bottom">
+      <p>
+        Hecho con amor desde Argentina 🧡
+      </p>
+      <p>
+        © 2024 Domus. Todo lo que hace hogar.
+      </p>
+    </div>
+  </div>
+</footer>
+
+<style is:global>
+  @import '../styles/animations.css';
+</style>
+
+---
+
+<!-- ===== INDEX.ASTRO (ACTUALIZADO CON SCRIPT) ===== -->
+
+---
+import HeroSection from '../components/HeroSection.astro';
+import HistorySection from '../components/HistorySection.astro';
+import PacksSection from '../components/PacksSection.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/globals.css';
+import '../styles/animations.css';
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DOMUS - Todo lo que hace de un lugar, hogar</title>
+  <meta name="description" content="Aromas, momentos y sensaciones para hacer de tu espacio, hogar.">
+  <meta name="theme-color" content="#988C2D">
+  
+  <!-- Preload Fonts -->
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Bricolage+Grotesque:wght@400;500&display=swap" as="style">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Bricolage+Grotesque:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Mercado Pago SDK (comentado, activar después) -->
+  <!-- <script src="https://sdk.mercadopago.com/js/v2"></script> -->
+</head>
+<body>
+  <HeroSection />
+  <HistorySection />
+  <PacksSection />
+  <Footer />
+  
+  <!-- Script de animaciones -->
+  <script src="../js/animations.js"></script>
+  
+  <!-- Script de Mercado Pago (cuando esté configurado) -->
+  <script is:inline>
+    // Placeholder para MP - reemplazar cuando sea necesario
+    console.log('🏠 DOMUS Landing iniciado');
+  </script>
+</body>
+</html>
+
+---
+
+<!-- ===== CONTACTO/NEWSLETTER (BONUS COMPONENT) ===== -->
+
+---
+// ContactSection.astro
+---
+
+<section id="contact" class="contact-section">
+  <div class="container">
+    <h2 class="reveal">Mantente conectado</h2>
+    <p class="section-subtitle reveal">Recibe historias, aromas y momentos directamente en tu inbox</p>
+    
+    <form class="newsletter-form reveal" id="newsletter">
+      <div class="form-group">
+        <input 
+          type="email" 
+          placeholder="Tu email" 
+          required
+          class="form-input"
+        />
+      </div>
+      <div class="form-group">
+        <select class="form-select">
+          <option value="">¿Qué te interesa?</option>
+          <option value="aromas">Aromas</option>
+          <option value="experiencias">Experiencias</option>
+          <option value="comida">Comida</option>
+          <option value="todo">Todo</option>
+        </select>
+      </div>
+      <button type="submit" class="btn">
+        Suscribirse
+      </button>
+    </form>
+  </div>
+</section>
+
+<style>
+  .contact-section {
+    background-color: var(--color-beige);
+    padding: 6rem 2rem;
+  }
+  
+  .section-subtitle {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+  
+  .newsletter-form {
+    max-width: 500px;
+    margin: 0 auto;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .form-group {
+    flex: 1;
+    min-width: 200px;
+  }
+  
+  .form-input,
+  .form-select {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid var(--color-olive);
+    background-color: white;
+    color: var(--color-text);
+    font-family: 'Bricolage Grotesque', sans-serif;
+    border-radius: 0;
+    transition: all 0.3s ease;
+  }
+  
+  .form-input:focus,
+  .form-select:focus {
+    outline: none;
+    border-color: var(--color-brown);
+    box-shadow: 0 0 0 3px rgba(152, 140, 45, 0.1);
+  }
+  
+  .form-input::placeholder {
+    color: #999;
+  }
+  
+  @media (max-width: 768px) {
+    .newsletter-form {
+      flex-direction: column;
+    }
+    
+    .form-group {
+      min-width: 100%;
+    }
+  }
+</style>
+
+<script>
+  document.getElementById('newsletter').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const email = form.querySelector('input[type="email"]').value;
+    const interest = form.querySelector('select').value;
+    
+    // Aquí integrar con tu backend / Zapier / Google Sheets
+    console.log('Email:', email, 'Interés:', interest);
+    
+    // Mostrar feedback
+    const btn = form.querySelector('.btn');
+    const originalText = btn.textContent;
+    btn.textContent = '✓ ¡Gracias!';
+    btn.style.backgroundColor = 'var(--color-olive)';
+    
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.style.backgroundColor = '';
+      form.reset();
+    }, 2000);
+  });
+</script>

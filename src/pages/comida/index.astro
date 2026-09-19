@@ -1,0 +1,330 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Navbar from '../../components/Navbar.astro';
+import Cart from '../../components/Cart.astro';
+import Footer from '../../components/Footer.astro';
+
+const products = [
+  {
+    id: 'comida-1',
+    name: 'Pack 5 Pizzas Variadas',
+    description: 'Pizza artesanal congelada. Solo al horno y listo. Masa madre fermentada 48 horas.',
+    price: 3200,
+    image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop',
+    benefits: ['Masa madre 48hs', 'Ingredientes premium', 'Congelado rápido']
+  },
+  {
+    id: 'comida-2',
+    name: 'Masa Premium Individual',
+    description: 'Masa artesanal lista para usar. Fermentación lenta para máximo sabor y textura.',
+    price: 450,
+    image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop',
+    benefits: ['Fermentación lenta', 'Sin conservantes', 'Lista para usar']
+  },
+  {
+    id: 'comida-3',
+    name: 'Salsa Especial Domus',
+    description: 'Nuestra receta secreta. Tomates seleccionados, hierbas frescas y un toque de amor.',
+    price: 650,
+    image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop',
+    benefits: ['Receta artesanal', 'Tomates selectos', 'Sin aditivos']
+  },
+  {
+    id: 'comida-4',
+    name: 'Pack Familiar (10 Pizzas)',
+    description: 'La mejor opción para familias. 10 pizzas variadas para disfrutar todo el mes.',
+    price: 5800,
+    image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop',
+    benefits: ['Ahorro del 25%', '10 variedades', 'Ideal para familias']
+  },
+  {
+    id: 'comida-5',
+    name: 'Pizza Vegana Especial',
+    description: 'Para quienes eligen un estilo de vida consciente. Sabores increíbles sin productos animales.',
+    price: 680,
+    image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop',
+    benefits: ['100% vegetal', 'Sabores únicos', 'Opción saludable']
+  },
+  {
+    id: 'comida-6',
+    name: 'Kit Pizza Perfecta',
+    description: 'Incluye masa, salsa, quesos y toppings premium. Todo lo que necesitás para crear tu obra maestra.',
+    price: 1800,
+    image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop',
+    benefits: ['Kit completo', 'Ingredientes premium', 'Recetas incluidas']
+  }
+];
+---
+
+<BaseLayout title="Comida - DOMUS | Pizza artesanal para disfrutar" description="Descubrí nuestras pizzas artesanales congeladas. Masa madre fermentada 48 horas, ingredientes premium.">
+  <Navbar />
+  <Cart />
+  
+  <main class="sector-page">
+    <section class="sector-hero sector-comida">
+      <div class="container">
+        <a href="/#sectors" class="back-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          Volver
+        </a>
+        
+        <div class="sector-hero-content">
+          <span class="sector-emoji">🍕</span>
+          <h1>Comida</h1>
+          <p class="sector-tagline">La comida casera es acto de amor</p>
+          <p class="sector-description">
+            Pizzas congeladas para que disfrutes del resultado, 
+            no de la tarea. Masa madre fermentada 48 horas, 
+            ingredientes seleccionados y mucho amor.
+          </p>
+        </div>
+      </div>
+    </section>
+    
+    <section class="products-section">
+      <div class="container">
+        <h2 class="section-title reveal">Nuestras Pizzas</h2>
+        
+        <div class="products-grid">
+          {products.map((product, index) => (
+            <article class="product-card card-hover reveal" style={`animation-delay: ${index * 0.1}s`}>
+              <div class="product-image">
+                <img src={product.image} alt={product.name} loading="lazy" />
+              </div>
+              
+              <div class="product-info">
+                <h3>{product.name}</h3>
+                <p class="product-description">{product.description}</p>
+                
+                <ul class="product-benefits">
+                  {product.benefits.map(benefit => (
+                    <li>{benefit}</li>
+                  ))}
+                </ul>
+                
+                <div class="product-footer">
+                  <span class="product-price">${product.price}</span>
+                  <button 
+                    class="btn add-to-cart-btn"
+                    onclick={`CartManager.addItem({id: '${product.id}', name: '${product.name}', price: ${product.price}, image: '${product.image}'})`}
+                  >
+                    Agregar
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+    
+    <section class="sector-cta">
+      <div class="container">
+        <div class="cta-content reveal">
+          <h3>¿Tenés alguna consulta?</h3>
+          <p>Escribinos por WhatsApp y te ayudamos a armar tu pedido ideal.</p>
+          <a href="https://wa.me/5491112345678?text=Hola!%20Me%20interesan%20las%20pizzas%20de%20Domus" class="btn whatsapp-btn" target="_blank">
+            Consultar por WhatsApp
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+  
+  <Footer />
+</BaseLayout>
+
+<style>
+  .sector-page {
+    padding-top: 80px;
+  }
+  
+  .sector-hero {
+    padding: 4rem 0;
+    background: linear-gradient(135deg, 
+      var(--color-comida) 0%, 
+      var(--color-comida-light) 100%);
+    color: white;
+  }
+  
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    font-size: 0.9375rem;
+    margin-bottom: 2rem;
+    transition: color 0.3s ease;
+  }
+  
+  .back-link:hover {
+    color: white;
+  }
+  
+  .back-link svg {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .sector-hero-content {
+    max-width: 600px;
+  }
+  
+  .sector-emoji {
+    font-size: 4rem;
+    display: block;
+    margin-bottom: 1rem;
+  }
+  
+  .sector-hero h1 {
+    font-size: clamp(2.5rem, 5vw, 3.5rem);
+    margin-bottom: 0.5rem;
+  }
+  
+  .sector-tagline {
+    font-size: 1.25rem;
+    font-family: var(--font-accent);
+    font-style: italic;
+    opacity: 0.9;
+    margin-bottom: 1.5rem;
+  }
+  
+  .sector-description {
+    font-size: 1.125rem;
+    line-height: 1.7;
+    opacity: 0.9;
+  }
+  
+  .products-section {
+    padding: 4rem 0;
+    background: var(--color-beige-light);
+  }
+  
+  .section-title {
+    text-align: center;
+    margin-bottom: 3rem;
+    color: var(--color-brown);
+  }
+  
+  .products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 2rem;
+  }
+  
+  .product-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(61, 43, 31, 0.08);
+  }
+  
+  .product-image {
+    aspect-ratio: 4/3;
+    overflow: hidden;
+  }
+  
+  .product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .product-info {
+    padding: 1.5rem;
+  }
+  
+  .product-info h3 {
+    margin: 0 0 0.75rem;
+    color: var(--color-brown);
+    font-size: 1.25rem;
+  }
+  
+  .product-description {
+    color: var(--color-brown-light);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+  
+  .product-benefits {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem;
+  }
+  
+  .product-benefits li {
+    padding: 0.25rem 0;
+    color: var(--color-brown-light);
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .product-benefits li::before {
+    content: '✓';
+    color: var(--color-olive);
+    font-weight: 600;
+  }
+  
+  .product-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(61, 43, 31, 0.08);
+  }
+  
+  .product-price {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-comida);
+  }
+  
+  .add-to-cart-btn {
+    background: var(--color-comida);
+  }
+  
+  .add-to-cart-btn:hover {
+    background: var(--color-comida-light);
+  }
+  
+  .sector-cta {
+    padding: 4rem 0;
+    background: white;
+  }
+  
+  .cta-content {
+    text-align: center;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+  
+  .cta-content h3 {
+    margin-bottom: 0.5rem;
+    color: var(--color-brown);
+  }
+  
+  .cta-content p {
+    color: var(--color-brown-light);
+    margin-bottom: 1.5rem;
+  }
+  
+  .whatsapp-btn {
+    background: #25D366;
+  }
+  
+  .whatsapp-btn:hover {
+    background: #128C7E;
+  }
+  
+  @media (max-width: 768px) {
+    .products-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

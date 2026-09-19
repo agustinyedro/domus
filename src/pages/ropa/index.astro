@@ -1,0 +1,330 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Navbar from '../../components/Navbar.astro';
+import Cart from '../../components/Cart.astro';
+import Footer from '../../components/Footer.astro';
+
+const products = [
+  {
+    id: 'ropa-1',
+    name: 'Remera Mindfulness',
+    description: 'Algodón orgánico 100%. Diseño minimalista que transmite paz y conexión.',
+    price: 2800,
+    image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop',
+    benefits: ['Algodón orgánico', 'Diseño exclusivo', 'Cómoda y duradera']
+  },
+  {
+    id: 'ropa-2',
+    name: 'Joggers Yoga Premium',
+    description: 'Tela suave y elástica. Perfectos para practice o para el día a día.',
+    price: 3500,
+    image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop',
+    benefits: ['Tela elástica', 'Bolsillos ocultos', 'Corte cómodo']
+  },
+  {
+    id: 'ropa-3',
+    name: 'Suéter Confort',
+    description: 'Abrigo suave para los momentos de relax. Tela premium que abraza.',
+    price: 4200,
+    image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop',
+    benefits: ['Tela premium', 'Diseño versátil', 'Perfecto para frío']
+  },
+  {
+    id: 'ropa-4',
+    name: 'Pack Yoga Completo',
+    description: 'Incluye remera, joggers y toalla de microfibra. Todo lo que necesitás para tu practice.',
+    price: 8500,
+    image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop',
+    benefits: ['Kit completo', 'Ahorro del 20%', 'Materiales premium']
+  },
+  {
+    id: 'ropa-5',
+    name: 'Gorro Meditation',
+    description: 'Gorro tejido a mano con lana merino. Cálido y舒服 para meditar al aire libre.',
+    price: 1800,
+    image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop',
+    benefits: ['Tejido a mano', 'Lana merino', 'Edición limitada']
+  },
+  {
+    id: 'ropa-6',
+    name: 'Bolso Mandala',
+    description: 'Bolso de lona con estampado mandala. Espacioso y resistente para llevar todo lo que necesitás.',
+    price: 2200,
+    image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop',
+    benefits: ['Lona resistente', 'Diseño exclusivo', 'Múltiples bolsillos']
+  }
+];
+---
+
+<BaseLayout title="Ropa - DOMUS | Comodidad que abraza" description="Descubrí nuestra colección de ropa artesanal. Remeras, joggers y accesorios para sentirte en casa.">
+  <Navbar />
+  <Cart />
+  
+  <main class="sector-page">
+    <section class="sector-hero sector-ropa">
+      <div class="container">
+        <a href="/#sectors" class="back-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          Volver
+        </a>
+        
+        <div class="sector-hero-content">
+          <span class="sector-emoji">👕</span>
+          <h1>Ropa</h1>
+          <p class="sector-tagline">Ropa que abraza, que respeta tu cuerpo</p>
+          <p class="sector-description">
+            Tejidos suaves, diseños que transmiten paz. 
+            Cada prenda está pensada para que te sientas 
+            cómodo/a y en paz, tanto en el mat como en tu día a día.
+          </p>
+        </div>
+      </div>
+    </section>
+    
+    <section class="products-section">
+      <div class="container">
+        <h2 class="section-title reveal">Nuestra Colección</h2>
+        
+        <div class="products-grid">
+          {products.map((product, index) => (
+            <article class="product-card card-hover reveal" style={`animation-delay: ${index * 0.1}s`}>
+              <div class="product-image">
+                <img src={product.image} alt={product.name} loading="lazy" />
+              </div>
+              
+              <div class="product-info">
+                <h3>{product.name}</h3>
+                <p class="product-description">{product.description}</p>
+                
+                <ul class="product-benefits">
+                  {product.benefits.map(benefit => (
+                    <li>{benefit}</li>
+                  ))}
+                </ul>
+                
+                <div class="product-footer">
+                  <span class="product-price">${product.price}</span>
+                  <button 
+                    class="btn add-to-cart-btn"
+                    onclick={`CartManager.addItem({id: '${product.id}', name: '${product.name}', price: ${product.price}, image: '${product.image}'})`}
+                  >
+                    Agregar
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+    
+    <section class="sector-cta">
+      <div class="container">
+        <div class="cta-content reveal">
+          <h3>¿Tenés alguna consulta?</h3>
+          <p>Escribinos por WhatsApp y te asesoramos con talles y colores.</p>
+          <a href="https://wa.me/5491112345678?text=Hola!%20Me%20interesa%20la%20ropa%20de%20Domus" class="btn whatsapp-btn" target="_blank">
+            Consultar por WhatsApp
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+  
+  <Footer />
+</BaseLayout>
+
+<style>
+  .sector-page {
+    padding-top: 80px;
+  }
+  
+  .sector-hero {
+    padding: 4rem 0;
+    background: linear-gradient(135deg, 
+      var(--color-ropa) 0%, 
+      var(--color-ropa-light) 100%);
+    color: white;
+  }
+  
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    font-size: 0.9375rem;
+    margin-bottom: 2rem;
+    transition: color 0.3s ease;
+  }
+  
+  .back-link:hover {
+    color: white;
+  }
+  
+  .back-link svg {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .sector-hero-content {
+    max-width: 600px;
+  }
+  
+  .sector-emoji {
+    font-size: 4rem;
+    display: block;
+    margin-bottom: 1rem;
+  }
+  
+  .sector-hero h1 {
+    font-size: clamp(2.5rem, 5vw, 3.5rem);
+    margin-bottom: 0.5rem;
+  }
+  
+  .sector-tagline {
+    font-size: 1.25rem;
+    font-family: var(--font-accent);
+    font-style: italic;
+    opacity: 0.9;
+    margin-bottom: 1.5rem;
+  }
+  
+  .sector-description {
+    font-size: 1.125rem;
+    line-height: 1.7;
+    opacity: 0.9;
+  }
+  
+  .products-section {
+    padding: 4rem 0;
+    background: var(--color-beige-light);
+  }
+  
+  .section-title {
+    text-align: center;
+    margin-bottom: 3rem;
+    color: var(--color-brown);
+  }
+  
+  .products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 2rem;
+  }
+  
+  .product-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(61, 43, 31, 0.08);
+  }
+  
+  .product-image {
+    aspect-ratio: 4/3;
+    overflow: hidden;
+  }
+  
+  .product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .product-info {
+    padding: 1.5rem;
+  }
+  
+  .product-info h3 {
+    margin: 0 0 0.75rem;
+    color: var(--color-brown);
+    font-size: 1.25rem;
+  }
+  
+  .product-description {
+    color: var(--color-brown-light);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+  
+  .product-benefits {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem;
+  }
+  
+  .product-benefits li {
+    padding: 0.25rem 0;
+    color: var(--color-brown-light);
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .product-benefits li::before {
+    content: '✓';
+    color: var(--color-olive);
+    font-weight: 600;
+  }
+  
+  .product-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(61, 43, 31, 0.08);
+  }
+  
+  .product-price {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-ropa);
+  }
+  
+  .add-to-cart-btn {
+    background: var(--color-ropa);
+  }
+  
+  .add-to-cart-btn:hover {
+    background: var(--color-ropa-light);
+  }
+  
+  .sector-cta {
+    padding: 4rem 0;
+    background: white;
+  }
+  
+  .cta-content {
+    text-align: center;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+  
+  .cta-content h3 {
+    margin-bottom: 0.5rem;
+    color: var(--color-brown);
+  }
+  
+  .cta-content p {
+    color: var(--color-brown-light);
+    margin-bottom: 1.5rem;
+  }
+  
+  .whatsapp-btn {
+    background: #25D366;
+  }
+  
+  .whatsapp-btn:hover {
+    background: #128C7E;
+  }
+  
+  @media (max-width: 768px) {
+    .products-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

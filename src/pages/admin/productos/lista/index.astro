@@ -1,0 +1,114 @@
+---
+// src/pages/admin/productos/lista/index.astro
+// Lista de precios para imprimir / compartir
+export const prerender = false;
+import AdminLayout from '@/layouts/AdminLayout.astro';
+
+const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+---
+
+<AdminLayout title="Lista de precios">
+  <div class="lista-print">
+    <div class="lista-header">
+      <div>
+        <h1>DOMUS · Lista de precios</h1>
+        <p>Vigente al {hoy}</p>
+      </div>
+      <button id="print-btn" class="admin-btn admin-btn-primary no-print" onclick="window.print()">
+        Imprimir / Guardar PDF
+      </button>
+    </div>
+
+    <table class="admin-table lista-tabla">
+      <thead>
+        <tr><th>Producto</th><th>Categoría</th><th class="text-right">Precio</th></tr>
+      </thead>
+      <tbody id="lista-body">
+        <tr><td colspan="3" class="text-center">Cargando…</td></tr>
+      </tbody>
+    </table>
+
+    <p class="lista-nota">Precios en pesos argentinos. Consultar stock y disponibilidad por WhatsApp.</p>
+  </div>
+
+  <script>
+    const fmt$ = (n: number) => `$${Math.round(n).toLocaleString('es-AR')}`;
+
+    async function cargar() {
+      try {
+        const res = await fetch('/api/admin/productos');
+        if (!res.ok) return;
+        const prods: Array<any> = await res.json();
+        const activos = prods.filter((p) => p.activo !== false);
+        document.getElementById('lista-body')!.innerHTML = activos.length
+          ? activos.map((p) => {
+              const enOferta = p.es_oferta && p.precio_oferta && Number(p.precio_oferta) < Number(p.precio_venta);
+              const precio = enOferta
+                ? `<s style="color: var(--admin-text-muted); font-weight: 400; margin-right: 0.5rem;">${fmt$(Number(p.precio_venta))}</s>${fmt$(Number(p.precio_oferta))}`
+                : fmt$(Number(p.precio_final ?? p.precio_venta));
+              return `<tr>
+                <td><strong>${p.nombre}</strong><br/><span style="font-size: 0.8125rem; color: var(--admin-text-muted);">${p.sku || ''}</span></td>
+                <td>${p.categoria || '—'}</td>
+                <td class="text-right">${precio}</td>
+              </tr>`;
+            }).join('')
+          : '<tr><td colspan="3" class="text-center">Sin productos activos.</td></tr>';
+      } catch { /* noop */ }
+    }
+
+    cargar();
+  </script>
+
+  <style>
+    .lista-print {
+      background: white;
+      border: 1px solid var(--admin-border);
+      border-radius: 8px;
+      padding: 2rem;
+      max-width: 800px;
+    }
+
+    .lista-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .lista-header h1 {
+      margin: 0 0 0.25rem;
+      font-size: 1.5rem;
+    }
+
+    .lista-header p {
+      margin: 0;
+      color: var(--admin-text-muted);
+      font-size: 0.875rem;
+    }
+
+    .lista-nota {
+      margin: 1.5rem 0 0;
+      font-size: 0.8125rem;
+      color: var(--admin-text-muted);
+      font-style: italic;
+    }
+
+    @media print {
+      .lista-print {
+        border: none;
+        padding: 0;
+        max-width: 100%;
+      }
+
+      .lista-header h1 {
+        font-size: 1.25rem;
+      }
+
+      .admin-table th,
+      .admin-table td {
+        padding: 0.5rem;
+      }
+    }
+  </style>
+</AdminLayout>

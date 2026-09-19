@@ -1,0 +1,20 @@
+---
+// src/pages/admin/productos/index.astro
+export const prerender = false;
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import ProductList from '@/components/admin/ProductList.vue';
+---
+
+<AdminLayout title="Productos">
+  <div class="admin-card-header">
+    <h1 style="margin: 0; font-size: 1.5rem;">Productos</h1>
+    <div style="display: flex; gap: 0.5rem;">
+      <a href="/admin/productos/lista" class="admin-btn admin-btn-ghost">Imprimir lista</a>
+      <a href="/admin/productos/nuevo" class="admin-btn admin-btn-success">+ Nuevo</a>
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <ProductList client:visible />
+  </div>
+</AdminLayout>

@@ -1,0 +1,162 @@
+---
+// src/pages/admin/kits/index.astro
+// Kits: crear, ver contenido, agregar/quitar productos
+export const prerender = false;
+import AdminLayout from '@/layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Kits">
+  <h1 style="margin: 0 0 1.5rem; font-size: 1.5rem;">Kits</h1>
+
+  <div class="admin-card" style="margin-bottom: 1rem;">
+    <h2 class="admin-card-title" style="margin-bottom: 1rem;">Nuevo kit</h2>
+    <form id="kit-form" class="admin-form" style="max-width: none;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+        <div class="admin-form-group">
+          <label class="admin-form-label" for="k-nombre">Nombre</label>
+          <input id="k-nombre" type="text" class="admin-input" required maxlength="255" placeholder="Ej: Box Relax" />
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label" for="k-precio">Precio venta ($)</label>
+          <input id="k-precio" type="number" class="admin-input" min="0" step="0.01" required />
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label" for="k-desc">Descripción</label>
+          <input id="k-desc" type="text" class="admin-input" maxlength="1000" placeholder="Opcional" />
+        </div>
+      </div>
+      <div id="k-error" class="admin-alert admin-alert-error" style="display:none; margin-top: 1rem;"></div>
+      <button type="submit" id="k-btn" class="admin-btn admin-btn-success" style="margin-top: 1rem;">Crear kit</button>
+    </form>
+  </div>
+
+  <div id="kits-list" style="display: grid; gap: 1rem;">
+    <div class="admin-card"><p class="admin-empty">Cargando kits…</p></div>
+  </div>
+
+  <script>
+    const errDiv = document.getElementById('k-error')!;
+    const btn = document.getElementById('k-btn') as HTMLButtonElement;
+    const fmt$ = (n: number) => `$${Math.round(n).toLocaleString('es-AR')}`;
+    let productos: Array<any> = [];
+
+    async function cargarProductos() {
+      try {
+        const res = await fetch('/api/admin/productos');
+        if (res.ok) productos = await res.json();
+      } catch { /* noop */ }
+    }
+
+    function opcionesProductos(): string {
+      return '<option value="">— Producto —</option>' + productos
+        .map((p: any) => `<option value="${p.producto_id || p.id}">${p.nombre}</option>`)
+        .join('');
+    }
+
+    async function cargarKits() {
+      try {
+        const res = await fetch('/api/admin/kits');
+        if (!res.ok) return;
+        const kits: Array<any> = await res.json();
+        const box = document.getElementById('kits-list')!;
+        if (!kits.length) {
+          box.innerHTML = '<div class="admin-card"><p class="admin-empty">Todavía no hay kits. Creá el primero arriba.</p></div>';
+          return;
+        }
+        box.innerHTML = kits.map((k) => {
+          const costo = Number(k.costo_calculado || 0);
+          const margen = k.precio_venta > 0 ? Math.round((1 - costo / Number(k.precio_venta)) * 100) : 0;
+          const items = (k.items || []).map((i: any) => `<li style="display: flex; align-items: center; gap: 0.5rem;">${i.productos?.nombre || ''} ×${i.cantidad} <button data-kit="${k.id}" data-item="${i.id}" class="row-del kit-del-item" style="width: 30px; height: 30px;" aria-label="Quitar del kit" title="Quitar del kit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></li>`).join('');
+          return `<div class="admin-card" data-kit-card="${k.id}">
+            <div class="admin-card-header">
+              <div>
+                <h2 class="admin-card-title">${k.nombre}</h2>
+                <p style="margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--admin-text-muted);">${k.descripcion || ''}</p>
+              </div>
+              <button data-kit-del="${k.id}" class="admin-btn admin-btn-ghost" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">Eliminar</button>
+            </div>
+            <p style="margin: 0 0 0.75rem;">Precio: <strong>${fmt$(Number(k.precio_venta))}</strong> · Costo: <strong>${fmt$(costo)}</strong> · Margen: <strong>${margen}%</strong></p>
+            <ul style="margin: 0 0 1rem; padding-left: 1.25rem; font-size: 0.875rem;">${items || '<li>Sin productos todavía.</li>'}</ul>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <select data-kit-sel="${k.id}" class="admin-input" style="flex: 2; min-width: 160px;">${opcionesProductos()}</select>
+              <input data-kit-cant="${k.id}" type="number" class="admin-input" min="1" value="1" style="flex: 1; min-width: 80px;" />
+              <button data-kit-add="${k.id}" class="admin-btn admin-btn-primary">Agregar</button>
+            </div>
+          </div>`;
+        }).join('');
+      } catch { /* noop */ }
+    }
+
+    document.getElementById('kits-list')!.addEventListener('click', async (e) => {
+      const t = e.target as HTMLElement;
+
+      const addBtn = t.closest('[data-kit-add]') as HTMLElement | null;
+      if (addBtn) {
+        const kitId = addBtn.dataset.kitAdd!;
+        const sel = document.querySelector(`[data-kit-sel="${kitId}"]`) as HTMLSelectElement;
+        const cant = document.querySelector(`[data-kit-cant="${kitId}"]`) as HTMLInputElement;
+        if (!sel.value) return;
+        await fetch(`/api/admin/kits/${kitId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ producto_id: sel.value, cantidad: Number(cant.value) || 1 }),
+        });
+        cargarKits();
+        return;
+      }
+
+      const delItem = t.closest('[data-item]') as HTMLElement | null;
+      if (delItem) {
+        await fetch(`/api/admin/kits/${delItem.dataset.kit}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ _action: 'remove-item', item_id: delItem.dataset.item }),
+        });
+        cargarKits();
+        return;
+      }
+
+      const delKit = t.closest('[data-kit-del]') as HTMLElement | null;
+      if (delKit) {
+        if (!confirm('¿Eliminar este kit?')) return;
+        await fetch(`/api/admin/kits/${delKit.dataset.kitDel}`, { method: 'DELETE' });
+        cargarKits();
+      }
+    });
+
+    document.getElementById('kit-form')!.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errDiv.style.display = 'none';
+      btn.setAttribute('disabled', 'true');
+      try {
+        const res = await fetch('/api/admin/kits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nombre: (document.getElementById('k-nombre') as HTMLInputElement).value.trim(),
+            precio_venta: Number((document.getElementById('k-precio') as HTMLInputElement).value),
+            descripcion: (document.getElementById('k-desc') as HTMLInputElement).value.trim() || null,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errDiv.textContent = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+          errDiv.style.display = 'block';
+          return;
+        }
+        (document.getElementById('k-nombre') as HTMLInputElement).value = '';
+        (document.getElementById('k-precio') as HTMLInputElement).value = '';
+        (document.getElementById('k-desc') as HTMLInputElement).value = '';
+        cargarKits();
+      } catch {
+        errDiv.textContent = 'Error de conexión';
+        errDiv.style.display = 'block';
+      } finally {
+        btn.removeAttribute('disabled');
+      }
+    });
+
+    await cargarProductos();
+    cargarKits();
+  </script>
+</AdminLayout>

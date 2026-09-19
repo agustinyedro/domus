@@ -1,0 +1,209 @@
+---
+---
+
+<section id="history" class="history">
+  <div class="container">
+    <h2 class="section-title reveal">Nuestra historia</h2>
+    
+    <div class="story-content">
+      <p class="story-intro reveal">
+        Somos una familia que cree que la belleza florece en los desafíos.
+      </p>
+      
+      <p class="reveal">
+        Nos conocimos en el yoga. Formamos un hogar basado en el equilibrio, 
+        la inclusión genuina y la creación consciente. Hoy somos cuatro: 
+        nosotros dos, Nellas y Suri.
+      </p>
+      
+      <div class="highlight-box reveal">
+        <p>
+          Suri nació con parálisis cerebral, cardiopatía de Fallot 
+          (operada cuatro veces) y otras complejidades que la hacen <strong>ÚNICA</strong>. 
+          Hoy, con un equipo de profesionales que amamos, Suri sigue siendo 
+          el corazón que mueve todo lo que hacemos.
+        </p>
+      </div>
+      
+      <p class="highlight-text reveal">
+        <strong>Domus existe porque Suri existe.</strong>
+      </p>
+      
+      <p class="reveal">
+        La marca nace de la necesidad de crear algo que tenga sentido, 
+        que acompañe la vida cotidiana y que, simplemente, haga que un lugar 
+        se sienta como hogar.
+      </p>
+    </div>
+    
+    <div class="pillars">
+      <div class="pillar reveal">
+        <div class="pillar-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <h3>Yoga & Balance</h3>
+        <p>Cada práctica comienza aquí. Equilibrio de mente, cuerpo y espíritu.</p>
+      </div>
+      
+      <div class="pillar reveal">
+        <div class="pillar-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </div>
+        <h3>Inclusión genuina</h3>
+        <p>Nuestras hijas nos enseñan que la diversidad es normalidad.</p>
+      </div>
+      
+      <div class="pillar reveal">
+        <div class="pillar-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        </div>
+        <h3>Creación consciente</h3>
+        <p>Cada aroma, cada momento: pensado, creado, amado.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .history {
+    background-color: var(--color-beige-light);
+    padding: var(--space-xl) 0;
+  }
+
+  .section-title {
+    text-align: center;
+    margin-bottom: var(--space-lg);
+    color: var(--color-brown);
+  }
+
+  .story-content {
+    max-width: 800px;
+    margin: 0 auto var(--space-xl);
+  }
+
+  .story-intro {
+    font-size: 1.5rem;
+    font-family: var(--font-accent);
+    font-style: italic;
+    color: var(--color-olive);
+    text-align: center;
+    margin-bottom: var(--space-lg);
+  }
+
+  .story-content p {
+    font-size: 1.125rem;
+    line-height: 1.8;
+    margin-bottom: var(--space-md);
+    color: var(--color-brown-light);
+  }
+
+  .highlight-box {
+    background: linear-gradient(135deg, 
+      rgba(152, 140, 45, 0.08) 0%, 
+      rgba(152, 140, 45, 0.03) 100%);
+    padding: var(--space-md);
+    margin: var(--space-lg) 0;
+    border-radius: 8px;
+    position: relative;
+  }
+
+  .highlight-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--color-olive), transparent);
+    border-radius: 8px 8px 0 0;
+  }
+
+  .highlight-box p {
+    margin-bottom: 0;
+    font-size: 1.125rem;
+  }
+
+  .highlight-text {
+    text-align: center;
+    font-size: 1.375rem;
+    color: var(--color-olive);
+    margin: var(--space-lg) 0;
+  }
+
+  .pillars {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-md);
+    margin-top: var(--space-xl);
+  }
+
+  .pillar {
+    background: white;
+    padding: var(--space-lg);
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(61, 43, 31, 0.08);
+    transition: all var(--transition-base);
+  }
+
+  .pillar:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(152, 140, 45, 0.15);
+  }
+
+  .pillar-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto var(--space-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, 
+      var(--color-olive) 0%, 
+      var(--color-olive-light) 100%);
+    border-radius: 50%;
+    color: white;
+  }
+
+  .pillar-icon svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .pillar h3 {
+    color: var(--color-brown);
+    margin-bottom: var(--space-sm);
+    font-size: 1.25rem;
+  }
+
+  .pillar p {
+    color: var(--color-brown-light);
+    font-size: 1rem;
+    margin-bottom: 0;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .history {
+      padding: var(--space-lg) 0;
+    }
+
+    .story-intro {
+      font-size: 1.25rem;
+    }
+
+    .pillars {
+      grid-template-columns: 1fr;
+    }
+
+    .pillar {
+      padding: var(--space-md);
+    }
+  }
+</style>

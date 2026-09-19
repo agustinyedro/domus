@@ -1,0 +1,369 @@
+---
+// src/pages/admin/compras/index.astro
+// Registrar compras multi-producto + historial
+export const prerender = false;
+import AdminLayout from '@/layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Compras">
+  <h1 style="margin: 0 0 1.5rem; font-size: 1.5rem;">Compras</h1>
+
+  <div class="admin-card" style="margin-bottom: 1rem;">
+    <h2 class="admin-card-title" style="margin-bottom: 1rem;">Registrar compra</h2>
+    <form id="compra-form" class="admin-form" style="max-width: none;">
+      <div id="c-rows" style="display: flex; flex-direction: column; gap: 0.75rem;"></div>
+
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem;">
+        <button type="button" id="c-add-row" class="admin-btn admin-btn-primary">
+          + Agregar producto
+        </button>
+        <button type="button" id="c-new-prod-btn" class="admin-btn admin-btn-ghost">
+          + Crear producto nuevo
+        </button>
+      </div>
+
+      <div id="c-new-prod" style="display: none; margin-top: 1rem; padding: 1rem; border: 1px dashed var(--admin-border); border-radius: 6px;">
+        <p style="margin: 0 0 0.75rem; font-size: 0.875rem; font-weight: 600;">Nuevo producto (se crea con costo $0; la compra le pone el costo)</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem;">
+          <div class="admin-form-group">
+            <label class="admin-form-label" for="np-nombre">Nombre</label>
+            <input id="np-nombre" type="text" class="admin-input" maxlength="255" placeholder="Ej: Vela cítrica" />
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-form-label" for="np-sku">SKU</label>
+            <input id="np-sku" type="text" class="admin-input" maxlength="100" placeholder="Ej: VELA001" />
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-form-label" for="np-cat">Categoría</label>
+            <div style="display: flex; gap: 0.5rem;">
+              <select id="np-cat" class="admin-input" style="flex: 1;">
+                <option value="">— Elegí —</option>
+              </select>
+              <button type="button" id="np-cat-new" class="admin-btn admin-btn-ghost" style="white-space: nowrap;" title="Crear categoría">+</button>
+            </div>
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-form-label" for="np-precio">Precio venta ($)</label>
+            <input id="np-precio" type="number" class="admin-input" min="0" step="0.01" placeholder="0" />
+          </div>
+        </div>
+        <div id="np-error" class="admin-alert admin-alert-error" style="display:none; margin-top: 0.75rem;"></div>
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+          <button type="button" id="np-save" class="admin-btn admin-btn-primary">Crear y agregar a la compra</button>
+          <button type="button" id="np-cancel" class="admin-btn admin-btn-ghost">Cancelar</button>
+        </div>
+      </div>
+
+      <div class="admin-form-group" style="margin-top: 1rem; max-width: 480px;">
+        <label class="admin-form-label" for="c-obs">Observaciones (para toda la compra)</label>
+        <input id="c-obs" type="text" class="admin-input" maxlength="500" placeholder="Ej: proveedor X" />
+      </div>
+
+      <p style="margin: 1rem 0 0; font-size: 1rem;">Costo total: <strong id="c-total">$0</strong></p>
+      <div id="c-error" class="admin-alert admin-alert-error" style="display:none; margin-top: 1rem;"></div>
+      <div id="c-ok" class="admin-alert admin-alert-success" style="display:none; margin-top: 1rem;"></div>
+      <button type="submit" id="c-btn" class="admin-btn admin-btn-success" style="margin-top: 1rem;">Registrar compra</button>
+    </form>
+    <p style="margin: 1rem 0 0; font-size: 0.8125rem; color: var(--admin-text-muted);">
+      Cada producto suma stock y actualiza su costo al último costo de compra.
+    </p>
+  </div>
+
+  <div class="admin-card">
+    <h2 class="admin-card-title" style="margin-bottom: 1rem;">Historial</h2>
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Fecha</th><th>Producto</th><th class="text-right">Cant.</th><th class="text-right">Costo u.</th><th class="text-right">Total</th><th>Obs.</th></tr>
+        </thead>
+        <tbody id="c-historial">
+          <tr><td colspan="6" class="text-center">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const rowsBox = document.getElementById('c-rows')!;
+    const errDiv = document.getElementById('c-error')!;
+    const okDiv = document.getElementById('c-ok')!;
+    const btn = document.getElementById('c-btn') as HTMLButtonElement;
+    const fmt$ = (n: number) => `$${Math.round(n).toLocaleString('es-AR')}`;
+    let productos: Array<any> = [];
+
+    function opcionesProductos(selValue = ''): string {
+      return '<option value="">— Elegí —</option>' + productos
+        .map((p: any) => {
+          const id = p.producto_id || p.id;
+          return `<option value="${id}" data-costo="${p.costo}" ${id === selValue ? 'selected' : ''}>${p.nombre}</option>`;
+        })
+        .join('');
+    }
+
+    function agregarFila(selValue = '') {
+      const row = document.createElement('div');
+      row.className = 'c-row';
+      row.style.cssText = 'display: grid; grid-template-columns: 2fr 1fr 1fr auto auto; gap: 0.5rem; align-items: end;';
+      row.innerHTML = `
+        <div class="admin-form-group">
+          <label class="admin-form-label">Producto</label>
+          <select class="admin-input c-prod" required>${opcionesProductos(selValue)}</select>
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label">Cantidad</label>
+          <input type="number" class="admin-input c-cant" min="1" step="1" value="1" required />
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label">Costo u. ($)</label>
+          <input type="number" class="admin-input c-costo" min="0" step="0.01" required />
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label">&nbsp;</label>
+          <p class="c-sub" style="margin: 0; padding: 0.625rem 0; font-size: 0.875rem; font-weight: 600; white-space: nowrap;">$0</p>
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label">&nbsp;</label>
+          <button type="button" class="row-del c-del" aria-label="Quitar fila" title="Quitar fila">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>`;
+      rowsBox.appendChild(row);
+      actualizarTotal();
+    }
+
+    function actualizarTotal() {
+      let total = 0;
+      rowsBox.querySelectorAll('.c-row').forEach((row) => {
+        const cant = Number((row.querySelector('.c-cant') as HTMLInputElement).value) || 0;
+        const costo = Number((row.querySelector('.c-costo') as HTMLInputElement).value) || 0;
+        const sub = cant * costo;
+        (row.querySelector('.c-sub') as HTMLElement).textContent = fmt$(sub);
+        total += sub;
+      });
+      document.getElementById('c-total')!.textContent = fmt$(total);
+    }
+
+    rowsBox.addEventListener('input', (e) => {
+      const t = e.target as HTMLElement;
+      if (t.classList.contains('c-cant') || t.classList.contains('c-costo')) actualizarTotal();
+      if (t.classList.contains('c-prod')) {
+        const row = (t as HTMLElement).closest('.c-row')!;
+        const opt = (t as HTMLSelectElement).selectedOptions[0] as HTMLOptionElement | undefined;
+        if (opt?.dataset.costo) {
+          (row.querySelector('.c-costo') as HTMLInputElement).value = opt.dataset.costo;
+          actualizarTotal();
+        }
+      }
+    });
+
+    rowsBox.addEventListener('click', (e) => {
+      const del = (e.target as HTMLElement).closest('.c-del') as HTMLElement | null;
+      if (!del) return;
+      if (rowsBox.querySelectorAll('.c-row').length <= 1) return;
+      del.closest('.c-row')!.remove();
+      actualizarTotal();
+    });
+
+    document.getElementById('c-add-row')!.addEventListener('click', () => agregarFila());
+
+    // Alta rápida de producto
+    const npBox = document.getElementById('c-new-prod')!;
+    const npErr = document.getElementById('np-error')!;
+    const npSave = document.getElementById('np-save') as HTMLButtonElement;
+    const npCat = document.getElementById('np-cat') as HTMLSelectElement;
+
+    async function cargarCategoriasNp() {
+      try {
+        const res = await fetch('/api/admin/categorias');
+        if (!res.ok) return;
+        const cats: Array<any> = await res.json();
+        const actual = npCat.value;
+        npCat.innerHTML = '<option value="">— Elegí —</option>' + cats
+          .map((c: any) => `<option value="${c.nombre}">${c.nombre}</option>`)
+          .join('');
+        if (actual) npCat.value = actual;
+      } catch { /* noop */ }
+    }
+
+    document.getElementById('np-cat-new')!.addEventListener('click', async () => {
+      const nombre = prompt('Nombre de la nueva categoría:')?.trim().replace(/\s+/g, ' ');
+      if (!nombre) return;
+      try {
+        const res = await fetch('/api/admin/categorias', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          npErr.textContent = typeof data.error === 'string' ? data.error : 'No se pudo crear.';
+          npErr.style.display = 'block';
+          return;
+        }
+        await cargarCategoriasNp();
+        npCat.value = data.nombre;
+      } catch {
+        npErr.textContent = 'Error de conexión';
+        npErr.style.display = 'block';
+      }
+    });
+
+    cargarCategoriasNp();
+
+    document.getElementById('c-new-prod-btn')!.addEventListener('click', () => {
+      npBox.style.display = npBox.style.display === 'none' ? 'block' : 'none';
+      npErr.style.display = 'none';
+    });
+    document.getElementById('np-cancel')!.addEventListener('click', () => {
+      npBox.style.display = 'none';
+    });
+
+    // Sugerir SKU desde el nombre
+    document.getElementById('np-nombre')!.addEventListener('input', (e) => {
+      const skuInput = document.getElementById('np-sku') as HTMLInputElement;
+      if (!skuInput.value) {
+        skuInput.value = (e.target as HTMLInputElement).value
+          .toUpperCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^A-Z0-9]+/g, '')
+          .slice(0, 20);
+      }
+    });
+
+    npSave.addEventListener('click', async () => {
+      npErr.style.display = 'none';
+      const nombre = (document.getElementById('np-nombre') as HTMLInputElement).value.trim();
+      const sku = (document.getElementById('np-sku') as HTMLInputElement).value.trim();
+      const categoria = npCat.value || null;
+      const precio_venta = Number((document.getElementById('np-precio') as HTMLInputElement).value) || 0;
+
+      if (!nombre || !sku) {
+        npErr.textContent = 'Nombre y SKU son obligatorios.';
+        npErr.style.display = 'block';
+        return;
+      }
+
+      npSave.setAttribute('disabled', 'true');
+      try {
+        const res = await fetch('/api/admin/productos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre, sku, categoria: categoria || null, costo: 0, precio_venta, stock_minimo: 5 }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          npErr.textContent = typeof data.error === 'string' ? data.error : 'No se pudo crear (¿SKU duplicado?).';
+          npErr.style.display = 'block';
+          return;
+        }
+        await cargarProductos();
+        agregarFila(data.id);
+        npBox.style.display = 'none';
+        (document.getElementById('np-nombre') as HTMLInputElement).value = '';
+        (document.getElementById('np-sku') as HTMLInputElement).value = '';
+        npCat.value = '';
+        (document.getElementById('np-precio') as HTMLInputElement).value = '';
+        okDiv.textContent = `Producto "${data.nombre}" creado. Completá cantidad y costo en su fila.`;
+        okDiv.style.display = 'block';
+      } catch {
+        npErr.textContent = 'Error de conexión';
+        npErr.style.display = 'block';
+      } finally {
+        npSave.removeAttribute('disabled');
+      }
+    });
+
+    async function cargarProductos() {
+      try {
+        const res = await fetch('/api/admin/productos');
+        if (!res.ok) return;
+        productos = await res.json();
+        rowsBox.querySelectorAll('.c-prod').forEach((s) => {
+          (s as HTMLSelectElement).innerHTML = opcionesProductos((s as HTMLSelectElement).value);
+        });
+      } catch { /* noop */ }
+    }
+
+    async function cargarHistorial() {
+      try {
+        const res = await fetch('/api/admin/compras');
+        if (!res.ok) return;
+        const movs: Array<any> = await res.json();
+        document.getElementById('c-historial')!.innerHTML = movs.length
+          ? movs.map((m) => `<tr>
+              <td>${new Date(m.fecha).toLocaleString('es-AR')}</td>
+              <td>${m.productos?.nombre || ''}</td>
+              <td class="text-right">${m.cantidad}</td>
+              <td class="text-right">${fmt$(Number(m.costo_unitario))}</td>
+              <td class="text-right">${fmt$(Number(m.costo_total))}</td>
+              <td>${m.observaciones || '—'}</td>
+            </tr>`).join('')
+          : '<tr><td colspan="6" class="text-center">Sin compras registradas.</td></tr>';
+      } catch { /* noop */ }
+    }
+
+    document.getElementById('compra-form')!.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errDiv.style.display = 'none';
+      okDiv.style.display = 'none';
+
+      const items: Array<{ producto_id: string; cantidad: number; costo_unitario: number }> = [];
+      for (const row of rowsBox.querySelectorAll('.c-row')) {
+        const producto_id = (row.querySelector('.c-prod') as HTMLSelectElement).value;
+        const cantidad = Number((row.querySelector('.c-cant') as HTMLInputElement).value);
+        const costo_unitario = Number((row.querySelector('.c-costo') as HTMLInputElement).value);
+        if (!producto_id || !(cantidad >= 1) || !(costo_unitario >= 0)) {
+          errDiv.textContent = 'Completá producto, cantidad y costo en todas las filas.';
+          errDiv.style.display = 'block';
+          return;
+        }
+        items.push({ producto_id, cantidad, costo_unitario });
+      }
+
+      btn.setAttribute('disabled', 'true');
+      try {
+        const res = await fetch('/api/admin/compras', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items,
+            observaciones: (document.getElementById('c-obs') as HTMLInputElement).value.trim() || undefined,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errDiv.textContent = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+          errDiv.style.display = 'block';
+          return;
+        }
+        okDiv.textContent = `Compra registrada: ${data.cantidad_items} productos por ${fmt$(Number(data.total))}.`;
+        okDiv.style.display = 'block';
+        rowsBox.innerHTML = '';
+        agregarFila();
+        (document.getElementById('c-obs') as HTMLInputElement).value = '';
+        cargarHistorial();
+        cargarProductos();
+      } catch {
+        errDiv.textContent = 'Error de conexión';
+        errDiv.style.display = 'block';
+      } finally {
+        btn.removeAttribute('disabled');
+      }
+    });
+
+    agregarFila();
+    cargarProductos();
+    cargarHistorial();
+  </script>
+
+  <style>
+    @media (max-width: 700px) {
+      .c-row {
+        grid-template-columns: 1fr 1fr !important;
+      }
+      .c-row .admin-form-group:first-child {
+        grid-column: 1 / -1;
+      }
+    }
+  </style>
+</AdminLayout>

@@ -1,0 +1,514 @@
+---
+// src/layouts/AdminLayout.astro
+// Layout para el panel de administración
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+
+// Si el usuario no está logueado y esta página no es login, redirigir
+const isLoginPage = Astro.url.pathname === '/admin/login';
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title} | DOMUS Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="admin-body">
+  {!isLoginPage && (
+    <aside class="admin-sidebar">
+      <div class="sidebar-header">
+        <a href="/admin" class="sidebar-logo">DOMUS</a>
+        <span class="sidebar-subtitle">Admin</span>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/admin" class="sidebar-link">Dashboard</a>
+        <a href="/admin/pedidos" class="sidebar-link">Pedidos</a>
+        <a href="/admin/productos" class="sidebar-link">Productos</a>
+        <a href="/admin/stock" class="sidebar-link">Ajustar stock</a>
+        <a href="/admin/gastos" class="sidebar-link">Gastos</a>
+        <a href="/admin/compras" class="sidebar-link">Compras</a>
+        <a href="/admin/ventas" class="sidebar-link">Ventas</a>
+        <a href="/admin/kits" class="sidebar-link">Kits</a>
+        <a href="/admin/club" class="sidebar-link">Club</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/" class="sidebar-link">Ver sitio</a>
+        <button id="logout-btn" class="sidebar-link sidebar-logout">Cerrar sesión</button>
+      </div>
+    </aside>
+  )}
+
+  <main class={isLoginPage ? 'admin-main admin-main-full' : 'admin-main'}>
+    <slot />
+  </main>
+
+  <style is:global>
+    :root {
+      --admin-bg: #f8f9fa;
+      --admin-sidebar-bg: #1a1a2e;
+      --admin-sidebar-text: #e0e0e0;
+      --admin-sidebar-active: #988C2D;
+      --admin-card-bg: #ffffff;
+      --admin-border: #e2e8f0;
+      --admin-text: #1a202c;
+      --admin-text-muted: #718096;
+      --admin-primary: #988C2D;
+      --admin-primary-hover: #8a7e28;
+      --admin-success: #48bb78;
+      --admin-danger: #f56565;
+      --admin-warning: #ed8936;
+      --admin-info: #4299e1;
+    }
+
+    .admin-body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--admin-bg);
+      color: var(--admin-text);
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* Sidebar */
+    .admin-sidebar {
+      width: 240px;
+      background: var(--admin-sidebar-bg);
+      color: var(--admin-sidebar-text);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      z-index: 50;
+    }
+
+    .sidebar-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sidebar-logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--admin-sidebar-active);
+      text-decoration: none;
+      letter-spacing: 0.15em;
+    }
+
+    .sidebar-subtitle {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--admin-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-top: 0.25rem;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 1rem 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-link {
+      display: block;
+      padding: 0.75rem 1.5rem;
+      color: var(--admin-sidebar-text);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .sidebar-link:hover {
+      background: rgba(255,255,255,0.05);
+      color: var(--admin-sidebar-active);
+    }
+
+    .sidebar-footer {
+      padding: 1rem 0;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sidebar-logout {
+      color: var(--admin-danger);
+    }
+
+    /* Main */
+    .admin-main {
+      margin-left: 240px;
+      padding: 2rem;
+      flex: 1;
+      min-height: 100vh;
+    }
+
+    .admin-main-full {
+      margin-left: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Cards */
+    .admin-card {
+      background: var(--admin-card-bg);
+      border: 1px solid var(--admin-border);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+
+    .admin-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .admin-card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    /* Metrics */
+    .admin-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .admin-metric {
+      background: var(--admin-card-bg);
+      border: 1px solid var(--admin-border);
+      border-radius: 8px;
+      padding: 1.25rem;
+    }
+
+    .admin-metric-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--admin-text-muted);
+      margin: 0 0 0.5rem;
+    }
+
+    .admin-metric-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .admin-metric-value.success { color: var(--admin-success); }
+    .admin-metric-value.danger { color: var(--admin-danger); }
+    .admin-metric-value.warning { color: var(--admin-warning); }
+    .admin-metric-value.info { color: var(--admin-info); }
+
+    /* Forms */
+    .admin-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      max-width: 480px;
+    }
+
+    .admin-form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+    }
+
+    .admin-form-label {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--admin-text);
+    }
+
+    .admin-input {
+      padding: 0.625rem 0.75rem;
+      border: 1px solid var(--admin-border);
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-family: inherit;
+      background: var(--admin-card-bg);
+      color: var(--admin-text);
+      transition: border-color 0.2s;
+    }
+
+    .admin-input:focus {
+      outline: none;
+      border-color: var(--admin-primary);
+      box-shadow: 0 0 0 3px rgba(152, 140, 45, 0.15);
+    }
+
+    .admin-input.warning {
+      background: #fffbeb;
+      border-color: var(--admin-warning);
+    }
+
+    /* Buttons */
+    .admin-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1.25rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .admin-btn:active {
+      transform: scale(0.98);
+    }
+
+    .admin-btn-primary {
+      background: var(--admin-primary);
+      color: white;
+    }
+
+    .admin-btn-primary:hover {
+      background: var(--admin-primary-hover);
+    }
+
+    .admin-btn-success {
+      background: var(--admin-success);
+      color: white;
+    }
+
+    .admin-btn-danger {
+      background: var(--admin-danger);
+      color: white;
+    }
+
+    .admin-btn-ghost {
+      background: transparent;
+      color: var(--admin-text);
+      border: 1px solid var(--admin-border);
+    }
+
+    .admin-btn-ghost:hover {
+      background: var(--admin-bg);
+    }
+
+    /* Tacho para quitar filas (compras, ventas, kits) */
+    .row-del {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: #e53e3e;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      flex-shrink: 0;
+    }
+
+    .row-del:hover {
+      background: #fff5f5;
+      border-color: #fed7d7;
+    }
+
+    .admin-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Table */
+    .admin-table-wrapper {
+      overflow-x: auto;
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    .admin-table th {
+      text-align: left;
+      padding: 0.75rem;
+      border-bottom: 2px solid var(--admin-border);
+      font-weight: 600;
+      color: var(--admin-text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .admin-table td {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--admin-border);
+    }
+
+    .admin-table tr:hover td {
+      background: rgba(152, 140, 45, 0.03);
+    }
+
+    .admin-table .text-right {
+      text-align: right;
+    }
+
+    .admin-table .text-center {
+      text-align: center;
+    }
+
+    /* Alerts */
+    .admin-alert {
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+    }
+
+    .admin-alert-success {
+      background: #f0fff4;
+      color: #22543d;
+      border: 1px solid #c6f6d5;
+    }
+
+    .admin-alert-error {
+      background: #fff5f5;
+      color: #742a2a;
+      border: 1px solid #fed7d7;
+    }
+
+    .admin-alert-warning {
+      background: #fffbeb;
+      color: #744210;
+      border: 1px solid #fefcbf;
+    }
+
+    /* Empty state */
+    .admin-empty {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--admin-text-muted);
+    }
+
+    /* Stock badge */
+    .stock-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .stock-ok {
+      background: #f0fff4;
+      color: #22543d;
+    }
+
+    .stock-low {
+      background: #fff5f5;
+      color: #742a2a;
+    }
+
+    /* Login */
+    .login-card {
+      background: var(--admin-card-bg);
+      border: 1px solid var(--admin-border);
+      border-radius: 12px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .login-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      text-align: center;
+      margin: 0 0 0.5rem;
+    }
+
+    .login-subtitle {
+      text-align: center;
+      color: var(--admin-text-muted);
+      font-size: 0.875rem;
+      margin: 0 0 1.5rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .admin-sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        flex-direction: row;
+        overflow-x: auto;
+      }
+
+      .sidebar-header,
+      .sidebar-footer {
+        display: none;
+      }
+
+      .sidebar-nav {
+        flex-direction: row;
+        padding: 0;
+      }
+
+      .sidebar-link {
+        padding: 0.75rem 1rem;
+        white-space: nowrap;
+      }
+
+      .admin-main {
+        margin-left: 0;
+        padding: 1rem;
+      }
+    }
+
+    /* Impresión: solo el contenido, sin sidebar ni botones */
+    @media print {
+      .admin-sidebar,
+      .no-print {
+        display: none !important;
+      }
+
+      .admin-main {
+        margin-left: 0;
+        padding: 0;
+      }
+
+      .admin-body {
+        background: white;
+      }
+    }
+  </style>
+
+  {!isLoginPage && (
+    <script>
+      document.getElementById('logout-btn')?.addEventListener('click', async () => {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.href = '/admin/login';
+      });
+    </script>
+  )}
+</body>
+</html>

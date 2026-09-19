@@ -1,0 +1,176 @@
+---
+// src/pages/admin/stock/index.astro
+// Ajustes de stock con motivo (no son ventas)
+export const prerender = false;
+import AdminLayout from '@/layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Ajustar stock">
+  <h1 style="margin: 0 0 0.5rem; font-size: 1.5rem;">Ajustar stock</h1>
+  <p style="margin: 0 0 1.5rem; color: var(--admin-text-muted); font-size: 0.9375rem;">
+    Para salidas que no son ventas (ej: te los llevás a casa, muestras, roturas).
+    Siempre con motivo y nunca deja el stock en negativo.
+  </p>
+
+  <div class="admin-card" style="margin-bottom: 1rem;">
+    <form id="mov-form" class="admin-form">
+      <div class="admin-form-group">
+        <label class="admin-form-label" for="mov-producto">Producto</label>
+        <select id="mov-producto" class="admin-input" required>
+          <option value="">Cargando productos…</option>
+        </select>
+        <p id="mov-stock-actual" style="margin: 0.25rem 0 0; font-size: 0.8125rem; color: var(--admin-text-muted);"></p>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="admin-form-group">
+          <label class="admin-form-label">Tipo</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <label style="flex: 1; display: flex; align-items: center; gap: 0.5rem; padding: 0.625rem; border: 1px solid var(--admin-border); border-radius: 6px; cursor: pointer; font-size: 0.875rem;">
+              <input type="radio" name="mov-tipo" value="SALIDA" checked /> Salida (−)
+            </label>
+            <label style="flex: 1; display: flex; align-items: center; gap: 0.5rem; padding: 0.625rem; border: 1px solid var(--admin-border); border-radius: 6px; cursor: pointer; font-size: 0.875rem;">
+              <input type="radio" name="mov-tipo" value="ENTRADA" /> Entrada (+)
+            </label>
+          </div>
+        </div>
+
+        <div class="admin-form-group">
+          <label class="admin-form-label" for="mov-cantidad">Cantidad</label>
+          <input id="mov-cantidad" type="number" class="admin-input" min="1" step="1" value="1" required />
+        </div>
+      </div>
+
+      <div class="admin-form-group">
+        <label class="admin-form-label" for="mov-motivo">Motivo (obligatorio)</label>
+        <input
+          id="mov-motivo"
+          type="text"
+          class="admin-input"
+          required
+          minlength="3"
+          maxlength="500"
+          placeholder="Ej: me los llevo a casa"
+        />
+      </div>
+
+      <div id="mov-error" class="admin-alert admin-alert-error" style="display:none;"></div>
+      <div id="mov-ok" class="admin-alert admin-alert-success" style="display:none;"></div>
+
+      <button type="submit" id="mov-btn" class="admin-btn admin-btn-primary">Registrar movimiento</button>
+    </form>
+  </div>
+
+  <div class="admin-card">
+    <h2 class="admin-card-title" style="margin-bottom: 1rem;">Últimos movimientos</h2>
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th class="text-right">Cant.</th><th>Motivo</th></tr>
+        </thead>
+        <tbody id="mov-historial">
+          <tr><td colspan="5" class="text-center">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let productos: Array<any> = [];
+
+    const sel = document.getElementById('mov-producto') as HTMLSelectElement;
+    const stockInfo = document.getElementById('mov-stock-actual')!;
+    const errDiv = document.getElementById('mov-error')!;
+    const okDiv = document.getElementById('mov-ok')!;
+    const btn = document.getElementById('mov-btn') as HTMLButtonElement;
+
+    function actualizarStockInfo() {
+      const p = productos.find((x) => x.producto_id === sel.value || x.id === sel.value);
+      stockInfo.textContent = p ? `Stock actual: ${p.stock_actual ?? 0} u.` : '';
+    }
+
+    async function cargarProductos() {
+      try {
+        const res = await fetch('/api/admin/productos');
+        if (!res.ok) return;
+        productos = await res.json();
+        sel.innerHTML = '<option value="">— Elegí un producto —</option>' + productos
+          .map((p: any) => `<option value="${p.producto_id || p.id}">${p.nombre} (stock: ${p.stock_actual ?? 0})</option>`)
+          .join('');
+      } catch { /* noop */ }
+    }
+
+    async function cargarHistorial() {
+      try {
+        const res = await fetch('/api/admin/movimientos?limit=20');
+        if (!res.ok) return;
+        const movs: Array<any> = await res.json();
+        const badge = (t: string) => {
+          if (t === 'VENTA') return '<span class="mov-badge mov-sale">VENTA</span>';
+          if (t === 'ENTRADA' || t === 'AJUSTE_POSITIVO') return '<span class="mov-badge mov-in">ENTRADA</span>';
+          return '<span class="mov-badge mov-out">SALIDA</span>';
+        };
+        document.getElementById('mov-historial')!.innerHTML = movs.length
+          ? movs.map((m) => {
+              const signo = (m.tipo === 'VENTA' || m.tipo === 'AJUSTE_NEGATIVO') ? '−' : '+';
+              const nombre = m.productos?.nombre || '';
+              const fecha = new Date(m.created_at).toLocaleString('es-AR');
+              return `<tr><td>${fecha}</td><td>${nombre}</td><td>${badge(m.tipo)}</td><td class="text-right">${signo}${m.cantidad}</td><td>${m.motivo || '—'}</td></tr>`;
+            }).join('')
+          : '<tr><td colspan="5" class="text-center">Sin movimientos todavía.</td></tr>';
+      } catch { /* noop */ }
+    }
+
+    sel.addEventListener('change', actualizarStockInfo);
+
+    document.getElementById('mov-form')!.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errDiv.style.display = 'none';
+      okDiv.style.display = 'none';
+      btn.setAttribute('disabled', 'true');
+
+      const tipo = (document.querySelector('input[name="mov-tipo"]:checked') as HTMLInputElement).value;
+      const payload = {
+        producto_id: sel.value,
+        tipo,
+        cantidad: Number((document.getElementById('mov-cantidad') as HTMLInputElement).value),
+        motivo: (document.getElementById('mov-motivo') as HTMLInputElement).value.trim(),
+      };
+
+      try {
+        const res = await fetch('/api/admin/movimientos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errDiv.textContent = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+          errDiv.style.display = 'block';
+          return;
+        }
+        okDiv.textContent = `Movimiento registrado: ${tipo === 'SALIDA' ? '−' : '+'}${payload.cantidad} u.`;
+        okDiv.style.display = 'block';
+        (document.getElementById('mov-motivo') as HTMLInputElement).value = '';
+        await cargarProductos();
+        actualizarStockInfo();
+        await cargarHistorial();
+      } catch {
+        errDiv.textContent = 'Error de conexión';
+        errDiv.style.display = 'block';
+      } finally {
+        btn.removeAttribute('disabled');
+      }
+    });
+
+    cargarProductos();
+    cargarHistorial();
+  </script>
+
+  <style>
+    .mov-badge { display: inline-block; padding: 0.125rem 0.5rem; border-radius: 999px; font-size: 0.6875rem; font-weight: 700; }
+    .mov-in { background: #f0fff4; color: #22543d; }
+    .mov-out { background: #fff5f5; color: #742a2a; }
+    .mov-sale { background: #ebf8ff; color: #2a4365; }
+  </style>
+</AdminLayout>

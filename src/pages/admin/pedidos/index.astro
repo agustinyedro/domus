@@ -1,0 +1,117 @@
+---
+// src/pages/admin/pedidos/index.astro
+// Bandeja de pedidos de la tienda: aprobar efectivo / rechazar
+export const prerender = false;
+import AdminLayout from '@/layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Pedidos">
+  <div class="admin-card-header">
+    <h1 style="margin: 0; font-size: 1.5rem;">Pedidos de la tienda</h1>
+    <select id="ped-filtro" class="admin-input" style="width: auto;">
+      <option value="">Todos</option>
+      <option value="PENDIENTE_EFECTIVO" selected>Pendientes efectivo</option>
+      <option value="PENDIENTE_PAGO">Pendientes MP</option>
+      <option value="PAGADA">Pagadas</option>
+      <option value="COMPLETADA">Completadas</option>
+      <option value="RECHAZADA">Rechazadas</option>
+      <option value="CANCELADA">Canceladas</option>
+    </select>
+  </div>
+
+  <div class="admin-card">
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Pedido</th><th>Cliente</th><th>Detalle</th><th class="text-right">Total</th><th>Estado</th><th class="text-center">Acciones</th></tr>
+        </thead>
+        <tbody id="ped-body">
+          <tr><td colspan="6" class="text-center">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const fmt$ = (n: number) => `$${Math.round(n).toLocaleString('es-AR')}`;
+
+    function badge(estado: string): string {
+      const map: Record<string, string> = {
+        'PENDIENTE_EFECTIVO': 'background: #fffbeb; color: #744210;',
+        'PENDIENTE_PAGO': 'background: #ebf8ff; color: #2a4365;',
+        'PAGADA': 'background: #f0fff4; color: #22543d;',
+        'COMPLETADA': 'background: #f0fff4; color: #22543d;',
+        'RECHAZADA': 'background: #fff5f5; color: #742a2a;',
+        'CANCELADA': 'background: #f7fafc; color: #4a5568;',
+      };
+      const label: Record<string, string> = {
+        'PENDIENTE_EFECTIVO': 'Efectivo: tu OK',
+        'PENDIENTE_PAGO': 'MP pendiente',
+        'PAGADA': 'Pagada',
+        'COMPLETADA': 'Completada',
+        'RECHAZADA': 'Rechazada',
+        'CANCELADA': 'Cancelada',
+      };
+      return `<span class="stock-badge" style="${map[estado] || ''}">${label[estado] || estado}</span>`;
+    }
+
+    async function cargar() {
+      const estado = (document.getElementById('ped-filtro') as HTMLSelectElement).value;
+      try {
+        const res = await fetch(`/api/admin/pedidos${estado ? `?estado=${estado}` : ''}`);
+        if (!res.ok) return;
+        const pedidos: Array<any> = await res.json();
+        document.getElementById('ped-body')!.innerHTML = pedidos.length
+          ? pedidos.map((p) => {
+              const detalle = (p.ventas_items || [])
+                .map((i: any) => `${i.productos?.nombre || ''} ×${i.cantidad}`)
+                .join(', ');
+              const fecha = new Date(p.fecha).toLocaleString('es-AR');
+              const acciones = p.estado === 'PENDIENTE_EFECTIVO'
+                ? `<button data-aprobar="${p.id}" class="admin-btn admin-btn-success" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">Aprobar</button>
+                   <button data-rechazar="${p.id}" class="admin-btn admin-btn-ghost" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">Rechazar</button>`
+                : (p.estado === 'PENDIENTE_PAGO'
+                  ? `<button data-rechazar="${p.id}" class="admin-btn admin-btn-ghost" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">Cancelar</button>`
+                  : '—');
+              const wa = p.cliente_telefono
+                ? `<br/><a href="https://wa.me/${p.cliente_telefono.replace(/\D/g, '')}" target="_blank" rel="noopener" style="font-size: 0.8125rem;">WhatsApp</a>`
+                : '';
+              return `<tr>
+                <td><code>#${String(p.id).slice(0, 8)}</code><br/><span style="font-size: 0.75rem; color: var(--admin-text-muted);">${fecha}</span></td>
+                <td>${p.cliente_nombre || '—'}<br/><span style="font-size: 0.8125rem;">${p.cliente_telefono || ''}</span>${wa}</td>
+                <td style="font-size: 0.875rem;">${detalle}</td>
+                <td class="text-right">${fmt$(Number(p.total))}</td>
+                <td>${badge(p.estado)}<br/><span style="font-size: 0.75rem; color: var(--admin-text-muted);">${p.metodo_pago || ''}</span></td>
+                <td class="text-center" style="white-space: nowrap;">${acciones}</td>
+              </tr>`;
+            }).join('')
+          : '<tr><td colspan="6" class="text-center">Sin pedidos en este estado.</td></tr>';
+      } catch { /* noop */ }
+    }
+
+    document.getElementById('ped-filtro')!.addEventListener('change', cargar);
+
+    document.getElementById('ped-body')!.addEventListener('click', async (e) => {
+      const t = e.target as HTMLElement;
+      const ap = t.closest('[data-aprobar]') as HTMLElement | null;
+      const re = t.closest('[data-rechazar]') as HTMLElement | null;
+      const id = ap?.dataset.aprobar || re?.dataset.rechazar;
+      if (!id) return;
+      const accion = ap ? 'aprobar' : 'rechazar';
+      if (!confirm(accion === 'aprobar' ? '¿Confirmar este pedido en efectivo?' : '¿Rechazar? Se devuelve el stock automáticamente.')) return;
+      const res = await fetch(`/api/admin/pedidos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accion }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(typeof data.error === 'string' ? data.error : 'No se pudo procesar.');
+        return;
+      }
+      cargar();
+    });
+
+    cargar();
+  </script>
+</AdminLayout>

@@ -1,0 +1,467 @@
+---
+import { config } from '../config';
+---
+
+<section id="contact" class="contact-section">
+  <div class="container">
+    <h2 class="section-title reveal">¿Tenés preguntas?</h2>
+    <p class="section-subtitle reveal">Escribinos por WhatsApp y te respondemos al instante</p>
+    
+    <div class="contact-content">
+      <div class="contact-info reveal">
+        <div class="whatsapp-icon">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+        </div>
+        
+        <h3>WhatsApp Domus</h3>
+        <p>Respondemos en menos de 24 horas</p>
+      </div>
+      
+      <form class="contact-form reveal" id="whatsapp-form">
+        <div class="form-group">
+          <label for="name">Tu nombre</label>
+          <input 
+            type="text" 
+            id="name" 
+            name="name"
+            placeholder="Nombre completo" 
+            required
+          />
+        </div>
+        
+        <div class="form-group">
+          <label for="interest">¿Qué te interesa?</label>
+          <select id="interest" name="interest" required>
+            <option value="">Seleccioná una opción</option>
+            <option value="pack-basico">Pack Básico - $1500/mes</option>
+            <option value="pack-premium">Pack Premium - $2500/mes</option>
+            <option value="pack-deluxe">Pack Deluxe - $3500/mes</option>
+            <option value="aromas">Aromas</option>
+            <option value="comida">Comida</option>
+            <option value="ropa">Ropa</option>
+            <option value="experiencias">Experiencias (Yoga)</option>
+            <option value="general">Consulta general</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="message">Mensaje (opcional)</label>
+          <textarea 
+            id="message" 
+            name="message"
+            placeholder="Contanos en qué te podemos ayudar..."
+            rows="4"
+          ></textarea>
+        </div>
+        
+        <button type="submit" class="btn whatsapp-btn">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+          Enviar por WhatsApp
+        </button>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Botón flotante de WhatsApp -->
+  <a href={`https://wa.me/${config.whatsapp.phoneNumber}?text=${encodeURIComponent(config.whatsapp.defaultMessage)}`}
+     class="whatsapp-float" 
+     target="_blank"
+     rel="noopener noreferrer"
+     aria-label="Contactar por WhatsApp">
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+    </svg>
+  </a>
+</section>
+
+<style>
+  .contact-section {
+    background: linear-gradient(180deg, 
+      var(--color-beige-light) 0%, 
+      white 100%);
+    padding: var(--space-xl) 0;
+    position: relative;
+  }
+
+  .section-title {
+    text-align: center;
+    margin-bottom: var(--space-sm);
+    color: var(--color-brown);
+  }
+
+  .section-subtitle {
+    text-align: center;
+    color: var(--color-brown-light);
+    margin-bottom: var(--space-xl);
+    font-size: 1.125rem;
+  }
+
+  .contact-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-xl);
+    max-width: 900px;
+    margin: 0 auto;
+    align-items: center;
+  }
+
+  .contact-info {
+    text-align: center;
+  }
+
+  .whatsapp-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto var(--space-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #25D366;
+    border-radius: 50%;
+    color: white;
+  }
+
+  .whatsapp-icon svg {
+    width: 40px;
+    height: 40px;
+  }
+
+  .contact-info h3 {
+    color: var(--color-brown);
+    margin-bottom: var(--space-xs);
+  }
+
+  .contact-info p {
+    color: var(--color-brown-light);
+    margin-bottom: 0;
+  }
+
+  .contact-form {
+    background: white;
+    padding: var(--space-lg);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(61, 43, 31, 0.08);
+  }
+
+  .form-group {
+    margin-bottom: var(--space-md);
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: var(--space-xs);
+    font-weight: 500;
+    color: var(--color-brown);
+    font-size: 0.9375rem;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid rgba(61, 43, 31, 0.15);
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 1rem;
+    color: var(--color-brown);
+    background: var(--color-beige-light);
+    transition: all var(--transition-fast);
+  }
+
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    outline: none;
+    border-color: var(--color-olive);
+    background: white;
+  }
+
+  .form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+  }
+
+  /* Form validation styles */
+  .form-error {
+    display: block;
+    color: #dc3545;
+    font-size: 0.8125rem;
+    margin-top: 0.375rem;
+    padding-left: 0.25rem;
+  }
+
+  .input-error {
+    border-color: #dc3545 !important;
+  }
+
+  .input-error:focus {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.15);
+  }
+
+  .btn-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .whatsapp-btn {
+    width: 100%;
+    background: #25D366;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    font-size: 1.125rem;
+    padding: 1.25rem;
+  }
+
+  .whatsapp-btn:hover {
+    background: #128C7E;
+  }
+
+  .whatsapp-btn svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* Botón flotante */
+  .whatsapp-float {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 60px;
+    height: 60px;
+    background: #25D366;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: 0 4px 20px rgba(37, 211, 102, 0.4);
+    transition: all var(--transition-base);
+    z-index: 1000;
+  }
+
+  .whatsapp-float:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 30px rgba(37, 211, 102, 0.5);
+  }
+
+  .whatsapp-float svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .contact-section {
+      padding: var(--space-lg) 0;
+    }
+
+    .contact-content {
+      grid-template-columns: 1fr;
+      gap: var(--space-lg);
+    }
+
+    .contact-info {
+      order: -1;
+    }
+
+    .contact-form {
+      padding: var(--space-md);
+    }
+
+    .whatsapp-float {
+      width: 50px;
+      height: 50px;
+      bottom: 16px;
+      right: 16px;
+    }
+
+    .whatsapp-float svg {
+      width: 28px;
+      height: 28px;
+    }
+  }
+</style>
+
+<script>
+  import { config } from '../config';
+
+  const form = document.getElementById('whatsapp-form') as HTMLFormElement;
+  const nameInput = document.getElementById('name') as HTMLInputElement;
+  const interestSelect = document.getElementById('interest') as HTMLSelectElement;
+  const messageTextarea = document.getElementById('message') as HTMLTextAreaElement;
+  const submitBtn = form?.querySelector('.whatsapp-btn') as HTMLButtonElement;
+
+  // Validation state
+  const validationState = {
+    name: false,
+    interest: false,
+  };
+
+  // Create error message elements
+  function createErrorElement(id: string): HTMLElement {
+    const error = document.createElement('span');
+    error.className = 'form-error';
+    error.id = `${id}-error`;
+    error.setAttribute('role', 'alert');
+    error.setAttribute('aria-live', 'polite');
+    return error;
+  }
+
+  // Validate name field
+  function validateName(): boolean {
+    const value = nameInput?.value.trim() || '';
+    const isValid = value.length >= 2;
+    validationState.name = isValid;
+
+    // Remove existing error
+    const existingError = document.getElementById('name-error');
+    if (existingError) existingError.remove();
+
+    if (!isValid && nameInput?.value) {
+      const error = createErrorElement('name');
+      error.textContent = value.length === 0 ? 'Por favor, ingresa tu nombre' : 'El nombre debe tener al menos 2 caracteres';
+      nameInput?.classList.add('input-error');
+      nameInput?.parentNode?.appendChild(error);
+    } else {
+      nameInput?.classList.remove('input-error');
+    }
+
+    updateSubmitButton();
+    return isValid;
+  }
+
+  // Validate interest select
+  function validateInterest(): boolean {
+    const value = interestSelect?.value || '';
+    const isValid = value !== '';
+    validationState.interest = isValid;
+
+    // Remove existing error
+    const existingError = document.getElementById('interest-error');
+    if (existingError) existingError.remove();
+
+    if (!isValid && interestSelect?.dataset.touched) {
+      const error = createErrorElement('interest');
+      error.textContent = 'Por favor, seleccioná una opción';
+      interestSelect?.classList.add('input-error');
+      interestSelect?.parentNode?.appendChild(error);
+    } else {
+      interestSelect?.classList.remove('input-error');
+    }
+
+    updateSubmitButton();
+    return isValid;
+  }
+
+  // Update submit button state
+  function updateSubmitButton() {
+    if (!submitBtn) return;
+    const allValid = validationState.name && validationState.interest;
+    submitBtn.disabled = !allValid;
+    submitBtn.classList.toggle('btn-disabled', !allValid);
+  }
+
+  // Mark as touched on blur
+  nameInput?.addEventListener('blur', () => validateName());
+  interestSelect?.addEventListener('blur', () => {
+    interestSelect.dataset.touched = 'true';
+    validateInterest();
+  });
+
+  // Real-time validation
+  nameInput?.addEventListener('input', () => {
+    if (nameInput.value.trim().length >= 2) validateName();
+  });
+  interestSelect?.addEventListener('change', () => {
+    interestSelect.dataset.touched = 'true';
+    validateInterest();
+  });
+
+  // Initial state
+  updateSubmitButton();
+
+  // Form submission
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    // Final validation
+    const isNameValid = validateName();
+    const isInterestValid = validateInterest();
+
+    if (!isNameValid || !isInterestValid) {
+      // Focus first invalid field
+      if (!isNameValid) nameInput?.focus();
+      else interestSelect?.focus();
+      return;
+    }
+
+    const name = nameInput?.value.trim() || '';
+    const interest = interestSelect?.value || '';
+    const message = messageTextarea?.value.trim() || '';
+
+    // Map values to readable text
+    const interestMap: Record<string, string> = {
+      'pack-basico': 'Pack Básico',
+      'pack-premium': 'Pack Premium',
+      'pack-deluxe': 'Pack Deluxe',
+      'aromas': 'Aromas',
+      'comida': 'Comida',
+      'ropa': 'Ropa',
+      'experiencias': 'Experiencias (Yoga)',
+      'general': 'Consulta general'
+    };
+
+    const interestText = interestMap[interest] || interest;
+
+    // Build message
+    let whatsappMessage = `Hola! Soy ${name}.\n\nMe interesa: ${interestText}`;
+
+    if (message) {
+      whatsappMessage += `\n\nMensaje: ${message}`;
+    }
+
+    whatsappMessage += `\n\n-- Enviado desde la web de Domus`;
+
+    // Encode for URL
+    const encodedMessage = encodeURIComponent(whatsappMessage);
+
+    // Redirect to WhatsApp
+    const phoneNumber = config.whatsapp.phoneNumber;
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+
+    // Try to open in new tab, fallback to same tab
+    const newWindow = window.open(whatsappUrl, '_blank');
+    if (!newWindow) {
+      // Popup blocked - redirect in same tab
+      window.location.href = whatsappUrl;
+    }
+
+    // Visual feedback
+    const originalContent = submitBtn?.innerHTML || '';
+    if (submitBtn) {
+      submitBtn.innerHTML = '¡Mensaje enviado!';
+      submitBtn.style.background = '#128C7E';
+      submitBtn.disabled = true;
+    }
+
+    setTimeout(() => {
+      if (submitBtn) {
+        submitBtn.innerHTML = originalContent;
+        submitBtn.style.background = '';
+      }
+      form?.reset();
+      validationState.name = false;
+      validationState.interest = false;
+      updateSubmitButton();
+    }, 3000);
+  });
+</script>

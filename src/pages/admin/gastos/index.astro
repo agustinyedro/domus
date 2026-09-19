@@ -1,0 +1,141 @@
+---
+// src/pages/admin/gastos/index.astro
+export const prerender = false;
+import AdminLayout from '@/layouts/AdminLayout.astro';
+
+const now = new Date();
+const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+---
+
+<AdminLayout title="Gastos">
+  <div class="admin-card-header">
+    <h1 style="margin: 0; font-size: 1.5rem;">Gastos</h1>
+  </div>
+
+  <div class="admin-card" style="margin-bottom: 1rem;">
+    <form id="gasto-form" class="admin-form" style="max-width: none;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem;">
+        <div class="admin-form-group">
+          <label class="admin-form-label" for="g-fecha">Fecha</label>
+          <input id="g-fecha" type="date" class="admin-input" required value={mesActual + '-01'} />
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label" for="g-concepto">Concepto</label>
+          <input id="g-concepto" type="text" class="admin-input" required maxlength="255" placeholder="Ej: Alquiler local" />
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label" for="g-cat">Categoría</label>
+          <select id="g-cat" class="admin-input">
+            <option>Alquiler</option>
+            <option>Servicios</option>
+            <option>Insumos</option>
+            <option>Marketing</option>
+            <option>Personal</option>
+            <option selected>Otros</option>
+          </select>
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label" for="g-monto">Monto ($)</label>
+          <input id="g-monto" type="number" class="admin-input" min="0.01" step="0.01" required placeholder="0" />
+        </div>
+      </div>
+      <div class="admin-form-group" style="margin-top: 1rem;">
+        <label class="admin-form-label" for="g-nota">Nota (opcional)</label>
+        <input id="g-nota" type="text" class="admin-input" maxlength="500" placeholder="Detalle…" />
+      </div>
+      <div id="g-error" class="admin-alert admin-alert-error" style="display:none;"></div>
+      <button type="submit" id="g-btn" class="admin-btn admin-btn-primary" style="margin-top: 1rem;">Agregar gasto</button>
+    </form>
+  </div>
+
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <h2 class="admin-card-title">Este mes · <span id="g-total">$0</span></h2>
+      <input id="g-mes" type="month" class="admin-input" style="width: auto;" value={mesActual} />
+    </div>
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Fecha</th><th>Concepto</th><th>Categoría</th><th class="text-right">Monto</th><th class="text-center">Acciones</th></tr>
+        </thead>
+        <tbody id="g-body">
+          <tr><td colspan="5" class="text-center">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const mesInput = document.getElementById('g-mes') as HTMLInputElement;
+    const errDiv = document.getElementById('g-error')!;
+    const btn = document.getElementById('g-btn') as HTMLButtonElement;
+    const fmt$ = (n: number) => `$${Math.round(n).toLocaleString('es-AR')}`;
+
+    async function cargar() {
+      const mes = mesInput.value;
+      try {
+        const res = await fetch(`/api/admin/gastos?mes=${mes}`);
+        if (!res.ok) return;
+        const gastos: Array<any> = await res.json();
+        const total = gastos.reduce((s, g) => s + Number(g.monto), 0);
+        document.getElementById('g-total')!.textContent = fmt$(total);
+        document.getElementById('g-body')!.innerHTML = gastos.length
+          ? gastos.map((g) => `<tr>
+              <td>${new Date(g.fecha).toLocaleDateString('es-AR')}</td>
+              <td>${g.concepto}${g.observaciones ? ` <span style="color: var(--admin-text-muted); font-size: 0.8125rem;">· ${g.observaciones}</span>` : ''}</td>
+              <td>${g.categoria}</td>
+              <td class="text-right">${fmt$(Number(g.monto))}</td>
+              <td class="text-center"><button class="admin-btn admin-btn-ghost" style="padding: 0.25rem 0.625rem; font-size: 0.8125rem;" data-del="${g.id}">Eliminar</button></td>
+            </tr>`).join('')
+          : '<tr><td colspan="5" class="text-center">Sin gastos este mes.</td></tr>';
+      } catch { /* noop */ }
+    }
+
+    document.getElementById('g-body')!.addEventListener('click', async (e) => {
+      const t = (e.target as HTMLElement).closest('[data-del]') as HTMLElement | null;
+      if (!t) return;
+      if (!confirm('¿Eliminar este gasto?')) return;
+      await fetch(`/api/admin/gastos/${t.dataset.del}`, { method: 'DELETE' });
+      cargar();
+    });
+
+    mesInput.addEventListener('change', cargar);
+
+    document.getElementById('gasto-form')!.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errDiv.style.display = 'none';
+      btn.setAttribute('disabled', 'true');
+      const payload = {
+        fecha: (document.getElementById('g-fecha') as HTMLInputElement).value,
+        concepto: (document.getElementById('g-concepto') as HTMLInputElement).value.trim(),
+        categoria: (document.getElementById('g-cat') as HTMLSelectElement).value,
+        monto: Number((document.getElementById('g-monto') as HTMLInputElement).value),
+        observaciones: (document.getElementById('g-nota') as HTMLInputElement).value.trim() || null,
+      };
+      try {
+        const res = await fetch('/api/admin/gastos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errDiv.textContent = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+          errDiv.style.display = 'block';
+          return;
+        }
+        (document.getElementById('g-concepto') as HTMLInputElement).value = '';
+        (document.getElementById('g-monto') as HTMLInputElement).value = '';
+        (document.getElementById('g-nota') as HTMLInputElement).value = '';
+        cargar();
+      } catch {
+        errDiv.textContent = 'Error de conexión';
+        errDiv.style.display = 'block';
+      } finally {
+        btn.removeAttribute('disabled');
+      }
+    });
+
+    cargar();
+  </script>
+</AdminLayout>

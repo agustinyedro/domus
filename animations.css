@@ -1,0 +1,479 @@
+/* DOMUS - Animaciones y Dinamismo */
+
+/* ============================================
+   1. ANIMACIONES BASE
+   ============================================ */
+
+/* Fade In - Entrada suave */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade In - Sin movimiento vertical */
+@keyframes fadeInSimple {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Movimiento flotante (para logo/elementos) */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+/* Efecto de humo - rotación suave */
+@keyframes floatRotate {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-50px) rotate(5deg);
+    opacity: 0;
+  }
+}
+
+/* Glow pulse - para highlights */
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(152, 140, 45, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(152, 140, 45, 0.6);
+  }
+}
+
+/* Slide in from left */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Slide in from right */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Bounce subtle */
+@keyframes bounceSubtle {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+/* ============================================
+   2. APLICACIONES EN HERO SECTION
+   ============================================ */
+
+.hero h1 {
+  animation: fadeIn 1.2s ease-out;
+  letter-spacing: 0.1em;
+}
+
+.hero .logo-roof {
+  animation: float 4s ease-in-out infinite;
+  margin-bottom: 2rem;
+}
+
+.hero .subtitle {
+  animation: fadeIn 1.4s ease-out 0.3s both;
+}
+
+.hero .description {
+  animation: fadeIn 1.6s ease-out 0.6s both;
+}
+
+.hero .cta-buttons {
+  animation: fadeIn 1.8s ease-out 0.9s both;
+}
+
+.hero .btn {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero .btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  transition: left 0.3s ease;
+}
+
+.hero .btn:hover::before {
+  left: 100%;
+}
+
+/* ============================================
+   3. ANIMACIONES EN HISTORY SECTION
+   ============================================ */
+
+#history {
+  animation: fadeInSimple 1s ease-out;
+}
+
+#history h2 {
+  animation: slideInLeft 0.8s ease-out;
+}
+
+.story-content p {
+  animation: fadeIn 0.8s ease-out;
+  animation-fill-mode: both;
+}
+
+.story-content p:nth-child(1) { animation-delay: 0.1s; }
+.story-content p:nth-child(2) { animation-delay: 0.3s; }
+.story-content p:nth-child(3) { animation-delay: 0.5s; }
+.story-content p:nth-child(4) { animation-delay: 0.7s; }
+.story-content p:nth-child(5) { animation-delay: 0.9s; }
+
+.story-content .highlight {
+  animation: glowPulse 3s ease-in-out infinite;
+  animation-delay: 0.5s;
+}
+
+/* Pillars - entrada escalonada */
+.pillar {
+  animation: fadeIn 0.8s ease-out;
+  animation-fill-mode: both;
+  transition: all 0.3s ease;
+}
+
+.pillar:nth-child(1) { animation-delay: 0.3s; }
+.pillar:nth-child(2) { animation-delay: 0.5s; }
+.pillar:nth-child(3) { animation-delay: 0.7s; }
+
+.pillar:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 20px 40px rgba(152, 140, 45, 0.15);
+}
+
+/* ============================================
+   4. ANIMACIONES EN PACKS SECTION
+   ============================================ */
+
+#packs {
+  animation: fadeInSimple 1s ease-out;
+}
+
+.packs-section h2 {
+  animation: slideInLeft 0.8s ease-out;
+}
+
+.section-subtitle {
+  animation: fadeIn 1s ease-out 0.3s both;
+}
+
+/* Cards con entrada escalonada y bounce */
+.pack-card {
+  animation: fadeIn 0.8s ease-out;
+  animation-fill-mode: both;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.pack-card:nth-child(1) { animation-delay: 0.2s; }
+.pack-card:nth-child(2) { animation-delay: 0.4s; }
+.pack-card:nth-child(3) { animation-delay: 0.6s; }
+
+/* Hover effect en cards */
+.pack-card:hover {
+  transform: translateY(-15px);
+  box-shadow: 0 25px 50px rgba(152, 140, 45, 0.2);
+}
+
+.pack-card.highlight:hover {
+  transform: scale(1.08) translateY(-15px);
+}
+
+/* Price animation */
+.price {
+  animation: bounceSubtle 2s ease-in-out infinite;
+  animation-delay: 0.5s;
+}
+
+.pack-card:hover .price {
+  animation: none;
+  color: #604811;
+  transition: color 0.3s ease;
+}
+
+/* Features list - fade staggered */
+.features li {
+  animation: slideInLeft 0.6s ease-out;
+  animation-fill-mode: both;
+}
+
+.pack-card:nth-child(1) .features li:nth-child(1) { animation-delay: 0.3s; }
+.pack-card:nth-child(1) .features li:nth-child(2) { animation-delay: 0.4s; }
+.pack-card:nth-child(1) .features li:nth-child(3) { animation-delay: 0.5s; }
+.pack-card:nth-child(1) .features li:nth-child(4) { animation-delay: 0.6s; }
+
+.pack-card:nth-child(2) .features li:nth-child(1) { animation-delay: 0.5s; }
+.pack-card:nth-child(2) .features li:nth-child(2) { animation-delay: 0.6s; }
+.pack-card:nth-child(2) .features li:nth-child(3) { animation-delay: 0.7s; }
+.pack-card:nth-child(2) .features li:nth-child(4) { animation-delay: 0.8s; }
+
+.pack-card:nth-child(3) .features li:nth-child(1) { animation-delay: 0.7s; }
+.pack-card:nth-child(3) .features li:nth-child(2) { animation-delay: 0.8s; }
+.pack-card:nth-child(3) .features li:nth-child(3) { animation-delay: 0.9s; }
+.pack-card:nth-child(3) .features li:nth-child(4) { animation-delay: 1s; }
+
+/* ============================================
+   5. ANIMACIONES EN BOTONES
+   ============================================ */
+
+.btn {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn:active::after {
+  width: 300px;
+  height: 300px;
+}
+
+/* Botones secundarios */
+.btn-secondary:hover {
+  transform: scale(1.05);
+  letter-spacing: 0.08em;
+}
+
+/* ============================================
+   6. SCROLL REVEAL - Entrada en vista
+   ============================================ */
+
+/* Aplicar a elementos que deben revelar al scroll */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+.reveal.active {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+.reveal:nth-child(1).active { animation-delay: 0.1s; }
+.reveal:nth-child(2).active { animation-delay: 0.2s; }
+.reveal:nth-child(3).active { animation-delay: 0.3s; }
+.reveal:nth-child(4).active { animation-delay: 0.4s; }
+.reveal:nth-child(5).active { animation-delay: 0.5s; }
+
+/* ============================================
+   7. PARALLAX EFFECT - Subtil
+   ============================================ */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(152, 140, 45, 0.05) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  animation: floatRotate 8s ease-in-out infinite;
+}
+
+/* ============================================
+   8. FOOTER ANIMATIONS
+   ============================================ */
+
+.footer {
+  animation: fadeInSimple 1s ease-out;
+}
+
+.footer-section {
+  animation: fadeIn 0.8s ease-out;
+  animation-fill-mode: both;
+}
+
+.footer-section:nth-child(1) { animation-delay: 0.2s; }
+.footer-section:nth-child(2) { animation-delay: 0.4s; }
+.footer-section:nth-child(3) { animation-delay: 0.6s; }
+
+.footer-section a {
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+.footer-section a::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -5px;
+  left: 0;
+  background: var(--color-olive);
+  transition: width 0.3s ease;
+}
+
+.footer-section a:hover::after {
+  width: 100%;
+}
+
+/* ============================================
+   9. LOADING STATE (cuando se envía pago)
+   ============================================ */
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+}
+
+/* ============================================
+   10. EFECTOS ESPECIALES - AROMAS/HUMO
+   ============================================ */
+
+/* Efecto de humo flotante (para secciones de aromas) */
+.smoke-effect {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(152, 140, 45, 0.4),
+    transparent 70%
+  );
+  filter: blur(30px);
+  animation: floatRotate 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.smoke-effect:nth-child(1) {
+  top: 10%;
+  left: 10%;
+  animation-delay: 0s;
+  width: 150px;
+  height: 150px;
+}
+
+.smoke-effect:nth-child(2) {
+  top: 20%;
+  right: 15%;
+  animation-delay: 2s;
+  width: 120px;
+  height: 120px;
+}
+
+.smoke-effect:nth-child(3) {
+  bottom: 20%;
+  left: 20%;
+  animation-delay: 4s;
+  width: 100px;
+  height: 100px;
+}
+
+/* ============================================
+   11. MEDIA QUERIES - Optimizar para mobile
+   ============================================ */
+
+@media (max-width: 768px) {
+  /* Reducir animaciones en mobile para performance */
+  .pack-card.highlight:hover {
+    transform: translateY(-8px);
+  }
+  
+  .pillar:hover {
+    transform: translateY(-5px);
+  }
+  
+  .hero h1 {
+    animation-duration: 0.8s;
+  }
+  
+  .smoke-effect {
+    display: none;
+  }
+  
+  /* Reducir delays en mobile */
+  .reveal:nth-child(1).active { animation-delay: 0s; }
+  .reveal:nth-child(2).active { animation-delay: 0.1s; }
+  .reveal:nth-child(3).active { animation-delay: 0.2s; }
+  .reveal:nth-child(4).active { animation-delay: 0.3s; }
+  .reveal:nth-child(5).active { animation-delay: 0.4s; }
+}
+
+/* ============================================
+   12. REDUCE MOTION - Accesibilidad
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

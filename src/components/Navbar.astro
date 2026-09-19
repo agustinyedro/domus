@@ -1,0 +1,294 @@
+---
+import { config } from '../config';
+
+const navLinks = [
+  { href: '/', label: 'Inicio' },
+  { href: '/tienda', label: 'Tienda' },
+  { href: '/#history', label: 'Historia' },
+  { href: '/#sectors', label: 'Sectores' },
+  { href: '/#packs', label: 'Packs' },
+  { href: '/#contact', label: 'Contacto' }
+];
+---
+
+<nav class="navbar">
+  <div class="navbar-container">
+    <a href="/" class="navbar-logo">
+      <svg viewBox="0 0 200 100" class="logo-roof">
+        <polyline 
+          points="50,50 100,20 150,50" 
+          stroke="currentColor" 
+          stroke-width="2" 
+          fill="none"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+      <span class="logo-text">DOMUS</span>
+    </a>
+    
+    <div class="navbar-links">
+      {navLinks.map(link => (
+        <a href={link.href} class="nav-link">{link.label}</a>
+      ))}
+    </div>
+    
+    <div class="navbar-actions">
+      <button class="cart-btn" onclick="CartManager.toggleCart()" aria-label="Carrito">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="9" cy="21" r="1"/>
+          <circle cx="20" cy="21" r="1"/>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+        </svg>
+        <span class="cart-count" style="display: none;">0</span>
+      </button>
+      
+      <button class="hamburger" aria-label="Menú">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu">
+  <div class="mobile-menu-content">
+    {navLinks.map(link => (
+      <a href={link.href} class="mobile-nav-link">{link.label}</a>
+    ))}
+    <a href={`https://wa.me/${config.whatsapp.phoneNumber}?text=${encodeURIComponent(config.whatsapp.defaultMessage)}`} class="mobile-whatsapp-link" target="_blank" rel="noopener noreferrer">
+      WhatsApp
+    </a>
+  </div>
+</div>
+
+<style>
+  .navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    padding: 1rem 0;
+    transition: all 0.3s ease-out;
+  }
+  
+  .navbar.scrolled {
+    background: rgba(61, 43, 31, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 0.75rem 0;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+  }
+  
+  .navbar-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .navbar-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: var(--color-beige-light);
+  }
+  
+  .navbar-logo .logo-roof {
+    width: 40px;
+    height: 20px;
+    color: var(--color-olive-light);
+  }
+  
+  .navbar-logo .logo-text {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+  }
+  
+  .navbar-links {
+    display: flex;
+    gap: 2rem;
+  }
+  
+  .nav-link {
+    color: var(--color-beige);
+    text-decoration: none;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    position: relative;
+    padding: 0.25rem 0;
+    transition: color 0.3s ease;
+  }
+  
+  .nav-link:hover,
+  .nav-link.active {
+    color: var(--color-beige-light);
+  }
+  
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--color-olive-light);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+  }
+  
+  .nav-link:hover::after,
+  .nav-link.active::after {
+    transform: scaleX(1);
+  }
+  
+  .navbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .cart-btn {
+    position: relative;
+    background: none;
+    border: none;
+    color: var(--color-beige);
+    cursor: pointer;
+    padding: 0.5rem;
+    transition: color 0.3s ease;
+  }
+  
+  .cart-btn:hover {
+    color: var(--color-beige-light);
+  }
+  
+  .cart-btn svg {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .cart-count {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: var(--color-olive);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .hamburger {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+  }
+  
+  .hamburger span {
+    width: 24px;
+    height: 2px;
+    background: var(--color-beige);
+    transition: all 0.3s ease;
+  }
+  
+  .hamburger.active span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+  }
+  
+  .hamburger.active span:nth-child(2) {
+    opacity: 0;
+  }
+  
+  .hamburger.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(5px, -5px);
+  }
+  
+  /* Mobile Menu */
+  .mobile-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(61, 43, 31, 0.98);
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+  }
+  
+  .mobile-menu.active {
+    opacity: 1;
+    visibility: visible;
+  }
+  
+  .mobile-menu-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+  }
+  
+  .mobile-nav-link {
+    color: var(--color-beige);
+    text-decoration: none;
+    font-size: 1.5rem;
+    font-family: var(--font-heading);
+    font-weight: 500;
+    transition: color 0.3s ease;
+  }
+  
+  .mobile-nav-link:hover {
+    color: var(--color-olive-light);
+  }
+  
+  .mobile-whatsapp-link {
+    margin-top: 1rem;
+    background: #25D366;
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background 0.3s ease;
+  }
+  
+  .mobile-whatsapp-link:hover {
+    background: #128C7E;
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .navbar-links {
+      display: none;
+    }
+    
+    .hamburger {
+      display: flex;
+    }
+    
+    .navbar-container {
+      padding: 0 1rem;
+    }
+  }
+</style>

@@ -1,0 +1,523 @@
+---
+const primarySector = {
+  name: "Aromas",
+  slug: "aromas",
+  description: "El olfato es la puerta al recuerdo. Nuestros sahumerios y aromas te conectan con emociones, con momentos, con casa.",
+  products: ["Sahumerio de sándalo", "Difusor aromático", "Bloque de incienso"]
+};
+
+const secondarySectors = [
+  {
+    name: "Comida",
+    slug: "comida",
+    tagline: "Pizzas caseras para disfrutar en familia"
+  },
+  {
+    name: "Ropa",
+    slug: "ropa",
+    tagline: "Ropa que abraza y te hace sentir en casa"
+  },
+  {
+    name: "Experiencias",
+    slug: "experiencias",
+    tagline: "Yoga, talleres y conexión"
+  }
+];
+---
+
+<section id="sectors" class="sectors">
+  <div class="container">
+    <h2 class="section-title reveal">Nuestros sectores</h2>
+    <p class="section-subtitle reveal">Cada producto, cada momento diseñado para que te sientas como en casa.</p>
+
+    <!-- Primary sector: Aromas -->
+    <div class="primary-sector reveal">
+      <div class="primary-sector-content">
+        <span class="sector-badge">Nuestro corazón</span>
+        <h3 class="primary-sector-title">{primarySector.name}</h3>
+        <p class="primary-sector-description">{primarySector.description}</p>
+        <div class="primary-sector-products">
+          {primarySector.products.map(product => (
+            <span class="product-tag">{product}</span>
+          ))}
+        </div>
+        <a href="/tienda?sector=Aromas" class="btn primary-btn">
+          Explorar aromas
+        </a>
+      </div>
+      <div class="primary-sector-visual">
+        <div class="visual-scene">
+          <!-- Smoke/aroma waves -->
+          <div class="smoke-container">
+            <div class="smoke smoke-1"></div>
+            <div class="smoke smoke-2"></div>
+            <div class="smoke smoke-3"></div>
+          </div>
+          <!-- Central vessel -->
+          <div class="vessel">
+            <svg viewBox="0 0 120 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Base -->
+              <ellipse cx="60" cy="145" rx="40" ry="12" fill="var(--color-brown)" opacity="0.3"/>
+              <!-- Vessel body -->
+              <path d="M30 60 C30 60 25 140 60 140 C95 140 90 60 90 60" fill="var(--color-olive)" opacity="0.15"/>
+              <path d="M30 60 C30 60 25 140 60 140 C95 140 90 60 90 60" stroke="var(--color-olive-light)" stroke-width="2" fill="none"/>
+              <!-- Rim -->
+              <ellipse cx="60" cy="60" rx="30" ry="8" fill="var(--color-olive)" opacity="0.2"/>
+              <ellipse cx="60" cy="60" rx="30" ry="8" stroke="var(--color-olive-light)" stroke-width="2" fill="none"/>
+              <!-- Wick/flame suggestion -->
+              <path d="M60 20 Q55 40 60 50 Q65 40 60 20" fill="var(--color-olive-light)" opacity="0.4"/>
+            </svg>
+          </div>
+          <!-- Ambient particles -->
+          <div class="particles">
+            <span class="particle particle-1">✦</span>
+            <span class="particle particle-2">✦</span>
+            <span class="particle particle-3">✦</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Secondary sectors -->
+    <div class="secondary-sectors">
+      <p class="secondary-label reveal">También te ofrecemos</p>
+      <div class="secondary-grid">
+        {secondarySectors.map((sector, index) => (
+          <a href={`/tienda?sector=${sector.name}`} class="secondary-card reveal" style={`animation-delay: ${index * 0.1}s`}>
+            <div class="secondary-icon">
+              {sector.name === 'Comida' && (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 6v6l4 2"/>
+                </svg>
+              )}
+              {sector.name === 'Ropa' && (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                  <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+              )}
+              {sector.name === 'Experiencias' && (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 8v8M8 12h8"/>
+                </svg>
+              )}
+            </div>
+            <h4 class="secondary-name">{sector.name}</h4>
+            <p class="secondary-tagline">{sector.tagline}</p>
+            <span class="secondary-arrow">→</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .sectors {
+    background: linear-gradient(180deg,
+      var(--color-beige-light) 0%,
+      white 50%,
+      var(--color-beige-light) 100%);
+    padding: var(--space-xl) 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Subtle background texture */
+  .sectors::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 10% 20%, rgba(152, 140, 45, 0.05) 0%, transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(139, 115, 85, 0.05) 0%, transparent 40%);
+    pointer-events: none;
+  }
+
+  .section-title {
+    text-align: center;
+    margin-bottom: var(--space-sm);
+    color: var(--color-brown);
+    position: relative;
+  }
+
+  .section-subtitle {
+    text-align: center;
+    color: var(--color-brown-light);
+    max-width: 500px;
+    margin: 0 auto var(--space-xl);
+    font-size: 1.125rem;
+    position: relative;
+  }
+
+  /* Primary sector */
+  .primary-sector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-xl);
+    align-items: center;
+    background: white;
+    border-radius: 24px;
+    padding: var(--space-xl);
+    box-shadow:
+      0 4px 6px rgba(61, 43, 31, 0.02),
+      0 12px 24px rgba(61, 43, 31, 0.06),
+      0 24px 48px rgba(61, 43, 31, 0.04);
+    margin-bottom: var(--space-xl);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Subtle gradient overlay on primary card */
+  .primary-sector::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg,
+      var(--color-olive) 0%,
+      var(--color-olive-light) 50%,
+      var(--color-olive) 100%);
+  }
+
+  .primary-sector-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    position: relative;
+    z-index: 1;
+  }
+
+  .sector-badge {
+    display: inline-block;
+    background: var(--color-olive);
+    color: white;
+    padding: 0.5rem 1.25rem;
+    border-radius: 100px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    width: fit-content;
+  }
+
+  .primary-sector-title {
+    font-size: clamp(2.5rem, 5vw, 3.5rem);
+    color: var(--color-brown);
+    margin: 0;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .primary-sector-description {
+    color: var(--color-brown-light);
+    line-height: 1.7;
+    font-size: 1.125rem;
+    margin: 0;
+  }
+
+  .primary-sector-products {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .product-tag {
+    background: var(--color-beige);
+    color: var(--color-brown);
+    padding: 0.625rem 1.125rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .product-tag:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(61, 43, 31, 0.1);
+  }
+
+  .primary-btn {
+    width: fit-content;
+    padding: 1rem 2rem;
+    margin-top: var(--space-xs);
+  }
+
+  /* Visual scene */
+  .primary-sector-visual {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .visual-scene {
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: linear-gradient(145deg,
+      var(--color-beige) 0%,
+      var(--color-beige-light) 40%,
+      white 100%);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Smoke animation */
+  .smoke-container {
+    position: absolute;
+    top: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    height: 60%;
+    pointer-events: none;
+  }
+
+  .smoke {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    width: 60px;
+    height: 60px;
+    background: radial-gradient(circle, rgba(152, 140, 45, 0.15) 0%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(8px);
+    animation: smokeRise 4s ease-out infinite;
+  }
+
+  .smoke-1 {
+    animation-delay: 0s;
+    opacity: 0.8;
+  }
+
+  .smoke-2 {
+    animation-delay: 1.3s;
+    opacity: 0.6;
+    width: 50px;
+    height: 50px;
+  }
+
+  .smoke-3 {
+    animation-delay: 2.6s;
+    opacity: 0.4;
+    width: 40px;
+    height: 40px;
+  }
+
+  @keyframes smokeRise {
+    0% {
+      transform: translateX(-50%) translateY(0) scale(0.5);
+      opacity: 0;
+    }
+    20% {
+      opacity: 0.6;
+    }
+    100% {
+      transform: translateX(-50%) translateY(-120px) scale(1.5);
+      opacity: 0;
+    }
+  }
+
+  /* Vessel */
+  .vessel {
+    position: relative;
+    z-index: 1;
+    width: 120px;
+    height: 160px;
+  }
+
+  .vessel svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Ambient particles */
+  .particles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .particle {
+    position: absolute;
+    color: var(--color-olive-light);
+    font-size: 0.75rem;
+    opacity: 0;
+    animation: particleFloat 6s ease-in-out infinite;
+  }
+
+  .particle-1 {
+    top: 20%;
+    right: 20%;
+    animation-delay: 0s;
+  }
+
+  .particle-2 {
+    top: 40%;
+    left: 15%;
+    animation-delay: 2s;
+  }
+
+  .particle-3 {
+    bottom: 30%;
+    right: 25%;
+    animation-delay: 4s;
+  }
+
+  @keyframes particleFloat {
+    0%, 100% {
+      opacity: 0;
+      transform: translateY(0);
+    }
+    50% {
+      opacity: 0.6;
+      transform: translateY(-10px);
+    }
+  }
+
+  /* Secondary sectors */
+  .secondary-sectors {
+    text-align: center;
+    position: relative;
+  }
+
+  .secondary-label {
+    color: var(--color-brown-light);
+    font-size: 0.9375rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+    margin-bottom: var(--space-md);
+  }
+
+  .secondary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-md);
+  }
+
+  .secondary-card {
+    background: white;
+    border-radius: 16px;
+    padding: var(--space-lg);
+    text-align: left;
+    text-decoration: none;
+    transition: all var(--transition-base);
+    border: 2px solid transparent;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .secondary-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--color-olive);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+  }
+
+  .secondary-card:hover {
+    border-color: var(--color-olive);
+    transform: translateY(-6px);
+    box-shadow: 0 12px 32px rgba(61, 43, 31, 0.12);
+  }
+
+  .secondary-card:hover::before {
+    transform: scaleX(1);
+  }
+
+  .secondary-icon {
+    width: 48px;
+    height: 48px;
+    background: var(--color-beige);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-olive);
+    transition: all 0.3s ease;
+  }
+
+  .secondary-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .secondary-card:hover .secondary-icon {
+    background: var(--color-olive);
+    color: white;
+  }
+
+  .secondary-name {
+    color: var(--color-brown);
+    font-size: 1.25rem;
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .secondary-tagline {
+    color: var(--color-brown-light);
+    font-size: 0.9375rem;
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .secondary-arrow {
+    color: var(--color-olive);
+    font-size: 1.25rem;
+    margin-top: auto;
+    transition: transform 0.2s ease;
+    font-weight: 500;
+  }
+
+  .secondary-card:hover .secondary-arrow {
+    transform: translateX(6px);
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .primary-sector {
+      grid-template-columns: 1fr;
+      gap: var(--space-lg);
+      padding: var(--space-lg);
+    }
+
+    .primary-sector-visual {
+      order: -1;
+    }
+
+    .visual-scene {
+      max-height: 280px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .sectors {
+      padding: var(--space-lg) 0;
+    }
+
+    .secondary-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .secondary-card {
+      padding: var(--space-md);
+    }
+  }
+</style>

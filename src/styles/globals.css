@@ -1,0 +1,152 @@
+/* DOMUS - Estilos Globales */
+
+:root {
+  /* Colores principales */
+  --color-beige: #F5F0E8;
+  --color-beige-light: #FAF8F4;
+  --color-brown: #3D2B1F;
+  --color-brown-light: #5C4033;
+  --color-olive: #988C2D;
+  --color-olive-light: #B8AB4A;
+  
+  /* Colores por sector */
+  --color-aromas: #8B7355;
+  --color-aromas-light: #A69279;
+  --color-comida: #E8934F;
+  --color-comida-light: #F0AB73;
+  --color-ropa: #4A90E2;
+  --color-ropa-light: #7AB3F0;
+  --color-experiencias: #9B59B6;
+  --color-experiencias-light: #B97FCC;
+  
+  /* Tipografía */
+  --font-heading: 'Montserrat', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-accent: 'Playfair Display', serif;
+  
+  /* Espaciado */
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 2rem;
+  --space-lg: 4rem;
+  --space-xl: 6rem;
+  
+  /* Transiciones */
+  --transition-fast: 0.2s ease;
+  --transition-base: 0.3s ease;
+  --transition-slow: 0.6s ease;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-brown);
+  background-color: var(--color-beige-light);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+h1 { font-size: clamp(2.5rem, 5vw, 4rem); }
+h2 { font-size: clamp(2rem, 4vw, 3rem); }
+h3 { font-size: clamp(1.25rem, 2vw, 1.5rem); }
+
+p {
+  font-size: 1.125rem;
+  margin-bottom: 1rem;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-md);
+}
+
+section {
+  padding: var(--space-xl) 0;
+}
+
+/* Botones */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 2rem;
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--color-beige-light);
+  background-color: var(--color-olive);
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn:hover {
+  background-color: var(--color-olive-light);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(152, 140, 45, 0.3);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--color-beige-light);
+  border: 2px solid var(--color-beige-light);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-beige-light);
+  color: var(--color-brown);
+}
+
+/* Utilities */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Animación de carga */
+body:not(.loaded) * {
+  animation-play-state: paused !important;
+}
+
+body.loaded {
+  animation: fadeIn 0.5s ease-out;
+}

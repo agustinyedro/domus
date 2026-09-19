@@ -1,0 +1,21 @@
+{
+  "name": "domus",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^14.3.2",
+    "@astrojs/vue": "^7.0.3",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.116.0",
+    "astro": "^7.3.2",
+    "chart.js": "^4.5.1",
+    "vue": "^3.5.43",
+    "zod": "^4.6.5"
+  }
+}

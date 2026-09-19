@@ -1,0 +1,53 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Navbar from '../components/Navbar.astro';
+import Cart from '../components/Cart.astro';
+import Footer from '../components/Footer.astro';
+
+const estado = Astro.url.searchParams.get('estado') || 'pendiente';
+const pedido = Astro.url.searchParams.get('pedido') || '';
+
+const contenido: Record<string, { titulo: string; texto: string }> = {
+  exito: {
+    titulo: '¡Gracias por tu compra!',
+    texto: 'Tu pago fue aprobado. Te escribimos por WhatsApp para coordinar la entrega.',
+  },
+  pendiente: {
+    titulo: 'Pago pendiente',
+    texto: 'Estamos esperando la confirmación de Mercado Pago. Te avisamos ni bien se acredite.',
+  },
+  fallo: {
+    titulo: 'El pago no se completó',
+    texto: 'No se realizó ningún cargo y tu carrito quedó reservado por 24 horas. Podés intentarlo de nuevo o pagar en efectivo.',
+  },
+};
+
+const actual = contenido[estado] || contenido.pendiente;
+---
+
+<BaseLayout title="Gracias por tu compra - DOMUS" description="Confirmación de tu pedido en DOMUS.">
+  <Navbar />
+  <Cart />
+
+  <main style="padding: 120px 0 4rem; background: var(--color-beige-light); min-height: 70vh;">
+    <div class="container" style="max-width: 600px; text-align: center;">
+      <div style="background: white; border-radius: 12px; padding: 2.5rem 2rem; box-shadow: 0 4px 16px rgba(61, 43, 31, 0.08);">
+        <h1 style="color: var(--color-brown); margin: 0 0 0.75rem;">{actual.titulo}</h1>
+        <p style="color: var(--color-brown-light); margin: 0 0 1.5rem;">{actual.texto}</p>
+        {pedido && (
+          <p style="color: var(--color-brown-light); font-size: 0.875rem;">
+            N° de pedido: <code>#{pedido.slice(0, 8)}</code>
+          </p>
+        )}
+        <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem;">
+          <a href="/tienda" class="btn">Volver a la tienda</a>
+          <a href="/" class="btn btn-secondary" style="color: var(--color-brown); border-color: var(--color-brown);">Inicio</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <Footer />
+</BaseLayout>

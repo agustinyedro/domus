@@ -1,0 +1,13 @@
+---
+// src/pages/admin/productos/nuevo.astro
+export const prerender = false;
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import ProductForm from '@/components/admin/ProductForm.vue';
+---
+
+<AdminLayout title="Nuevo Producto">
+  <div class="admin-card">
+    <h1 style="margin: 0 0 1.5rem; font-size: 1.5rem;">Nuevo Producto</h1>
+    <ProductForm client:visible />
+  </div>
+</AdminLayout>

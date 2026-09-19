@@ -1,0 +1,274 @@
+---
+// src/pages/admin/club/index.astro
+// Clubs + suscriptores
+export const prerender = false;
+import AdminLayout from '@/layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Club">
+  <h1 style="margin: 0 0 1.5rem; font-size: 1.5rem;">Club de suscripción</h1>
+
+  <div class="admin-card" style="margin-bottom: 1rem;">
+    <h2 class="admin-card-title" style="margin-bottom: 1rem;">Nuevo club</h2>
+    <form id="club-form" class="admin-form" style="max-width: none;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+        <div class="admin-form-group">
+          <label class="admin-form-label" for="cl-nombre">Nombre</label>
+          <input id="cl-nombre" type="text" class="admin-input" required maxlength="255" placeholder="Ej: Club Relax Mensual" />
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label" for="cl-precio">Precio mensual ($)</label>
+          <input id="cl-precio" type="number" class="admin-input" min="0" step="0.01" required />
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label" for="cl-kit">Kit asociado</label>
+          <select id="cl-kit" class="admin-input">
+            <option value="">Sin kit</option>
+          </select>
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label" for="cl-desc">Descripción</label>
+          <input id="cl-desc" type="text" class="admin-input" maxlength="1000" placeholder="Opcional" />
+        </div>
+      </div>
+      <div id="cl-error" class="admin-alert admin-alert-error" style="display:none; margin-top: 1rem;"></div>
+      <button type="submit" id="cl-btn" class="admin-btn admin-btn-success" style="margin-top: 1rem;">Crear club</button>
+    </form>
+  </div>
+
+  <div id="clubs-list" style="display: grid; gap: 1rem; margin-bottom: 1rem;">
+    <div class="admin-card"><p class="admin-empty">Cargando clubs…</p></div>
+  </div>
+
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <h2 class="admin-card-title">Suscriptores</h2>
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <select id="sub-filtro" class="admin-input" style="width: auto;">
+          <option value="">Todos los estados</option>
+          <option value="ACTIVO">Activos</option>
+          <option value="PAUSADO">Pausados</option>
+          <option value="CANCELADO">Cancelados</option>
+        </select>
+        <button id="sub-nuevo-btn" class="admin-btn admin-btn-primary">+ Suscriptor</button>
+      </div>
+    </div>
+
+    <form id="sub-form" class="admin-form" style="max-width: none; display: none; margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--admin-border); border-radius: 6px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem;">
+        <div class="admin-form-group">
+          <label class="admin-form-label" for="s-nombre">Nombre</label>
+          <input id="s-nombre" type="text" class="admin-input" required maxlength="255" />
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label" for="s-club">Club</label>
+          <select id="s-club" class="admin-input" required>
+            <option value="">— Elegí —</option>
+          </select>
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label" for="s-tel">Teléfono</label>
+          <input id="s-tel" type="text" class="admin-input" maxlength="20" placeholder="Ej: 11 1234 5678" />
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label" for="s-email">Email</label>
+          <input id="s-email" type="email" class="admin-input" maxlength="255" />
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label" for="s-envio">Próximo envío</label>
+          <input id="s-envio" type="date" class="admin-input" />
+        </div>
+      </div>
+      <div id="s-error" class="admin-alert admin-alert-error" style="display:none; margin-top: 1rem;"></div>
+      <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+        <button type="submit" id="s-btn" class="admin-btn admin-btn-success">Guardar</button>
+        <button type="button" id="s-cancel" class="admin-btn admin-btn-ghost">Cancelar</button>
+      </div>
+    </form>
+
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Nombre</th><th>Club</th><th>Contacto</th><th>Estado</th><th>Próx. envío</th><th class="text-center">Acciones</th></tr>
+        </thead>
+        <tbody id="subs-body">
+          <tr><td colspan="6" class="text-center">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const fmt$ = (n: number) => `$${Math.round(n).toLocaleString('es-AR')}`;
+    let clubs: Array<any> = [];
+
+    async function cargarKits() {
+      try {
+        const res = await fetch('/api/admin/kits');
+        if (!res.ok) return;
+        const kits: Array<any> = await res.json();
+        document.getElementById('cl-kit')!.innerHTML = '<option value="">Sin kit</option>' + kits
+          .map((k: any) => `<option value="${k.id}">${k.nombre}</option>`)
+          .join('');
+      } catch { /* noop */ }
+    }
+
+    async function cargarClubs() {
+      try {
+        const res = await fetch('/api/admin/clubs');
+        if (!res.ok) return;
+        clubs = await res.json();
+        const box = document.getElementById('clubs-list')!;
+        const selSub = document.getElementById('s-club') as HTMLSelectElement;
+        selSub.innerHTML = '<option value="">— Elegí —</option>' + clubs
+          .map((c: any) => `<option value="${c.id}">${c.nombre}</option>`)
+          .join('');
+        if (!clubs.length) {
+          box.innerHTML = '<div class="admin-card"><p class="admin-empty">Todavía no hay clubs. Creá el primero arriba.</p></div>';
+          return;
+        }
+        box.innerHTML = clubs.map((c: any) => `<div class="admin-card">
+          <div class="admin-card-header">
+            <div>
+              <h2 class="admin-card-title">${c.nombre}</h2>
+              <p style="margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--admin-text-muted);">${c.descripcion || ''}</p>
+            </div>
+            <button data-club-del="${c.id}" class="admin-btn admin-btn-ghost" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">Eliminar</button>
+          </div>
+          <p style="margin: 0;">${fmt$(Number(c.precio_mensual))}/mes · Kit: <strong>${c.kits?.nombre || '—'}</strong> · <strong>${c.suscriptores_activos ?? 0}</strong> suscriptores activos</p>
+        </div>`).join('');
+      } catch { /* noop */ }
+    }
+
+    async function cargarSubs() {
+      const estado = (document.getElementById('sub-filtro') as HTMLSelectElement).value;
+      try {
+        const res = await fetch(`/api/admin/suscriptores${estado ? `?estado=${estado}` : ''}`);
+        if (!res.ok) return;
+        const subs: Array<any> = await res.json();
+        document.getElementById('subs-body')!.innerHTML = subs.length
+          ? subs.map((s: any) => `<tr>
+              <td>${s.nombre}</td>
+              <td>${s.clubs?.nombre || ''}</td>
+              <td style="font-size: 0.8125rem;">${[s.telefono, s.email].filter(Boolean).join('<br/>') || '—'}</td>
+              <td><span class="stock-badge ${s.estado === 'ACTIVO' ? 'stock-ok' : 'stock-low'}">${s.estado}</span></td>
+              <td>${s.proximo_envio ? new Date(s.proximo_envio).toLocaleDateString('es-AR') : '—'}</td>
+              <td class="text-center" style="white-space: nowrap;">
+                ${s.estado !== 'ACTIVO' ? `<button data-sub-estado="${s.id}|ACTIVO" class="admin-btn admin-btn-ghost" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Activar</button>` : ''}
+                ${s.estado === 'ACTIVO' ? `<button data-sub-estado="${s.id}|PAUSADO" class="admin-btn admin-btn-ghost" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Pausar</button>` : ''}
+                <button data-sub-del="${s.id}" class="admin-btn admin-btn-ghost" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Eliminar</button>
+              </td>
+            </tr>`).join('')
+          : '<tr><td colspan="6" class="text-center">Sin suscriptores.</td></tr>';
+      } catch { /* noop */ }
+    }
+
+    document.getElementById('clubs-list')!.addEventListener('click', async (e) => {
+      const t = (e.target as HTMLElement).closest('[data-club-del]') as HTMLElement | null;
+      if (!t) return;
+      if (!confirm('¿Eliminar este club? (sus suscriptores también se eliminan)')) return;
+      await fetch(`/api/admin/clubs/${t.dataset.clubDel}`, { method: 'DELETE' });
+      cargarClubs();
+    });
+
+    document.getElementById('subs-body')!.addEventListener('click', async (e) => {
+      const t = e.target as HTMLElement;
+      const est = t.closest('[data-sub-estado]') as HTMLElement | null;
+      if (est) {
+        const [id, estado] = est.dataset.subEstado!.split('|');
+        await fetch(`/api/admin/suscriptores/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ estado }),
+        });
+        cargarSubs();
+        cargarClubs();
+        return;
+      }
+      const del = t.closest('[data-sub-del]') as HTMLElement | null;
+      if (del) {
+        if (!confirm('¿Eliminar este suscriptor?')) return;
+        await fetch(`/api/admin/suscriptores/${del.dataset.subDel}`, { method: 'DELETE' });
+        cargarSubs();
+        cargarClubs();
+      }
+    });
+
+    document.getElementById('sub-filtro')!.addEventListener('change', cargarSubs);
+    document.getElementById('sub-nuevo-btn')!.addEventListener('click', () => {
+      (document.getElementById('sub-form') as HTMLFormElement).style.display = 'block';
+    });
+    document.getElementById('s-cancel')!.addEventListener('click', () => {
+      (document.getElementById('sub-form') as HTMLFormElement).style.display = 'none';
+    });
+
+    document.getElementById('club-form')!.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errDiv = document.getElementById('cl-error')!;
+      errDiv.style.display = 'none';
+      const kitVal = (document.getElementById('cl-kit') as HTMLSelectElement).value;
+      try {
+        const res = await fetch('/api/admin/clubs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nombre: (document.getElementById('cl-nombre') as HTMLInputElement).value.trim(),
+            precio_mensual: Number((document.getElementById('cl-precio') as HTMLInputElement).value),
+            kit_id: kitVal || null,
+            descripcion: (document.getElementById('cl-desc') as HTMLInputElement).value.trim() || null,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errDiv.textContent = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+          errDiv.style.display = 'block';
+          return;
+        }
+        (document.getElementById('cl-nombre') as HTMLInputElement).value = '';
+        (document.getElementById('cl-precio') as HTMLInputElement).value = '';
+        (document.getElementById('cl-desc') as HTMLInputElement).value = '';
+        cargarClubs();
+      } catch {
+        errDiv.textContent = 'Error de conexión';
+        errDiv.style.display = 'block';
+      }
+    });
+
+    document.getElementById('sub-form')!.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errDiv = document.getElementById('s-error')!;
+      errDiv.style.display = 'none';
+      const envio = (document.getElementById('s-envio') as HTMLInputElement).value;
+      try {
+        const res = await fetch('/api/admin/suscriptores', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nombre: (document.getElementById('s-nombre') as HTMLInputElement).value.trim(),
+            club_id: (document.getElementById('s-club') as HTMLSelectElement).value,
+            telefono: (document.getElementById('s-tel') as HTMLInputElement).value.trim() || null,
+            email: (document.getElementById('s-email') as HTMLInputElement).value.trim() || null,
+            proximo_envio: envio || null,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errDiv.textContent = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+          errDiv.style.display = 'block';
+          return;
+        }
+        (document.getElementById('sub-form') as HTMLFormElement).reset();
+        (document.getElementById('sub-form') as HTMLFormElement).style.display = 'none';
+        cargarSubs();
+        cargarClubs();
+      } catch {
+        errDiv.textContent = 'Error de conexión';
+        errDiv.style.display = 'block';
+      }
+    });
+
+    cargarKits();
+    cargarClubs();
+    cargarSubs();
+  </script>
+</AdminLayout>

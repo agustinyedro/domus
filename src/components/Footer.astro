@@ -1,0 +1,215 @@
+---
+import { config } from '../config';
+
+const currentYear = new Date().getFullYear();
+---
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-content">
+      <div class="footer-brand reveal">
+        <div class="footer-logo">
+          <svg viewBox="0 0 200 100" class="logo-roof">
+            <polyline 
+              points="50,50 100,20 150,50" 
+              stroke="currentColor" 
+              stroke-width="2" 
+              fill="none"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <span class="logo-text">DOMUS</span>
+        </div>
+        <p class="brand-tagline">Creado por una familia, para sentir más.</p>
+      </div>
+      
+      <div class="footer-nav reveal">
+        <h4>Navegación</h4>
+        <ul>
+          <li><a href="#history">Nuestra historia</a></li>
+          <li><a href="#sectors">Sectores</a></li>
+          <li><a href="#packs">Packs</a></li>
+          <li><a href="#contact">Contacto</a></li>
+        </ul>
+      </div>
+      
+      <div class="footer-social reveal">
+        <h4>Conectá con nosotros</h4>
+        <div class="social-links">
+          <a href={config.social.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+              <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+            </svg>
+          </a>
+          <a href={config.social.tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.1a6.27 6.27 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34A6.34 6.34 0 0 0 15.85 15.1V9.89a8.16 8.16 0 0 0 3.74.92V7.4a4.85 4.85 0 0 1-3.74-1.59z"/>
+            </svg>
+          </a>
+          <a href={config.social.whatsapp} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="footer-bottom">
+      <p>Hecho con amor desde Argentina 🧡</p>
+      <p>© {currentYear} Domus. Todo lo que hace hogar.</p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    background: var(--color-brown);
+    color: var(--color-beige);
+    padding: var(--space-xl) 0 var(--space-md);
+  }
+
+  .footer-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: var(--space-xl);
+    margin-bottom: var(--space-xl);
+  }
+
+  .footer-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: var(--space-md);
+  }
+
+  .footer-logo .logo-roof {
+    width: 60px;
+    height: 30px;
+    color: var(--color-olive-light);
+  }
+
+  .footer-logo .logo-text {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--color-beige-light);
+    margin-top: var(--space-xs);
+  }
+
+  .brand-tagline {
+    color: rgba(245, 240, 232, 0.8);
+    font-size: 1rem;
+    margin-bottom: 0;
+  }
+
+  .footer-nav h4,
+  .footer-social h4 {
+    color: var(--color-beige-light);
+    font-size: 1rem;
+    margin-bottom: var(--space-md);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .footer-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .footer-nav li {
+    margin-bottom: var(--space-xs);
+  }
+
+  .footer-nav a {
+    color: rgba(245, 240, 232, 0.8);
+    transition: all var(--transition-fast);
+    position: relative;
+  }
+
+  .footer-nav a::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 2px;
+    bottom: -4px;
+    left: 0;
+    background: var(--color-olive-light);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--transition-fast);
+  }
+
+  .footer-nav a:hover {
+    color: var(--color-beige-light);
+  }
+
+  .footer-nav a:hover::after {
+    transform: scaleX(1);
+  }
+
+  .social-links {
+    display: flex;
+    gap: var(--space-sm);
+  }
+
+  .social-links a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: rgba(245, 240, 232, 0.1);
+    border-radius: 50%;
+    color: var(--color-beige);
+    transition: all var(--transition-fast);
+  }
+
+  .social-links a:hover {
+    background: var(--color-olive);
+    transform: translateY(-3px);
+  }
+
+  .social-links svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .footer-bottom {
+    text-align: center;
+    padding-top: var(--space-lg);
+    border-top: 1px solid rgba(245, 240, 232, 0.1);
+  }
+
+  .footer-bottom p {
+    color: rgba(245, 240, 232, 0.6);
+    font-size: 0.875rem;
+    margin-bottom: var(--space-xs);
+  }
+
+  .footer-bottom p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .footer-content {
+      grid-template-columns: 1fr;
+      text-align: center;
+      gap: var(--space-lg);
+    }
+
+    .footer-logo {
+      align-items: center;
+    }
+
+    .social-links {
+      justify-content: center;
+    }
+  }
+</style>
