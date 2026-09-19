@@ -1,0 +1,406 @@
+---
+import DomusLogo from './DomusLogo.astro';
+---
+
+<!-- 01 · ENTRADA -->
+<section id="history" class="h-entry">
+  <div class="container">
+    <p class="h-eyebrow reveal">Nuestra historia</p>
+    <h2 class="h-entry-title reveal">
+      DOMUS nació de algo muy simple:<br />
+      de nuestra manera de sentir el hogar.
+    </h2>
+  </div>
+</section>
+
+<!-- 02 · LA HISTORIA -->
+<section class="h-story">
+  <div class="container h-story-grid">
+    <figure class="h-family reveal">
+      <!-- TODO: reemplazar por /images/familia.jpg (foto familiar natural: ustedes cuatro) -->
+      <div class="h-family-placeholder">
+        <p>Fotografía familiar</p>
+        <span>public/images/familia.jpg</span>
+      </div>
+    </figure>
+
+    <div class="h-story-copy">
+      <h3 class="reveal">Somos cuatro.</h3>
+      <p class="reveal">
+        <strong>DOMUS nace de nuestra familia y de una forma de vivir
+        que fuimos construyendo juntos.</strong>
+      </p>
+      <p class="reveal">
+        Para nosotros, una casa nunca fue solamente un lugar.
+      </p>
+      <p class="reveal">
+        Es el aroma que reconocés apenas entrás.
+        Una vela encendida al final del día.
+        Una mesa compartida.
+        Una textura que abriga.
+        Una canción.
+        Algo rico.
+        Los objetos que elegimos y las pequeñas cosas
+        que repetimos todos los días.
+      </p>
+      <p class="reveal">
+        Con el tiempo entendimos que muchas de esas cosas
+        tenían algo en común:
+      </p>
+      <p class="h-story-close reveal">
+        <strong>hacían hogar.</strong><br />
+        Y de ahí nació DOMUS.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- 03 · SEGUNDO MOMENTO VISUAL -->
+<section class="h-senses">
+  <div class="container">
+    <div class="h-senses-grid">
+      <figure class="reveal">
+        <!-- TODO: reemplazar por foto propia (humo de sahumerio / cerámica) -->
+        <img
+          src="https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?q=80&w=800&auto=format&fit=crop"
+          alt="Cerámica artesanal sobre madera"
+          loading="lazy"
+        />
+      </figure>
+      <figure class="reveal">
+        <!-- TODO: reemplazar por foto propia (una mesa / una taza) -->
+        <img
+          src="https://images.unsplash.com/photo-1519710164239-da123dc03ef4?q=80&w=800&auto=format&fit=crop"
+          alt="Mesa compartida con taza y luz natural"
+          loading="lazy"
+        />
+      </figure>
+      <figure class="reveal">
+        <!-- TODO: reemplazar por foto propia (luz entrando por una ventana) -->
+        <img
+          src="https://images.unsplash.com/photo-1493809842364-78817add7ffb?q=80&w=800&auto=format&fit=crop"
+          alt="Luz natural entrando por la ventana"
+          loading="lazy"
+        />
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 04 · DE DÓNDE VIENE DOMUS -->
+<section class="h-name">
+  <div class="container">
+    <p class="h-eyebrow h-eyebrow--dark reveal">Domus / latín</p>
+    <h2 class="h-name-title reveal">
+      Casa. Hogar.<br />
+      El lugar que sentimos nuestro.
+    </h2>
+    <div class="h-name-copy">
+      <p class="reveal">
+        <strong>Elegimos DOMUS porque habla de la casa más allá de sus paredes.
+        De ese espacio íntimo que construimos con personas, aromas, objetos,
+        sabores, texturas y momentos.</strong>
+      </p>
+      <p class="reveal">
+        <strong>Empezamos por los aromas porque tienen una capacidad única
+        de transformar un espacio en segundos. Pero DOMUS nace con una idea
+        más grande: explorar todo aquello que hace más lindo habitar.</strong>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- 05 · UNIVERSO DOMUS -->
+<section class="h-senses-strip">
+  <div class="container">
+    <p class="h-strip-words reveal">
+      oler&ensp;·&ensp;tocar&ensp;·&ensp;mirar&ensp;·&ensp;saborear&ensp;·&ensp;escuchar
+    </p>
+    <p class="h-strip-sub reveal">Distintas formas de sentir un mismo lugar.</p>
+  </div>
+</section>
+
+<!-- 06 · CIERRE -->
+<section class="h-closing">
+  <div class="container">
+    <h2 class="h-closing-title reveal">
+      Porque un lugar no se vuelve hogar<br />
+      solamente por sus paredes.
+    </h2>
+    <p class="h-closing-big reveal">
+      Se vuelve hogar por todo<br />
+      lo que sentimos dentro.
+    </p>
+    <div class="h-closing-logo reveal">
+      <DomusLogo variant="sobre-claro" size="lg" />
+    </div>
+    <p class="h-closing-tag reveal">todo lo que hace de un lugar, hogar.</p>
+  </div>
+</section>
+
+<style>
+  .h-eyebrow {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 0.75rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-oliva);
+    margin-bottom: 2rem;
+  }
+
+  .h-eyebrow--dark {
+    color: var(--color-oliva-dark);
+  }
+
+  /* 01 · Entrada */
+  .h-entry {
+    background: var(--color-tierra);
+    padding: 8rem 0;
+  }
+
+  .h-entry-title {
+    font-family: 'Bricolage Grotesque', serif;
+    font-weight: 400;
+    font-size: clamp(2.25rem, 4.5vw, 4rem);
+    line-height: 1.2;
+    color: var(--color-hueso);
+    max-width: 24ch;
+  }
+
+  /* 02 · Historia */
+  .h-story {
+    background: var(--color-tierra);
+    padding: 0 0 8rem;
+  }
+
+  .h-story-grid {
+    display: grid;
+    grid-template-columns: 45% 55%;
+    gap: 5rem;
+    align-items: center;
+  }
+
+  .h-family {
+    margin: 0;
+  }
+
+  .h-family-placeholder {
+    aspect-ratio: 4 / 5;
+    max-height: 440px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    background: rgba(219, 209, 144, 0.12);
+    border: 1px solid rgba(219, 209, 144, 0.35);
+    border-radius: 2px;
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .h-family-placeholder p {
+    font-family: 'Bricolage Grotesque', serif;
+    font-size: 1.25rem;
+    color: var(--color-hueso);
+    margin: 0;
+  }
+
+  .h-family-placeholder span {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-oliva);
+  }
+
+  .h-family img {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    max-height: 440px;
+    object-fit: cover;
+    display: block;
+    border-radius: 2px;
+  }
+
+  .h-story-copy h3 {
+    font-family: 'Bricolage Grotesque', serif;
+    font-weight: 400;
+    font-size: clamp(1.75rem, 2.5vw, 2.5rem);
+    color: var(--color-hueso);
+    margin-bottom: 1.5rem;
+  }
+
+  .h-story-copy p {
+    font-family: 'Bricolage Grotesque', serif;
+    font-size: 1.125rem;
+    line-height: 1.8;
+    color: rgba(219, 209, 144, 0.88);
+    max-width: 46ch;
+  }
+
+  .h-story-copy strong,
+  .h-story-close strong {
+    color: var(--color-hueso);
+    font-weight: 500;
+  }
+
+  /* 03 · Momento visual */
+  .h-senses {
+    background: var(--color-hueso);
+    padding: 7rem 0;
+  }
+
+  .h-senses-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    max-width: 880px;
+    margin: 0 auto;
+  }
+
+  .h-senses-grid figure {
+    margin: 0;
+    overflow: hidden;
+    border-radius: 2px;
+    background: var(--color-hueso-light);
+  }
+
+  .h-senses-grid img {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* 04 · Nombre */
+  .h-name {
+    background: var(--color-hueso);
+    padding: 1rem 0 7rem;
+    text-align: center;
+  }
+
+  .h-name-title {
+    font-family: 'Bricolage Grotesque', serif;
+    font-weight: 400;
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    line-height: 1.25;
+    color: var(--color-tierra);
+    margin-bottom: 2.5rem;
+  }
+
+  .h-name-copy {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  .h-name-copy p {
+    font-family: 'Bricolage Grotesque', serif;
+    font-size: 1.125rem;
+    line-height: 1.8;
+    color: rgba(96, 72, 17, 0.85);
+  }
+
+  .h-name-copy strong {
+    color: var(--color-tierra);
+    font-weight: 500;
+  }
+
+  /* 05 · Franja sentidos */
+  .h-senses-strip {
+    background: var(--color-oliva);
+    padding: 5rem 0;
+    text-align: center;
+  }
+
+  .h-strip-words {
+    font-family: 'Bricolage Grotesque', serif;
+    font-weight: 400;
+    font-size: clamp(1.75rem, 4vw, 3rem);
+    line-height: 1.4;
+    color: var(--color-hueso);
+    margin-bottom: 1.25rem;
+  }
+
+  .h-strip-sub {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(219, 209, 144, 0.85);
+    margin: 0;
+  }
+
+  /* 06 · Cierre */
+  .h-closing {
+    background: var(--color-hueso);
+    padding: 8rem 0;
+    text-align: center;
+  }
+
+  .h-closing-title {
+    font-family: 'Bricolage Grotesque', serif;
+    font-weight: 400;
+    font-size: clamp(1.5rem, 3vw, 2.25rem);
+    line-height: 1.4;
+    color: var(--color-tierra);
+    margin-bottom: 2rem;
+  }
+
+  .h-closing-big {
+    font-family: 'Bricolage Grotesque', serif;
+    font-weight: 400;
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    line-height: 1.25;
+    color: var(--color-tierra);
+    margin-bottom: 4rem;
+  }
+
+  .h-closing-logo {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.75rem;
+  }
+
+  .h-closing-tag {
+    font-family: 'Bricolage Grotesque', serif;
+    font-size: 1.125rem;
+    color: rgba(96, 72, 17, 0.75);
+    margin: 0;
+  }
+
+  @media (max-width: 900px) {
+    .h-entry,
+    .h-closing {
+      padding: 5rem 0;
+    }
+
+    .h-story {
+      padding-bottom: 5rem;
+    }
+
+    .h-story-grid {
+      grid-template-columns: 1fr;
+      gap: 2.5rem;
+    }
+
+    .h-senses-grid {
+      grid-template-columns: 1fr;
+      max-width: 380px;
+    }
+
+    .h-senses {
+      padding: 5rem 0;
+    }
+
+    .h-name {
+      padding-bottom: 5rem;
+    }
+
+    .h-senses-strip {
+      padding: 3.5rem 0;
+    }
+  }
+</style>

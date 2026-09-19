@@ -38,7 +38,7 @@ export const GET: APIRoute = async ({ url }) => {
     }
 
     return new Response(JSON.stringify(data || []), {
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=600' },
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
     });
   } catch (e) {
     return new Response(JSON.stringify({ error: 'Error interno' }), { status: 500 });

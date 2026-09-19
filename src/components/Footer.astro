@@ -1,5 +1,6 @@
 ---
 import { config } from '../config';
+import DomusLogo from './DomusLogo.astro';
 
 const currentYear = new Date().getFullYear();
 ---
@@ -9,17 +10,7 @@ const currentYear = new Date().getFullYear();
     <div class="footer-content">
       <div class="footer-brand reveal">
         <div class="footer-logo">
-          <svg viewBox="0 0 200 100" class="logo-roof">
-            <polyline 
-              points="50,50 100,20 150,50" 
-              stroke="currentColor" 
-              stroke-width="2" 
-              fill="none"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-          <span class="logo-text">DOMUS</span>
+          <DomusLogo variant="sobre-marron" size="md" />
         </div>
         <p class="brand-tagline">Creado por una familia, para sentir más.</p>
       </div>
@@ -27,15 +18,15 @@ const currentYear = new Date().getFullYear();
       <div class="footer-nav reveal">
         <h4>Navegación</h4>
         <ul>
-          <li><a href="#history">Nuestra historia</a></li>
-          <li><a href="#sectors">Sectores</a></li>
-          <li><a href="#packs">Packs</a></li>
-          <li><a href="#contact">Contacto</a></li>
+          <li><a href="/#universo">Universos</a></li>
+          <li><a href="/#history">Nuestra historia</a></li>
+          <li><a href="/#packs">Regalar DOMUS</a></li>
+          <li><a href="/#contact">Contacto</a></li>
         </ul>
       </div>
       
       <div class="footer-social reveal">
-        <h4>Conectá con nosotros</h4>
+        <h4>Sigamos cerca</h4>
         <div class="social-links">
           <a href={config.social.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -59,8 +50,8 @@ const currentYear = new Date().getFullYear();
     </div>
     
     <div class="footer-bottom">
-      <p>Hecho con amor desde Argentina 🧡</p>
-      <p>© {currentYear} Domus. Todo lo que hace hogar.</p>
+      <p>Desde Argentina, con tiempo y cuidado.</p>
+      <p>© {currentYear} DOMUS</p>
     </div>
   </div>
 </footer>
@@ -81,35 +72,18 @@ const currentYear = new Date().getFullYear();
 
   .footer-logo {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
     margin-bottom: var(--space-md);
   }
 
-  .footer-logo .logo-roof {
-    width: 60px;
-    height: 30px;
-    color: var(--color-olive-light);
-  }
-
-  .footer-logo .logo-text {
-    font-family: var(--font-heading);
-    font-size: 1.5rem;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    color: var(--color-beige-light);
-    margin-top: var(--space-xs);
-  }
-
   .brand-tagline {
-    color: rgba(245, 240, 232, 0.8);
+    color: var(--color-hueso);
     font-size: 1rem;
     margin-bottom: 0;
   }
 
   .footer-nav h4,
   .footer-social h4 {
-    color: var(--color-beige-light);
+    color: var(--color-hueso);
     font-size: 1rem;
     margin-bottom: var(--space-md);
     text-transform: uppercase;
@@ -127,7 +101,7 @@ const currentYear = new Date().getFullYear();
   }
 
   .footer-nav a {
-    color: rgba(245, 240, 232, 0.8);
+    color: var(--color-hueso);
     transition: all var(--transition-fast);
     position: relative;
   }
@@ -187,7 +161,7 @@ const currentYear = new Date().getFullYear();
   }
 
   .footer-bottom p {
-    color: rgba(245, 240, 232, 0.6);
+    color: var(--color-hueso);
     font-size: 0.875rem;
     margin-bottom: var(--space-xs);
   }
@@ -206,6 +180,7 @@ const currentYear = new Date().getFullYear();
 
     .footer-logo {
       align-items: center;
+      justify-content: center;
     }
 
     .social-links {

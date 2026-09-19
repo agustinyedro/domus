@@ -10,6 +10,24 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
 
   <div class="admin-card" style="margin-bottom: 1rem;">
     <h2 class="admin-card-title" style="margin-bottom: 1rem;">Registrar compra</h2>
+    <div class="compra-import">
+      <div>
+        <h3>Importar desde Excel o CSV</h3>
+        <p>Elegí un archivo y completamos los productos, cantidades y costos. Revisá el total y registrá la compra con un clic.</p>
+      </div>
+      <div class="compra-import-actions">
+        <label class="admin-form-label" for="c-file">Archivo de compra (.xlsx o .csv)</label>
+        <input id="c-file" type="file" class="admin-input" accept=".xlsx,.csv" aria-describedby="c-import-help" />
+        <button type="button" id="c-template" class="admin-btn admin-btn-ghost">Descargar plantilla CSV</button>
+      </div>
+      <p id="c-import-help">Columnas: <strong>SKU (o Producto), Cantidad y Costo unitario</strong>. Hasta 50 filas y 5 MB. Usá el SKU del catálogo; para conservar ceros iniciales, guardalo como texto en Excel. No crea productos nuevos.</p>
+      <div id="c-sheet-box" hidden>
+        <label class="admin-form-label" for="c-sheet">El archivo tiene varias hojas. Elegí la que querés cargar.</label>
+        <select id="c-sheet" class="admin-input"><option value="">Elegí una hoja</option></select>
+      </div>
+      <p id="c-import-status" role="status" aria-live="polite"></p>
+      <div id="c-import-error" class="admin-alert admin-alert-error" role="alert" hidden></div>
+    </div>
     <form id="compra-form" class="admin-form" style="max-width: none;">
       <div id="c-rows" style="display: flex; flex-direction: column; gap: 0.75rem;"></div>
 
@@ -84,23 +102,26 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
   </div>
 
   <script>
+    import { readCompraFile, prepareCompraImport, MAX_COMPRA_ROWS } from '@/lib/compra-import';
+
     const rowsBox = document.getElementById('c-rows')!;
     const errDiv = document.getElementById('c-error')!;
     const okDiv = document.getElementById('c-ok')!;
     const btn = document.getElementById('c-btn') as HTMLButtonElement;
-    const fmt$ = (n: number) => `$${Math.round(n).toLocaleString('es-AR')}`;
+    const fmt$ = (n: number) => n.toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 });
+    const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!));
     let productos: Array<any> = [];
 
     function opcionesProductos(selValue = ''): string {
       return '<option value="">— Elegí —</option>' + productos
         .map((p: any) => {
           const id = p.producto_id || p.id;
-          return `<option value="${id}" data-costo="${p.costo}" ${id === selValue ? 'selected' : ''}>${p.nombre}</option>`;
+          return `<option value="${escapeHtml(id)}" data-costo="${escapeHtml(p.costo)}" ${id === selValue ? 'selected' : ''}>${escapeHtml(p.nombre)} · ${escapeHtml(p.sku || '')}</option>`;
         })
         .join('');
     }
 
-    function agregarFila(selValue = '') {
+    function agregarFila(selValue = '', cantidad = 1, costo?: number) {
       const row = document.createElement('div');
       row.className = 'c-row';
       row.style.cssText = 'display: grid; grid-template-columns: 2fr 1fr 1fr auto auto; gap: 0.5rem; align-items: end;';
@@ -128,6 +149,8 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
           </button>
         </div>`;
       rowsBox.appendChild(row);
+      (row.querySelector('.c-cant') as HTMLInputElement).value = String(cantidad);
+      if (costo !== undefined) (row.querySelector('.c-costo') as HTMLInputElement).value = String(costo);
       actualizarTotal();
     }
 
@@ -165,6 +188,73 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     });
 
     document.getElementById('c-add-row')!.addEventListener('click', () => agregarFila());
+
+    const fileInput = document.getElementById('c-file') as HTMLInputElement;
+    const sheetInput = document.getElementById('c-sheet') as HTMLSelectElement;
+    const sheetBox = document.getElementById('c-sheet-box')!;
+    const importStatus = document.getElementById('c-import-status')!;
+    const importError = document.getElementById('c-import-error')!;
+    let importing = false;
+
+    document.getElementById('c-template')!.addEventListener('click', () => {
+      const csv = '\uFEFFSKU;Cantidad;Costo unitario\r\nTU-SKU;10;1250,50\r\n';
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'plantilla-compra-domus.csv';
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+
+    async function importarArchivo(sheet?: string) {
+      const file = fileInput.files?.[0];
+      if (!file || importing) return;
+      importing = true;
+      fileInput.disabled = true;
+      sheetInput.disabled = true;
+      btn.disabled = true;
+      importError.hidden = true;
+      importStatus.textContent = 'Leyendo archivo…';
+      try {
+        const result = await readCompraFile(file, sheet);
+        if (result.sheets.length > 1 && !sheet) {
+          sheetInput.replaceChildren(new Option('Elegí una hoja', ''), ...result.sheets.map(name => new Option(name, name)));
+          sheetBox.hidden = false;
+          importStatus.textContent = 'Seleccioná la hoja que contiene la compra.';
+          return;
+        }
+        // Obtener el catálogo actual antes de emparejar; nunca guardar durante la lectura.
+        const response = await fetch('/api/admin/productos');
+        if (!response.ok) throw new Error('No se pudo consultar el catálogo. Revisá tu sesión y volvé a intentar.');
+        const catalog = await response.json();
+        if (!Array.isArray(catalog)) throw new Error('No se pudo leer el catálogo.');
+        const items = prepareCompraImport(result.rows, catalog);
+        const currentRows = [...rowsBox.querySelectorAll<HTMLElement>('.c-row')];
+        const emptyRows = currentRows.filter(row => !(row.querySelector('.c-prod') as HTMLSelectElement).value && !(row.querySelector('.c-costo') as HTMLInputElement).value && (row.querySelector('.c-cant') as HTMLInputElement).value === '1');
+        if (currentRows.length - emptyRows.length + items.length > MAX_COMPRA_ROWS) throw new Error(`La compra no puede superar ${MAX_COMPRA_ROWS} filas, incluyendo las que ya cargaste.`);
+        const selected = new Set(currentRows.map(row => (row.querySelector('.c-prod') as HTMLSelectElement).value));
+        if (items.some(item => selected.has(item.producto_id))) throw new Error('El archivo incluye productos que ya están en la compra. Quitá esas filas antes de volver a importar para no duplicarlas.');
+        productos = catalog;
+        emptyRows.forEach(row => row.remove());
+        items.forEach(item => agregarFila(item.producto_id, item.cantidad, item.costo_unitario));
+        importStatus.textContent = `${file.name}${sheet ? ` · ${sheet}` : ''}: ${items.length} filas cargadas. Revisá los datos y hacé clic en Registrar compra. Todavía no se modificó el stock.`;
+        sheetBox.hidden = true;
+        fileInput.value = '';
+      } catch (error) {
+        importError.textContent = error instanceof Error ? error.message : 'No pudimos leer el archivo. Guardalo como .xlsx o CSV y volvé a intentar.';
+        importError.hidden = false;
+        importStatus.textContent = 'No se cargó ninguna fila del archivo. Tu compra actual se conserva.';
+        fileInput.value = '';
+        sheetBox.hidden = true;
+      } finally {
+        importing = false;
+        fileInput.disabled = false;
+        sheetInput.disabled = false;
+        btn.disabled = false;
+      }
+    }
+    fileInput.addEventListener('change', () => { sheetBox.hidden = true; importarArchivo(); });
+    sheetInput.addEventListener('change', () => { if (sheetInput.value) importarArchivo(sheetInput.value); });
 
     // Alta rápida de producto
     const npBox = document.getElementById('c-new-prod')!;
@@ -292,11 +382,11 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
         document.getElementById('c-historial')!.innerHTML = movs.length
           ? movs.map((m) => `<tr>
               <td>${new Date(m.fecha).toLocaleString('es-AR')}</td>
-              <td>${m.productos?.nombre || ''}</td>
+              <td>${escapeHtml(m.productos?.nombre || '')}</td>
               <td class="text-right">${m.cantidad}</td>
               <td class="text-right">${fmt$(Number(m.costo_unitario))}</td>
               <td class="text-right">${fmt$(Number(m.costo_total))}</td>
-              <td>${m.observaciones || '—'}</td>
+              <td>${escapeHtml(m.observaciones || '—')}</td>
             </tr>`).join('')
           : '<tr><td colspan="6" class="text-center">Sin compras registradas.</td></tr>';
       } catch { /* noop */ }
@@ -304,6 +394,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
 
     document.getElementById('compra-form')!.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (importing || btn.disabled) return;
       errDiv.style.display = 'none';
       okDiv.style.display = 'none';
 
@@ -312,12 +403,17 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
         const producto_id = (row.querySelector('.c-prod') as HTMLSelectElement).value;
         const cantidad = Number((row.querySelector('.c-cant') as HTMLInputElement).value);
         const costo_unitario = Number((row.querySelector('.c-costo') as HTMLInputElement).value);
-        if (!producto_id || !(cantidad >= 1) || !(costo_unitario >= 0)) {
+        if (!producto_id || !Number.isSafeInteger(cantidad) || !(cantidad >= 1) || !Number.isFinite(costo_unitario) || !(costo_unitario >= 0)) {
           errDiv.textContent = 'Completá producto, cantidad y costo en todas las filas.';
           errDiv.style.display = 'block';
           return;
         }
         items.push({ producto_id, cantidad, costo_unitario });
+      }
+      if (!items.length || items.length > MAX_COMPRA_ROWS) {
+        errDiv.textContent = `La compra debe tener entre 1 y ${MAX_COMPRA_ROWS} filas.`;
+        errDiv.style.display = 'block';
+        return;
       }
 
       btn.setAttribute('disabled', 'true');
@@ -338,6 +434,8 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
         }
         okDiv.textContent = `Compra registrada: ${data.cantidad_items} productos por ${fmt$(Number(data.total))}.`;
         okDiv.style.display = 'block';
+        importStatus.textContent = '';
+        importError.hidden = true;
         rowsBox.innerHTML = '';
         agregarFila();
         (document.getElementById('c-obs') as HTMLInputElement).value = '';
@@ -357,6 +455,14 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
   </script>
 
   <style>
+    .compra-import { padding: 1rem; margin-bottom: 1.5rem; border: 1px dashed var(--admin-border); border-radius: 8px; background: var(--admin-bg); }
+    .compra-import h3 { font-size: 1rem; margin: 0 0 0.5rem; }
+    .compra-import p { font-size: 0.8125rem; line-height: 1.6; margin: 0.5rem 0; }
+    .compra-import-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin: 1rem 0; }
+    .compra-import-actions label { width: 100%; }
+    .compra-import-actions input { flex: 1; min-width: 0; max-width: 420px; }
+    #c-import-error { white-space: pre-wrap; overflow-wrap: anywhere; }
+    [hidden] { display: none !important; }
     @media (max-width: 700px) {
       .c-row {
         grid-template-columns: 1fr 1fr !important;

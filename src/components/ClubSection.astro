@@ -1,0 +1,24 @@
+---
+import { getWhatsAppLink } from '../config';
+// Borrador fuera del inicio. Definir contenido, precios, cobro recurrente y envíos antes de activar.
+// Club DOMUS será una propuesta de packs con pago mensual y envío al cliente.
+const clubLink = getWhatsAppLink('Hola, quiero conocer la propuesta de packs mensuales de Club DOMUS.');
+---
+<section id="club" class="club domus-editorial" aria-labelledby="club-title">
+  <div class="container">
+    <p class="eyebrow reveal">Club DOMUS · Próximamente</p>
+    <h2 id="club-title" class="editorial-title reveal">Una selección DOMUS.<br />Cada mes.</h2>
+    <p class="club-copy reveal">Estamos pensando packs que se pagan mensualmente y te enviamos para acompañar lo cotidiano.</p>
+    <div class="club-invitation reveal">
+      <a class="editorial-link" href={clubLink} target="_blank" rel="noopener noreferrer">Quiero ser parte <span aria-hidden="true">↗</span></a>
+      <p class="editorial-note">Escribinos por WhatsApp para enterarte cuando esté listo.</p>
+    </div>
+  </div>
+</section>
+<style>
+  .club { background: var(--color-oliva); color: var(--color-hueso); text-align: center; }
+  .club-copy { max-width: 47ch; margin: 0 auto 3rem; line-height: 1.8; }
+  .club-invitation { max-width: 440px; margin: 0 auto; }
+  .club-invitation .editorial-link { width: 100%; font-size: 0.8125rem; }
+  .club-invitation .editorial-note { margin-top: 1rem; color: var(--color-tierra-dark); }
+</style>

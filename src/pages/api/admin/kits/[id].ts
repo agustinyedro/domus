@@ -4,6 +4,7 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import { getUsuarioActual, createSupabaseServer } from '@/lib/supabase';
 import { KitSchema, KitItemSchema } from '@/lib/validations';
+import { resolverKit } from '@/lib/kits';
 
 // Verificar que el kit pertenece al usuario
 async function kitPropio(supabase: ReturnType<typeof createSupabaseServer>, kitId: string, userId: string) {
@@ -14,6 +15,21 @@ async function kitPropio(supabase: ReturnType<typeof createSupabaseServer>, kitI
     .eq('usuario_id', userId)
     .single();
   return Boolean(data);
+}
+
+// Si el kit está publicado, actualiza el costo del producto espejo
+async function sincronizarCostoEspejo(supabase: ReturnType<typeof createSupabaseServer>, kitId: string) {
+  const { data: espejo } = await supabase
+    .from('productos')
+    .select('id')
+    .eq('kit_id', kitId)
+    .maybeSingle();
+  if (!espejo) return;
+  const resuelto = await resolverKit(supabase, kitId);
+  await supabase
+    .from('productos')
+    .update(resuelto ? { costo: resuelto.costo } : { activo: false })
+    .eq('id', espejo.id);
 }
 
 export const GET: APIRoute = async ({ params, request, cookies }) => {
@@ -80,6 +96,27 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
     return new Response(JSON.stringify({ error: error.message }), { status: 400 });
   }
 
+  // Si el kit está publicado, sincronizar el producto espejo de la tienda
+  const { data: espejo } = await supabase
+    .from('productos')
+    .select('id')
+    .eq('kit_id', id)
+    .maybeSingle();
+
+  if (espejo) {
+    const resuelto = await resolverKit(supabase, id);
+    await supabase
+      .from('productos')
+      .update({
+        nombre: data.nombre,
+        descripcion: data.descripcion,
+        precio_venta: Number(data.precio_venta) || 0,
+        imagen_url: data.imagen_url || null,
+        ...(resuelto ? { costo: resuelto.costo } : {}),
+      })
+      .eq('id', espejo.id);
+  }
+
   return new Response(JSON.stringify(data), {
     headers: { 'Content-Type': 'application/json' },
   });
@@ -141,6 +178,7 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
     if (error) {
       return new Response(JSON.stringify({ error: error.message }), { status: 400 });
     }
+    await sincronizarCostoEspejo(supabase, id);
     return new Response(JSON.stringify({ success: true }), {
       headers: { 'Content-Type': 'application/json' },
     });
@@ -173,6 +211,8 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), { status: 400 });
   }
+
+  await sincronizarCostoEspejo(supabase, id);
 
   return new Response(JSON.stringify(data), {
     status: 201,

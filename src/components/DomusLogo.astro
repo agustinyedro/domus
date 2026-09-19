@@ -1,0 +1,57 @@
+---
+interface Props {
+  variant?: 'sobre-beige' | 'sobre-oliva' | 'sobre-marron' | 'sobre-claro';
+  size?: 'sm' | 'md' | 'lg';
+}
+
+const { variant = 'sobre-beige', size = 'md' } = Astro.props;
+
+const colorMap: Record<string, string> = {
+  'sobre-beige': '#988C2D',
+  'sobre-oliva': '#DBD190',
+  'sobre-marron': '#DBD190',
+  'sobre-claro': '#604811',
+};
+---
+
+<span class={`domus-logo domus-logo--${variant} domus-logo--${size}`} style={`--logo-color: ${colorMap[variant]}`}>
+  <span class="domus-wordmark" aria-label="DOMUS">DO<span class="domus-m">M</span>US</span>
+</span>
+
+<style>
+  .domus-logo {
+    display: inline-flex;
+    line-height: 1;
+  }
+
+  .domus-wordmark {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.42em;
+    margin-right: -0.42em;
+    color: var(--logo-color);
+    white-space: nowrap;
+  }
+
+  .domus-logo--sm .domus-wordmark { font-size: 1.375rem; }
+  .domus-logo--md .domus-wordmark { font-size: 2.5rem; }
+  .domus-logo--lg .domus-wordmark { font-size: clamp(2rem, 4vw, 2.75rem); }
+
+  /* Firma gráfica: línea fina centrada debajo de la M */
+  .domus-m {
+    position: relative;
+    display: inline-block;
+  }
+
+  .domus-m::after {
+    content: '';
+    position: absolute;
+    left: calc(50% - 0.21em);
+    bottom: -0.28em;
+    transform: translateX(-50%);
+    width: 0.95em;
+    height: 1px;
+    background: currentColor;
+  }
+</style>

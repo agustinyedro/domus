@@ -22,18 +22,30 @@ export const GET: APIRoute = async ({ request, cookies }) => {
     return new Response(JSON.stringify({ error: error.message }), { status: 400 });
   }
 
-  // Adjuntar items + costo calculado
+  // Adjuntar items + costo calculado + estado de publicación en tienda
   const result = [];
   for (const kit of kits || []) {
     const { data: items } = await supabase
       .from('kit_items')
-      .select('id, cantidad, producto_id, productos ( nombre, costo )')
+      .select('id, cantidad, producto_id, productos ( nombre, costo, precio_venta, precio_oferta, es_oferta )')
       .eq('kit_id', kit.id);
 
     const costoKit = (items || []).reduce(
       (s, i: Record<string, unknown>) => s + (i.cantidad as number) * (Number((i.productos as { costo?: number } | null)?.costo) || 0), 0);
 
-    result.push({ ...kit, items: items || [], costo_calculado: costoKit });
+    const { data: espejo } = await supabase
+      .from('productos')
+      .select('id, activo')
+      .eq('kit_id', kit.id)
+      .maybeSingle();
+
+    result.push({
+      ...kit,
+      items: items || [],
+      costo_calculado: costoKit,
+      producto_id: espejo?.id || null,
+      publicado: Boolean(espejo?.activo),
+    });
   }
 
   return new Response(JSON.stringify(result), {

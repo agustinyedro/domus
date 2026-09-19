@@ -366,18 +366,24 @@ function limpiarTodo() {
 }
 
 function agregar(p: TiendaProducto) {
-  const w = window as unknown as { CartManager?: { addItem: (item: { id: string; name: string; price: number }) => void } };
+  const w = window as unknown as { CartManager?: { addItem: (item: { id: string; name: string; price: number; image?: string; stock?: number }) => void } };
   w.CartManager?.addItem({
     id: p.producto_id || (p.id as string),
     name: p.nombre,
     price: Number(p.precio_final ?? p.precio_venta),
     image: fotoDe(p),
+    stock: Number(p.stock_actual ?? 0),
   });
 }
 
 onMounted(() => {
   leerURL();
   cargar();
+  // Stock siempre fresco: recargar al volver a la pestaña y tras confirmar una compra
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) cargar();
+  });
+  window.addEventListener('domus:cart-cleared', () => cargar());
 });
 </script>
 
@@ -524,15 +530,19 @@ onMounted(() => {
 .shop-filters {
   background: white;
   border-radius: 12px;
-  padding: 1.25rem;
+  padding: 1rem 1.125rem;
   box-shadow: 0 2px 12px rgba(61, 43, 31, 0.06);
   position: sticky;
   top: 100px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(96, 72, 17, 0.35) transparent;
 }
 
 .shop-filter-group {
-  padding-bottom: 1.25rem;
-  margin-bottom: 1.25rem;
+  padding-bottom: 0.875rem;
+  margin-bottom: 0.875rem;
   border-bottom: 1px solid rgba(61, 43, 31, 0.08);
 }
 
@@ -543,7 +553,7 @@ onMounted(() => {
 }
 
 .shop-filter-group h3 {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.5rem;
   font-size: 0.8125rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -556,7 +566,7 @@ onMounted(() => {
   gap: 0.5rem;
   font-size: 0.9375rem;
   color: var(--color-brown-light);
-  padding: 0.375rem 0;
+  padding: 0.25rem 0;
   cursor: pointer;
 }
 
@@ -579,7 +589,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .shop-price-row input {

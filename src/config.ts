@@ -5,7 +5,7 @@ export const config = {
   // WhatsApp Configuration
   whatsapp: {
     // Replace with your real WhatsApp number (format: country code + number, no spaces or dashes)
-    phoneNumber: '5491112345678',
+    phoneNumber: '5493512270298',
     // Default greeting message
     defaultMessage: 'Hola! Me interesa Domus',
   },
@@ -14,7 +14,7 @@ export const config = {
   social: {
     instagram: 'https://instagram.com/domus', // Replace with real profile
     tiktok: 'https://tiktok.com/@domus', // Replace with real profile
-    whatsapp: 'https://wa.me/5491112345678', // Generated from phone number
+    whatsapp: 'https://wa.me/5493512270298', // Generated from phone number
   },
 
   // Site Info

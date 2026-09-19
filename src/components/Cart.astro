@@ -53,7 +53,7 @@
     <p class="checkout-label">Método de pago</p>
     <label class="checkout-radio">
       <input type="radio" name="co-metodo" value="EFECTIVO" checked />
-      <span><strong>Efectivo</strong><small>Coordinamos por WhatsApp, te lo reservamos con nuestro OK</small></span>
+      <span><strong>Efectivo · 15% OFF</strong><small>Se descuenta solo, coordinamos por WhatsApp</small></span>
     </label>
     <label class="checkout-radio">
       <input type="radio" name="co-metodo" value="MP" />
@@ -479,6 +479,29 @@
     color: var(--color-brown);
   }
 
+  .checkout-total .co-tachado {
+    color: var(--color-brown-light);
+    font-weight: 400;
+    margin-right: 0.5rem;
+  }
+
+  .checkout-total .co-disc {
+    display: inline-block;
+    font-family: var(--font-heading, 'Montserrat', sans-serif);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #fff;
+    background: var(--color-olive);
+    border-radius: 999px;
+    padding: 0.2rem 0.6rem;
+    vertical-align: middle;
+  }
+
+  .checkout-total strong {
+    font-size: 1.375rem;
+  }
+
   .checkout-label {
     font-size: 0.8125rem;
     font-weight: 600;
@@ -591,16 +614,45 @@
   const confirmarBtn = document.getElementById('confirmar-btn') as HTMLButtonElement;
   const errorBox = document.getElementById('checkout-error')!;
 
+  // Precio publicado = tarjeta/MP. En efectivo: 15% menos (igual que el servidor).
+  const DESC_EFECTIVO = 0.15;
+
+  function metodoElegido(): 'MP' | 'EFECTIVO' {
+    return ((document.querySelector('input[name="co-metodo"]:checked') as HTMLInputElement)?.value || 'EFECTIVO') as 'MP' | 'EFECTIVO';
+  }
+
+  function totalConDescuento(cart: CartItem[]): { base: number; final: number } {
+    const base = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+    if (metodoElegido() !== 'EFECTIVO') return { base, final: base };
+    const final = cart.reduce((s, i) => s + Math.round(i.price * (1 - DESC_EFECTIVO)) * i.quantity, 0);
+    return { base, final };
+  }
+
+  function pintarTotalCheckout() {
+    const el = document.getElementById('checkout-total')!;
+    const { base, final } = totalConDescuento(leerCarrito());
+    if (metodoElegido() === 'EFECTIVO' && final < base) {
+      el.innerHTML = `<s class="co-tachado">$${base.toLocaleString('es-AR')}</s>
+        <span class="co-disc">−15% EFECTIVO</span><br/>
+        <strong>$${final.toLocaleString('es-AR')}</strong>`;
+    } else {
+      el.textContent = `$${base.toLocaleString('es-AR')}`;
+    }
+  }
+
   // Paso 1 -> Paso 2 (datos y pago)
   checkoutBtn?.addEventListener('click', () => {
     const cart = leerCarrito();
     if (!cart.length) return;
-    const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-    document.getElementById('checkout-total')!.textContent = `$${total.toLocaleString('es-AR')}`;
+    pintarTotalCheckout();
     errorBox.hidden = true;
     itemsBox.setAttribute('hidden', '');
     footerBox.style.display = 'none';
     panel.hidden = false;
+  });
+
+  document.querySelectorAll('input[name="co-metodo"]').forEach((r) => {
+    r.addEventListener('change', pintarTotalCheckout);
   });
 
   backBtn?.addEventListener('click', () => {

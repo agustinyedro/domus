@@ -98,19 +98,34 @@ export const POST: APIRoute = async ({ request }) => {
     // Rechazado: se devuelve el stock automáticamente
     const { data: items } = await supabase
       .from('ventas_items')
-      .select('producto_id, cantidad, costo_unitario')
+      .select('producto_id, cantidad, costo_unitario, kit_id, componentes')
       .eq('venta_id', ventaId);
 
     for (const it of items || []) {
-      await supabase.from('movimientos_stock').insert([{
-        usuario_id: venta.usuario_id,
-        producto_id: it.producto_id,
-        tipo: 'AJUSTE_POSITIVO',
-        cantidad: it.cantidad,
-        costo_unitario: it.costo_unitario,
-        motivo: `Devuelve pedido #${String(ventaId).slice(0, 8)} (MP ${pago.status})`,
-        referencia_id: ventaId,
-      }]);
+      const componentes = it.componentes as Array<{ producto_id: string; cantidad: number; costo_unitario: number }> | null;
+      if (it.kit_id && Array.isArray(componentes)) {
+        for (const c of componentes) {
+          await supabase.from('movimientos_stock').insert([{
+            usuario_id: venta.usuario_id,
+            producto_id: c.producto_id,
+            tipo: 'AJUSTE_POSITIVO',
+            cantidad: c.cantidad * it.cantidad,
+            costo_unitario: c.costo_unitario,
+            motivo: `Devuelve pedido #${String(ventaId).slice(0, 8)} (MP ${pago.status}) · kit`,
+            referencia_id: ventaId,
+          }]);
+        }
+      } else {
+        await supabase.from('movimientos_stock').insert([{
+          usuario_id: venta.usuario_id,
+          producto_id: it.producto_id,
+          tipo: 'AJUSTE_POSITIVO',
+          cantidad: it.cantidad,
+          costo_unitario: it.costo_unitario,
+          motivo: `Devuelve pedido #${String(ventaId).slice(0, 8)} (MP ${pago.status})`,
+          referencia_id: ventaId,
+        }]);
+      }
     }
 
     await supabase

@@ -8,19 +8,42 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
 <AdminLayout title="Pedidos">
   <div class="admin-card-header">
     <h1 style="margin: 0; font-size: 1.5rem;">Pedidos de la tienda</h1>
-    <select id="ped-filtro" class="admin-input" style="width: auto;">
-      <option value="">Todos</option>
-      <option value="PENDIENTE_EFECTIVO" selected>Pendientes efectivo</option>
-      <option value="PENDIENTE_PAGO">Pendientes MP</option>
-      <option value="PAGADA">Pagadas</option>
-      <option value="COMPLETADA">Completadas</option>
-      <option value="RECHAZADA">Rechazadas</option>
-      <option value="CANCELADA">Canceladas</option>
-    </select>
   </div>
 
+  <div id="ped-kpis" class="ped-kpis">
+    <button type="button" class="ped-kpi ped-kpi--ok" data-kpi="pendientes">
+      <span class="ped-kpi-label">Requieren tu OK</span>
+      <span class="ped-kpi-value" id="kpi-pend-count">0</span>
+      <span class="ped-kpi-sub" id="kpi-pend-total">$0 en espera</span>
+    </button>
+    <button type="button" class="ped-kpi" data-kpi="hoy">
+      <span class="ped-kpi-label">Pedidos de hoy</span>
+      <span class="ped-kpi-value" id="kpi-hoy-count">0</span>
+      <span class="ped-kpi-sub" id="kpi-hoy-total">$0</span>
+    </button>
+  </div>
+
+  <div id="ped-msg" class="admin-alert" style="display: none; margin-bottom: 1rem;"></div>
+
   <div class="admin-card">
-    <div class="admin-table-wrapper">
+    <div class="ped-toolbar">
+      <input id="ped-q" type="search" class="admin-input" placeholder="Buscar por N° de pedido, cliente o teléfono…" />
+      <select id="ped-filtro" class="admin-input">
+        <option value="">Todos</option>
+        <option value="PENDIENTE_EFECTIVO" selected>Pendientes efectivo</option>
+        <option value="PENDIENTE_PAGO">Pendientes MP</option>
+        <option value="PAGADA">Pagadas</option>
+        <option value="COMPLETADA">Completadas</option>
+        <option value="RECHAZADA">Rechazadas</option>
+        <option value="CANCELADA">Canceladas</option>
+      </select>
+      <select id="ped-orden" class="admin-input">
+        <option value="recientes">Más recientes</option>
+        <option value="mayor_total">Mayor total</option>
+      </select>
+      <button type="button" id="ped-hoy" class="admin-btn admin-btn-ghost ped-hoy-btn">Solo hoy</button>
+    </div>
+    <div class="admin-table-wrapper ped-scroll">
       <table class="admin-table">
         <thead>
           <tr><th>Pedido</th><th>Cliente</th><th>Detalle</th><th class="text-right">Total</th><th>Estado</th><th class="text-center">Acciones</th></tr>
@@ -55,63 +78,409 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
       return `<span class="stock-badge" style="${map[estado] || ''}">${label[estado] || estado}</span>`;
     }
 
-    async function cargar() {
+    let ultimosPedidos: Array<any> = [];
+    let soloHoy = false;
+
+    function esHoy(fecha: string): boolean {
+      const d = new Date(fecha);
+      const hoy = new Date();
+      return d.getFullYear() === hoy.getFullYear()
+        && d.getMonth() === hoy.getMonth()
+        && d.getDate() === hoy.getDate();
+    }
+
+    function pintarKPIs(): void {
+      const pend = ultimosPedidos.filter((p) => p.estado === 'PENDIENTE_EFECTIVO');
+      document.getElementById('kpi-pend-count')!.textContent = String(pend.length);
+      document.getElementById('kpi-pend-total')!.textContent = `${fmt$(pend.reduce((s, p) => s + Number(p.total || 0), 0))} en espera`;
+
+      const hoy = ultimosPedidos.filter((p) => esHoy(p.fecha));
+      document.getElementById('kpi-hoy-count')!.textContent = String(hoy.length);
+      document.getElementById('kpi-hoy-total')!.textContent = fmt$(hoy.reduce((s, p) => s + Number(p.total || 0), 0));
+    }
+
+    function render(): void {
+      const q = (document.getElementById('ped-q') as HTMLInputElement).value.trim().toLowerCase();
       const estado = (document.getElementById('ped-filtro') as HTMLSelectElement).value;
+      const orden = (document.getElementById('ped-orden') as HTMLSelectElement).value;
+
+      const filtrados = ultimosPedidos
+        .filter((p) => {
+          if (estado && p.estado !== estado) return false;
+          if (soloHoy && !esHoy(p.fecha)) return false;
+          if (q) {
+            const texto = [
+              String(p.id).slice(0, 8),
+              p.cliente_nombre || '',
+              p.cliente_telefono || '',
+              ...(p.ventas_items || []).map((i: any) => i.productos?.nombre || ''),
+            ].join(' ').toLowerCase();
+            if (!texto.includes(q)) return false;
+          }
+          return true;
+        })
+        .sort((a, b) => orden === 'mayor_total'
+          ? Number(b.total || 0) - Number(a.total || 0)
+          : new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+
+      document.getElementById('ped-body')!.innerHTML = filtrados.length
+        ? filtrados.map((p) => {
+            const detalle = (p.ventas_items || [])
+              .map((i: any) => `${i.productos?.nombre || ''} ×${i.cantidad}`)
+              .join(', ');
+            const unidades = (p.ventas_items || []).reduce((s: number, i: any) => s + Number(i.cantidad || 0), 0);
+            const fecha = new Date(p.fecha).toLocaleString('es-AR');
+            const pendiente = p.estado === 'PENDIENTE_EFECTIVO';
+            const btnTicket = `<button data-ticket="${p.id}" class="admin-btn admin-btn-ghost" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;" title="Ver e imprimir remito">Ticket</button>`;
+            const acciones = (pendiente
+              ? `<button data-aprobar="${p.id}" class="admin-btn admin-btn-success" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">Aprobar</button>
+                 <button data-rechazar="${p.id}" class="admin-btn admin-btn-ghost" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">Rechazar</button>`
+              : (p.estado === 'PENDIENTE_PAGO'
+                ? `<button data-rechazar="${p.id}" class="admin-btn admin-btn-ghost" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">Cancelar</button>`
+                : '')) + btnTicket;
+            const wa = p.cliente_telefono
+              ? `<a href="https://wa.me/${String(p.cliente_telefono).replace(/\D/g, '')}" target="_blank" rel="noopener" class="ped-wa" title="Abrir WhatsApp">WhatsApp</a>`
+              : '';
+            return `<tr class="${pendiente ? 'ped-row-pending' : ''}">
+              <td><code>#${String(p.id).slice(0, 8)}</code><br/><span class="ped-muted">${fecha}</span></td>
+              <td>${p.cliente_nombre || '—'}<br/><span class="ped-muted-small">${p.cliente_telefono || ''}</span> ${wa}</td>
+              <td style="font-size: 0.875rem;">${detalle}<br/><span class="ped-muted-small">${unidades} u.</span></td>
+              <td class="text-right"><strong>${fmt$(Number(p.total))}</strong></td>
+              <td>${badge(p.estado)}<br/><span class="ped-muted-small">${p.metodo_pago || ''}</span></td>
+              <td class="text-center" style="white-space: nowrap;">${acciones}</td>
+            </tr>`;
+          }).join('')
+        : `<tr><td colspan="6" class="text-center ped-empty">
+             Sin pedidos para este filtro.
+             <button type="button" id="ped-clear" class="admin-btn admin-btn-ghost" style="margin-top: 0.75rem;">Limpiar filtros</button>
+           </td></tr>`;
+
+      document.getElementById('ped-clear')?.addEventListener('click', limpiarFiltros);
+    }
+
+    function limpiarFiltros(): void {
+      (document.getElementById('ped-q') as HTMLInputElement).value = '';
+      (document.getElementById('ped-filtro') as HTMLSelectElement).value = '';
+      (document.getElementById('ped-orden') as HTMLSelectElement).value = 'recientes';
+      soloHoy = false;
+      document.getElementById('ped-hoy')!.classList.remove('active');
+      render();
+    }
+
+    async function cargar() {
       try {
-        const res = await fetch(`/api/admin/pedidos${estado ? `?estado=${estado}` : ''}`);
+        const res = await fetch('/api/admin/pedidos', { cache: 'no-store' });
         if (!res.ok) return;
-        const pedidos: Array<any> = await res.json();
-        document.getElementById('ped-body')!.innerHTML = pedidos.length
-          ? pedidos.map((p) => {
-              const detalle = (p.ventas_items || [])
-                .map((i: any) => `${i.productos?.nombre || ''} ×${i.cantidad}`)
-                .join(', ');
-              const fecha = new Date(p.fecha).toLocaleString('es-AR');
-              const acciones = p.estado === 'PENDIENTE_EFECTIVO'
-                ? `<button data-aprobar="${p.id}" class="admin-btn admin-btn-success" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">Aprobar</button>
-                   <button data-rechazar="${p.id}" class="admin-btn admin-btn-ghost" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">Rechazar</button>`
-                : (p.estado === 'PENDIENTE_PAGO'
-                  ? `<button data-rechazar="${p.id}" class="admin-btn admin-btn-ghost" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">Cancelar</button>`
-                  : '—');
-              const wa = p.cliente_telefono
-                ? `<br/><a href="https://wa.me/${p.cliente_telefono.replace(/\D/g, '')}" target="_blank" rel="noopener" style="font-size: 0.8125rem;">WhatsApp</a>`
-                : '';
-              return `<tr>
-                <td><code>#${String(p.id).slice(0, 8)}</code><br/><span style="font-size: 0.75rem; color: var(--admin-text-muted);">${fecha}</span></td>
-                <td>${p.cliente_nombre || '—'}<br/><span style="font-size: 0.8125rem;">${p.cliente_telefono || ''}</span>${wa}</td>
-                <td style="font-size: 0.875rem;">${detalle}</td>
-                <td class="text-right">${fmt$(Number(p.total))}</td>
-                <td>${badge(p.estado)}<br/><span style="font-size: 0.75rem; color: var(--admin-text-muted);">${p.metodo_pago || ''}</span></td>
-                <td class="text-center" style="white-space: nowrap;">${acciones}</td>
-              </tr>`;
-            }).join('')
-          : '<tr><td colspan="6" class="text-center">Sin pedidos en este estado.</td></tr>';
+        ultimosPedidos = await res.json();
+        pintarKPIs();
+        render();
       } catch { /* noop */ }
     }
 
-    document.getElementById('ped-filtro')!.addEventListener('change', cargar);
+    document.getElementById('ped-q')!.addEventListener('input', render);
+    document.getElementById('ped-filtro')!.addEventListener('change', render);
+    document.getElementById('ped-orden')!.addEventListener('change', render);
+    document.getElementById('ped-hoy')!.addEventListener('click', () => {
+      soloHoy = !soloHoy;
+      document.getElementById('ped-hoy')!.classList.toggle('active', soloHoy);
+      render();
+    });
 
-    document.getElementById('ped-body')!.addEventListener('click', async (e) => {
+    // Tarjetas KPI: filtran al instante
+    document.querySelectorAll('[data-kpi]').forEach((card) => {
+      card.addEventListener('click', () => {
+        const tipo = (card as HTMLElement).dataset.kpi;
+        const sel = document.getElementById('ped-filtro') as HTMLSelectElement;
+        if (tipo === 'pendientes') {
+          sel.value = 'PENDIENTE_EFECTIVO';
+          soloHoy = false;
+          document.getElementById('ped-hoy')!.classList.remove('active');
+          (document.getElementById('ped-q') as HTMLInputElement).value = '';
+        } else if (tipo === 'hoy') {
+          soloHoy = true;
+          document.getElementById('ped-hoy')!.classList.add('active');
+          sel.value = '';
+        }
+        render();
+      });
+    });
+
+    document.getElementById('ped-body')!.addEventListener('click', (e) => {
       const t = e.target as HTMLElement;
-      const ap = t.closest('[data-aprobar]') as HTMLElement | null;
-      const re = t.closest('[data-rechazar]') as HTMLElement | null;
+      const tk = t.closest('[data-ticket]') as HTMLButtonElement | null;
+      if (tk?.dataset.ticket) {
+        abrirTicket(tk.dataset.ticket);
+        return;
+      }
+      const ap = t.closest('[data-aprobar]') as HTMLButtonElement | null;
+      const re = t.closest('[data-rechazar]') as HTMLButtonElement | null;
       const id = ap?.dataset.aprobar || re?.dataset.rechazar;
       if (!id) return;
       const accion = ap ? 'aprobar' : 'rechazar';
-      if (!confirm(accion === 'aprobar' ? '¿Confirmar este pedido en efectivo?' : '¿Rechazar? Se devuelve el stock automáticamente.')) return;
-      const res = await fetch(`/api/admin/pedidos/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accion }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        alert(typeof data.error === 'string' ? data.error : 'No se pudo procesar.');
-        return;
-      }
-      cargar();
+      const pedido = ultimosPedidos.find((p) => p.id === id);
+      abrirConfirm(accion, id, pedido);
     });
+
+    function escCerrar(e: KeyboardEvent) {
+      if (e.key === 'Escape') cerrarConfirm();
+    }
+
+    function cerrarConfirm() {
+      document.getElementById('ped-confirm-root')?.remove();
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', escCerrar);
+    }
+
+    function abrirConfirm(accion: 'aprobar' | 'rechazar', id: string, pedido: any) {
+      cerrarConfirm();
+      const esAprobar = accion === 'aprobar';
+      const detalle = (pedido?.ventas_items || [])
+        .map((i: any) => `${i.productos?.nombre || ''} ×${i.cantidad}`)
+        .join(', ') || '—';
+      const corto = String(id).slice(0, 8);
+
+      const root = document.createElement('div');
+      root.id = 'ped-confirm-root';
+      root.innerHTML = `
+      <div class="ped-confirm-overlay">
+        <div class="ped-confirm-card">
+          <h3>${esAprobar ? 'Aprobar pedido' : 'Anular pedido'}</h3>
+          <dl class="ped-confirm-rows">
+            <div><dt>Pedido</dt><dd><code>#${corto}</code></dd></div>
+            <div><dt>Cliente</dt><dd>${pedido?.cliente_nombre || '—'}${pedido?.cliente_telefono ? ` · ${pedido.cliente_telefono}` : ''}</dd></div>
+            <div><dt>Detalle</dt><dd>${detalle}</dd></div>
+            <div><dt>Total</dt><dd><strong>${fmt$(Number(pedido?.total || 0))}</strong></dd></div>
+            <div><dt>Queda como</dt><dd>${esAprobar ? 'COMPLETADA' : 'RECHAZADA'}</dd></div>
+          </dl>
+          ${esAprobar
+            ? '<p class="ped-confirm-note">Se confirma el pago en efectivo del pedido.</p>'
+            : '<p class="ped-confirm-note">Se devuelve el stock automáticamente.</p>'}
+          <div class="ped-confirm-actions">
+            <button class="admin-btn admin-btn-ghost" id="ped-confirm-no">Volver</button>
+            <button class="admin-btn ${esAprobar ? 'admin-btn-success' : 'admin-btn-danger'}" id="ped-confirm-si">
+              ${esAprobar ? 'Aprobar' : 'Anular pedido'}
+            </button>
+          </div>
+        </div>
+      </div>`;
+      document.body.appendChild(root);
+      document.body.style.overflow = 'hidden';
+
+      root.querySelector('#ped-confirm-no')!.addEventListener('click', cerrarConfirm);
+      root.querySelector('.ped-confirm-overlay')!.addEventListener('click', (ev) => {
+        if ((ev.target as HTMLElement).classList.contains('ped-confirm-overlay')) cerrarConfirm();
+      });
+      document.addEventListener('keydown', escCerrar);
+      root.querySelector('#ped-confirm-si')!.addEventListener('click', async () => {
+        const btnSi = root.querySelector('#ped-confirm-si') as HTMLButtonElement;
+        const btnNo = root.querySelector('#ped-confirm-no') as HTMLButtonElement;
+        btnSi.disabled = true;
+        btnNo.disabled = true;
+        btnSi.textContent = 'Procesando…';
+        const msg = document.getElementById('ped-msg')!;
+        msg.style.display = 'none';
+        const res = await fetch(`/api/admin/pedidos/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accion }),
+        });
+        cerrarConfirm();
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          msg.textContent = typeof data.error === 'string' ? data.error : 'No se pudo procesar.';
+          msg.className = 'admin-alert admin-alert-error';
+          msg.style.display = 'block';
+          cargar();
+          return;
+        }
+        msg.textContent = esAprobar
+          ? `Pedido #${corto} aprobado → COMPLETADA.`
+          : `Pedido #${corto} anulado → RECHAZADA. Stock devuelto.`;
+        msg.className = 'admin-alert admin-alert-success';
+        msg.style.display = 'block';
+        // Mostrar la fila con su estado final
+        limpiarFiltros();
+        cargar();
+      });
+    }
+
+    function escTicket(e: KeyboardEvent) {
+      if (e.key === 'Escape') cerrarTicket();
+    }
+
+    function cerrarTicket() {
+      document.getElementById('ped-ticket-root')?.remove();
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', escTicket);
+    }
+
+    function abrirTicket(id: string) {
+      const p = ultimosPedidos.find((x) => x.id === id);
+      if (!p) return;
+      cerrarTicket();
+      const corto = String(id).slice(0, 8);
+      const fecha = new Date(p.fecha).toLocaleString('es-AR');
+      const items = (p.ventas_items || []).map((i: any) => {
+        const pu = Number(i.precio_unitario ?? 0);
+        const sub = pu * Number(i.cantidad ?? 0);
+        return `<tr><td class="text-center">${i.cantidad}</td><td>${i.productos?.nombre || ''}</td><td class="text-right">$${pu.toLocaleString('es-AR')}</td><td class="text-right">$${sub.toLocaleString('es-AR')}</td></tr>`;
+      }).join('') || '<tr><td colspan="4">—</td></tr>';
+
+      const root = document.createElement('div');
+      root.id = 'ped-ticket-root';
+      root.innerHTML = `
+      <div class="ped-ticket-overlay">
+        <div class="ped-ticket-card">
+          <div class="remito" id="pedido-ticket">
+            <div class="rm-head">
+              <div>
+                <p class="rm-logo">DOMUS</p>
+                <p class="rm-sub">domus.com.ar</p>
+              </div>
+              <div class="rm-doc">
+                <p class="rm-doctitle">REMITO · PEDIDO</p>
+                <p class="rm-num">#${corto}</p>
+                <p class="rm-fecha">${fecha}</p>
+              </div>
+            </div>
+            <div class="rm-grid">
+              <div><span>Cliente</span><strong>${p.cliente_nombre || '—'}</strong></div>
+              <div><span>Teléfono</span><strong>${p.cliente_telefono || '—'}</strong></div>
+              <div><span>Método</span><strong>${p.metodo_pago || '—'}</strong></div>
+              <div><span>Estado</span><strong>${p.estado || '—'}</strong></div>
+            </div>
+            <table class="rm-table">
+              <thead><tr><th>Cant.</th><th>Detalle</th><th class="text-right">P. unit.</th><th class="text-right">Subtotal</th></tr></thead>
+              <tbody>${items}</tbody>
+            </table>
+            <div class="rm-total"><span>TOTAL</span><strong>$${Number(p.total ?? 0).toLocaleString('es-AR')}</strong></div>
+            <p class="rm-foot">Gracias por tu compra · todo lo que hace de un lugar, hogar.</p>
+          </div>
+          <div class="ped-ticket-actions no-print">
+            <button class="admin-btn admin-btn-primary" id="ped-ticket-print">Imprimir</button>
+            <button class="admin-btn admin-btn-ghost" id="ped-ticket-cerrar">Cerrar</button>
+          </div>
+        </div>
+      </div>`;
+      document.body.appendChild(root);
+      document.body.style.overflow = 'hidden';
+
+      root.querySelector('#ped-ticket-cerrar')!.addEventListener('click', cerrarTicket);
+      root.querySelector('.ped-ticket-overlay')!.addEventListener('click', (ev) => {
+        if ((ev.target as HTMLElement).classList.contains('ped-ticket-overlay')) cerrarTicket();
+      });
+      document.addEventListener('keydown', escTicket);
+      root.querySelector('#ped-ticket-print')!.addEventListener('click', () => window.print());
+    }
 
     cargar();
   </script>
+
+  <style is:global>
+    /* KPIs */
+    .ped-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .ped-kpi {
+      text-align: left; cursor: pointer;
+      background: #fff; border: 1px solid var(--admin-border); border-radius: 12px;
+      padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.125rem;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+      font: inherit;
+    }
+    .ped-kpi:hover { border-color: #988C2D; box-shadow: 0 6px 18px rgba(96, 72, 17, 0.12); transform: translateY(-2px); }
+    .ped-kpi-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--admin-text-muted); }
+    .ped-kpi-value { font-size: 2rem; font-weight: 800; line-height: 1.1; color: var(--admin-text); }
+    .ped-kpi-sub { font-size: 0.875rem; color: var(--admin-text-muted); }
+    .ped-kpi--ok { border-left: 4px solid #b7791f; }
+    .ped-kpi--ok .ped-kpi-value { color: #b7791f; }
+
+    /* Toolbar */
+    .ped-toolbar { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 0.75rem; margin-bottom: 1rem; }
+    .ped-hoy-btn.active { border-color: #988C2D; color: #988C2D; background: rgba(152, 140, 45, 0.08); }
+    @media (max-width: 900px) { .ped-toolbar { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 560px) { .ped-toolbar { grid-template-columns: 1fr; } }
+
+    /* Tabla */
+    .ped-scroll { max-height: 460px; overflow-y: auto; }
+    .ped-scroll thead th { position: sticky; top: 0; z-index: 1; background: #fff; }
+    .ped-row-pending { box-shadow: inset 4px 0 0 #b7791f; }
+    .ped-muted { font-size: 0.75rem; color: var(--admin-text-muted); }
+    .ped-muted-small { font-size: 0.75rem; color: var(--admin-text-muted); }
+    .ped-wa {
+      display: inline-block; margin-top: 0.25rem; padding: 0.125rem 0.5rem;
+      font-size: 0.75rem; font-weight: 600; border-radius: 999px;
+      background: #dcfce7; color: #166534; text-decoration: none;
+    }
+    .ped-wa:hover { background: #bbf7d0; }
+    .ped-empty { padding: 2rem 1rem !important; color: var(--admin-text-muted); }
+
+    #ped-confirm-root { position: fixed; inset: 0; z-index: 2000; }
+    .ped-confirm-overlay {
+      position: absolute; inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .ped-confirm-card {
+      background: #fff; border-radius: 12px;
+      width: 100%; max-width: 460px;
+      padding: 1.5rem;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    .ped-confirm-card h3 { margin: 0 0 1rem; font-size: 1.25rem; }
+    .ped-confirm-rows { margin: 0 0 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+    .ped-confirm-rows > div { display: flex; gap: 0.75rem; font-size: 0.9375rem; }
+    .ped-confirm-rows dt { color: var(--admin-text-muted); min-width: 90px; }
+    .ped-confirm-rows dd { margin: 0; font-weight: 500; }
+    .ped-confirm-note { font-size: 0.875rem; color: var(--admin-text-muted); margin: 0 0 1.25rem; }
+    .ped-confirm-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+
+    /* Remito de pedido */
+    #ped-ticket-root { position: fixed; inset: 0; z-index: 2000; }
+    .ped-ticket-overlay {
+      position: absolute; inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex; align-items: flex-start; justify-content: center;
+      overflow-y: auto; padding: 2rem 1rem;
+    }
+    .ped-ticket-card {
+      background: #FDFBF5; border-radius: 14px;
+      width: 100%; max-width: 640px;
+      padding: 1.5rem;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      border-top: 4px solid #988C2D;
+    }
+    .remito { background: #fff; border: 1px solid rgba(96, 72, 17, 0.25); border-radius: 10px; padding: 1.5rem; color: #3d2b1f; }
+    .rm-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding-bottom: 1rem; border-bottom: 2px solid #988C2D; margin-bottom: 1rem; }
+    .rm-logo { margin: 0; font-weight: 700; letter-spacing: 0.3em; font-size: 1.375rem; color: #604811; }
+    .rm-sub { margin: 0.125rem 0 0; font-size: 0.75rem; color: #8a7a5c; }
+    .rm-doc { text-align: right; }
+    .rm-doctitle { margin: 0; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; color: #988C2D; }
+    .rm-num { margin: 0.125rem 0 0; font-size: 1.25rem; font-weight: 800; }
+    .rm-fecha { margin: 0.125rem 0 0; font-size: 0.75rem; color: #8a7a5c; }
+    .rm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem; margin-bottom: 1rem; }
+    .rm-grid > div { display: flex; flex-direction: column; }
+    .rm-grid span { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.08em; color: #8a7a5c; }
+    .rm-grid strong { font-size: 0.9375rem; }
+    .rm-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; margin-bottom: 1rem; }
+    .rm-table th { text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.08em; color: #8a7a5c; border-bottom: 1px solid rgba(96, 72, 17, 0.3); padding: 0.375rem 0.5rem; }
+    .rm-table td { border-bottom: 1px solid rgba(96, 72, 17, 0.12); padding: 0.5rem; }
+    .rm-table .text-right { text-align: right; }
+    .rm-table .text-center { text-align: center; }
+    .rm-total { display: flex; justify-content: space-between; align-items: center; background: #604811; color: #DBD190; border-radius: 8px; padding: 0.75rem 1rem; font-size: 1.125rem; font-weight: 800; letter-spacing: 0.04em; }
+    .rm-foot { margin: 1rem 0 0; text-align: center; font-size: 0.75rem; color: #8a7a5c; font-style: italic; }
+    .ped-ticket-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem; }
+
+    @media print {
+      body > *:not(#ped-ticket-root) { display: none !important; }
+      #ped-ticket-root { position: static !important; }
+      .ped-ticket-overlay {
+        position: static !important; background: #fff !important;
+        padding: 0 !important; overflow: visible !important; display: block !important;
+      }
+      .ped-ticket-card { box-shadow: none !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; border: none !important; background: #fff !important; }
+      .no-print { display: none !important; }
+      .remito { border: 1px solid #000 !important; }
+      .rm-total { background: #eee !important; color: #000 !important; border: 1px solid #000; }
+    }
+  </style>
 </AdminLayout>

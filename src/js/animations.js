@@ -1,3 +1,5 @@
+import { config } from '../config';
+
 // DOMUS - Animaciones JavaScript (Simplificado y Corregido)
 
 // ============================================
@@ -175,11 +177,22 @@ const CartManager = {
   addItem(product) {
     const cart = this.getCart();
     const existing = cart.find(item => item.id === product.id);
+    const stock = Number(product.stock);
+    const tieneStock = Number.isFinite(stock) && stock >= 0;
 
     if (existing) {
+      if (tieneStock && existing.quantity + 1 > stock) {
+        this.showNotification(stock > 0 ? `Solo quedan ${stock} de ${product.name}` : `${product.name} sin stock por ahora`);
+        return;
+      }
       existing.quantity += 1;
       if (product.image && !existing.image) existing.image = product.image;
+      if (tieneStock) existing.stock = stock;
     } else {
+      if (tieneStock && stock <= 0) {
+        this.showNotification(`${product.name} sin stock por ahora`);
+        return;
+      }
       cart.push({ ...product, quantity: 1 });
     }
 
@@ -204,6 +217,11 @@ const CartManager = {
       if (quantity <= 0) {
         this.removeItem(productId);
       } else {
+        const stock = Number(item.stock);
+        if (Number.isFinite(stock) && stock >= 0 && quantity > stock) {
+          this.showNotification(stock > 0 ? `Solo quedan ${stock} de ${item.name}` : `${item.name} sin stock por ahora`);
+          return;
+        }
         item.quantity = quantity;
         this.saveCart(cart);
       }
@@ -254,6 +272,8 @@ const CartManager = {
 
     cartItems.innerHTML = cart.map(item => {
       const subtotal = Number(item.price) * item.quantity;
+      const stock = Number(item.stock);
+      const tope = Number.isFinite(stock) && stock >= 0 && item.quantity >= stock;
       const thumb = item.image
         ? `<img src="${item.image}" alt="" loading="lazy" class="cart-thumb" onerror="this.remove()" />`
         : `<span class="cart-thumb cart-thumb-ph" aria-hidden="true">D</span>`;
@@ -269,6 +289,7 @@ const CartManager = {
               onclick="CartManager.updateQuantity('${item.id}', ${item.quantity - 1})">−</button>
             <span class="cart-quantity">${item.quantity}</span>
             <button class="quantity-btn" aria-label="Agregar uno"
+              ${tope ? 'disabled title="Stock máximo"' : ''}
               onclick="CartManager.updateQuantity('${item.id}', ${item.quantity + 1})">+</button>
             <button class="remove-btn" aria-label="Quitar del carrito" title="Quitar del carrito"
               onclick="CartManager.removeItem('${item.id}')">
@@ -325,7 +346,7 @@ const initPackButtons = () => {
   packBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       const message = btn.dataset.message;
-      const phoneNumber = '5491112345678';
+      const phoneNumber = config.whatsapp.phoneNumber;
       const encodedMessage = encodeURIComponent(message);
       window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
     });

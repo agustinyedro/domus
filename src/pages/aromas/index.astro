@@ -108,12 +108,12 @@ const products = [
                 
                 <div class="product-footer">
                   <span class="product-price">${product.price}</span>
-                  <button 
+                  <a
+                    href="/tienda"
                     class="btn add-to-cart-btn"
-                    onclick={`CartManager.addItem({id: '${product.id}', name: '${product.name}', price: ${product.price}, image: '${product.image}'})`}
                   >
-                    Agregar
-                  </button>
+                    Ver en tienda
+                  </a>
                 </div>
               </div>
             </article>
@@ -128,7 +128,7 @@ const products = [
         <div class="cta-content reveal">
           <h3>¿Tenés alguna consulta?</h3>
           <p>Escribinos por WhatsApp y te asesoramos para elegir los aromas perfectos para vos.</p>
-          <a href="https://wa.me/5491112345678?text=Hola!%20Me%20interesan%20los%20aromas%20de%20Domus" class="btn whatsapp-btn" target="_blank">
+          <a href="https://wa.me/5493512270298?text=Hola!%20Me%20interesan%20los%20aromas%20de%20Domus" class="btn whatsapp-btn" target="_blank">
             Consultar por WhatsApp
           </a>
         </div>

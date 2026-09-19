@@ -105,12 +105,12 @@ const products = [
                 
                 <div class="product-footer">
                   <span class="product-price">${product.price}</span>
-                  <button 
+                  <a
+                    href="/tienda"
                     class="btn add-to-cart-btn"
-                    onclick={`CartManager.addItem({id: '${product.id}', name: '${product.name}', price: ${product.price}, image: '${product.image}'})`}
                   >
-                    Reservar
-                  </button>
+                    Ver en tienda
+                  </a>
                 </div>
               </div>
             </article>
@@ -124,7 +124,7 @@ const products = [
         <div class="cta-content reveal">
           <h3>¿Querés empezar tu práctica?</h3>
           <p>Escribinos por WhatsApp y te ayudamos a elegir la experiencia perfecta para vos.</p>
-          <a href="https://wa.me/5491112345678?text=Hola!%20Me%20interesan%20las%20experiencias%20de%20yoga%20de%20Domus" class="btn whatsapp-btn" target="_blank">
+          <a href="https://wa.me/5493512270298?text=Hola!%20Me%20interesan%20las%20experiencias%20de%20yoga%20de%20Domus" class="btn whatsapp-btn" target="_blank">
             Consultar por WhatsApp
           </a>
         </div>

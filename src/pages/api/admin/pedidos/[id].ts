@@ -50,6 +50,15 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
     if (error) {
       return new Response(JSON.stringify({ error: error.message }), { status: 400 });
     }
+    // Verificar persistencia: sin política UPDATE el cambio no aplica en silencio
+    const { data: checkAp } = await supabase
+      .from('ventas')
+      .select('estado')
+      .eq('id', id)
+      .single();
+    if (!checkAp || checkAp.estado !== 'COMPLETADA') {
+      return new Response(JSON.stringify({ error: 'No se pudo actualizar el pedido (falta política UPDATE en ventas).' }), { status: 400 });
+    }
     return new Response(JSON.stringify({ success: true, estado: 'COMPLETADA' }), {
       headers: { 'Content-Type': 'application/json' },
     });
@@ -62,19 +71,45 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
 
   const { data: items } = await supabase
     .from('ventas_items')
-    .select('producto_id, cantidad, costo_unitario')
+    .select('producto_id, cantidad, costo_unitario, kit_id, componentes')
     .eq('venta_id', id);
 
-  for (const it of items || []) {
-    await supabase.from('movimientos_stock').insert([{
-      usuario_id: user.id,
-      producto_id: it.producto_id,
-      tipo: 'AJUSTE_POSITIVO',
-      cantidad: it.cantidad,
-      costo_unitario: it.costo_unitario,
-      motivo: `Devuelve pedido #${String(id).slice(0, 8)} (rechazado por admin)`,
-      referencia_id: id,
-    }]);
+  // Idempotencia: si el stock ya fue devuelto (doble clic / reintento),
+  // no duplicar movimientos; solo asegurar el estado final.
+  const { data: devuelto } = await supabase
+    .from('movimientos_stock')
+    .select('id')
+    .eq('referencia_id', id)
+    .like('motivo', 'Devuelve pedido #%')
+    .limit(1);
+
+  if (!devuelto || devuelto.length === 0) {
+    for (const it of items || []) {
+      const componentes = it.componentes as Array<{ producto_id: string; cantidad: number; costo_unitario: number }> | null;
+      if (it.kit_id && Array.isArray(componentes)) {
+        for (const c of componentes) {
+          await supabase.from('movimientos_stock').insert([{
+            usuario_id: user.id,
+            producto_id: c.producto_id,
+            tipo: 'AJUSTE_POSITIVO',
+            cantidad: c.cantidad * it.cantidad,
+            costo_unitario: c.costo_unitario,
+            motivo: `Devuelve pedido #${String(id).slice(0, 8)} (rechazado por admin) · kit`,
+            referencia_id: id,
+          }]);
+        }
+      } else {
+        await supabase.from('movimientos_stock').insert([{
+          usuario_id: user.id,
+          producto_id: it.producto_id,
+          tipo: 'AJUSTE_POSITIVO',
+          cantidad: it.cantidad,
+          costo_unitario: it.costo_unitario,
+          motivo: `Devuelve pedido #${String(id).slice(0, 8)} (rechazado por admin)`,
+          referencia_id: id,
+        }]);
+      }
+    }
   }
 
   const { error } = await supabase
@@ -84,6 +119,16 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
 
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), { status: 400 });
+  }
+
+  // Verificar persistencia: sin política UPDATE el cambio no aplica en silencio
+  const { data: checkRe } = await supabase
+    .from('ventas')
+    .select('estado')
+    .eq('id', id)
+    .single();
+  if (!checkRe || checkRe.estado !== 'RECHAZADA') {
+    return new Response(JSON.stringify({ error: 'No se pudo actualizar el pedido (falta política UPDATE en ventas).' }), { status: 400 });
   }
 
   return new Response(JSON.stringify({ success: true, estado: 'RECHAZADA' }), {

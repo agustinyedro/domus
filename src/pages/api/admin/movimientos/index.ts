@@ -13,14 +13,19 @@ export const GET: APIRoute = async ({ request, cookies, url }) => {
   }
 
   const limit = Math.min(Number(url.searchParams.get('limit')) || 20, 100);
+  const productoId = url.searchParams.get('producto_id');
   const supabase = createSupabaseServer(request, cookies);
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('movimientos_stock')
     .select('id, tipo, cantidad, motivo, created_at, producto_id, productos ( nombre )')
     .eq('usuario_id', user.id)
     .order('created_at', { ascending: false })
     .limit(limit);
+
+  if (productoId) query = query.eq('producto_id', productoId);
+
+  const { data, error } = await query;
 
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), { status: 400 });

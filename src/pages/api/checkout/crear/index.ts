@@ -8,11 +8,15 @@ import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 import { CheckoutSchema } from '@/lib/validations';
 import { config } from '@/config';
+import { resolverKit } from '@/lib/kits';
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const serviceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 const mpAccessToken = import.meta.env.MP_ACCESS_TOKEN;
 const siteUrl = import.meta.env.SITE_URL || 'https://domus.com.ar';
+
+// Precio publicado = tarjeta/MP. En efectivo se descuenta este porcentaje.
+const DESCUENTO_EFECTIVO = 0.15;
 
 function getAdmin() {
   if (!supabaseUrl || !serviceKey) {
@@ -61,7 +65,7 @@ export const POST: APIRoute = async ({ request }) => {
   const ids = [...new Set(items.map((i) => i.producto_id))];
   const { data: prods, error: prodsError } = await supabase
     .from('productos')
-    .select('id, nombre, precio_venta, precio_oferta, es_oferta, activo, usuario_id')
+    .select('id, nombre, precio_venta, precio_oferta, es_oferta, activo, usuario_id, kit_id')
     .in('id', ids);
 
   if (prodsError) return json({ error: prodsError.message }, 400);
@@ -81,6 +85,32 @@ export const POST: APIRoute = async ({ request }) => {
     const p = porId.get(item.producto_id);
     if (!p || !p.activo) {
       return json({ error: `Producto no disponible.` }, 400);
+    }
+
+    const precioBase = metodo === 'EFECTIVO'
+      ? Math.round(precioVigente(p) * (1 - DESCUENTO_EFECTIVO))
+      : precioVigente(p);
+
+    // Kit: stock y costo derivados de los componentes
+    if (p.kit_id) {
+      const kit = await resolverKit(supabase, p.kit_id);
+      if (!kit) {
+        return json({ error: `El kit "${p.nombre}" no tiene productos cargados.` }, 400);
+      }
+      if (item.cantidad > kit.stock) {
+        return json({ error: `Stock insuficiente de "${p.nombre}": quedan ${kit.stock} kit(s). No se registró nada.` }, 400);
+      }
+      resueltos.push({
+        producto_id: item.producto_id,
+        kit_id: p.kit_id,
+        componentes: kit.componentes,
+        nombre: p.nombre,
+        cantidad: item.cantidad,
+        precio: precioBase,
+        precioLista: precioVigente(p),
+        costo: kit.costo,
+      });
+      continue;
     }
 
     const { data: movs } = await supabase
@@ -108,14 +138,18 @@ export const POST: APIRoute = async ({ request }) => {
 
     resueltos.push({
       producto_id: item.producto_id,
+      kit_id: null,
+      componentes: null,
       nombre: p.nombre,
       cantidad: item.cantidad,
-      precio: precioVigente(p),
+      precio: precioBase,
+      precioLista: precioVigente(p),
       costo: ultimaCompra ? Number(ultimaCompra.costo_unitario) : 0,
     });
   }
 
   const total = resueltos.reduce((s, r) => s + r.precio * r.cantidad, 0);
+  const totalLista = resueltos.reduce((s, r) => s + r.precioLista * r.cantidad, 0);
   const ganancia = resueltos.reduce((s, r) => s + (r.precio - r.costo) * r.cantidad, 0);
   const estado = metodo === 'MP' ? 'PENDIENTE_PAGO' : 'PENDIENTE_EFECTIVO';
 
@@ -137,31 +171,54 @@ export const POST: APIRoute = async ({ request }) => {
 
   if (ventaError) return json({ error: ventaError.message }, 400);
 
+  const motivoMov = `Pedido tienda #${venta.id.slice(0, 8)} (${metodo}${metodo === 'EFECTIVO' ? ' -15%' : ''})`;
+
   for (const r of resueltos) {
-    await supabase.from('ventas_items').insert([{
+    const itemRow: Record<string, unknown> = {
       venta_id: venta.id,
       producto_id: r.producto_id,
       cantidad: r.cantidad,
       precio_unitario: r.precio,
       costo_unitario: r.costo,
-    }]);
-    await supabase.from('movimientos_stock').insert([{
-      usuario_id: ownerId,
-      producto_id: r.producto_id,
-      tipo: 'VENTA',
-      cantidad: r.cantidad,
-      costo_unitario: r.costo,
-      motivo: `Pedido tienda #${venta.id.slice(0, 8)} (${metodo})`,
-      referencia_id: venta.id,
-    }]);
+    };
+    if (r.kit_id) {
+      itemRow.kit_id = r.kit_id;
+      itemRow.componentes = r.componentes;
+    }
+    await supabase.from('ventas_items').insert([itemRow]);
+
+    // Kit: descuenta cada componente. Producto normal: descuenta el producto.
+    if (r.kit_id && Array.isArray(r.componentes)) {
+      for (const c of r.componentes as Array<{ producto_id: string; cantidad: number; costo_unitario: number }>) {
+        await supabase.from('movimientos_stock').insert([{
+          usuario_id: ownerId,
+          producto_id: c.producto_id,
+          tipo: 'VENTA',
+          cantidad: c.cantidad * r.cantidad,
+          costo_unitario: c.costo_unitario,
+          motivo: `${motivoMov} · kit ${r.nombre}`,
+          referencia_id: venta.id,
+        }]);
+      }
+    } else {
+      await supabase.from('movimientos_stock').insert([{
+        usuario_id: ownerId,
+        producto_id: r.producto_id,
+        tipo: 'VENTA',
+        cantidad: r.cantidad,
+        costo_unitario: r.costo,
+        motivo: motivoMov,
+        referencia_id: venta.id,
+      }]);
+    }
   }
 
   // ---- EFECTIVO: link de WhatsApp con el pedido ----
   if (metodo === 'EFECTIVO') {
     const lineas = resueltos.map((r) => `- ${r.nombre} x${r.cantidad} - $${(r.precio * r.cantidad).toLocaleString('es-AR')}`);
-    const msg = `Hola DOMUS! Hice el pedido #${venta.id.slice(0, 8)} en la tienda:\n\n${lineas.join('\n')}\n\nTotal: $${total.toLocaleString('es-AR')}\nSoy ${cliente.nombre} (${cliente.telefono}). Pago en efectivo, ¿coordinamos?`;
+    const msg = `Hola DOMUS! Hice el pedido #${venta.id.slice(0, 8)} en la tienda:\n\n${lineas.join('\n')}\n\nTotal lista: ~$${totalLista.toLocaleString('es-AR')}~\nTotal en efectivo (-15%): $${total.toLocaleString('es-AR')}\nSoy ${cliente.nombre} (${cliente.telefono}). Pago en efectivo, ¿coordinamos?`;
     const whatsapp_url = `https://wa.me/${config.whatsapp.phoneNumber}?text=${encodeURIComponent(msg)}`;
-    return json({ venta_id: venta.id, estado, total, whatsapp_url }, 201);
+    return json({ venta_id: venta.id, estado, total, totalLista, descuento_pct: 15, whatsapp_url }, 201);
   }
 
   // ---- MP: crear preferencia ----
@@ -206,15 +263,29 @@ export const POST: APIRoute = async ({ request }) => {
     // Si MP falla, se marca la venta como cancelada para no dejar stock colgado
     await supabase.from('ventas').update({ estado: 'CANCELADA' }).eq('id', venta.id);
     for (const r of resueltos) {
-      await supabase.from('movimientos_stock').insert([{
-        usuario_id: ownerId,
-        producto_id: r.producto_id,
-        tipo: 'AJUSTE_POSITIVO',
-        cantidad: r.cantidad,
-        costo_unitario: r.costo,
-        motivo: `Cancela pedido #${venta.id.slice(0, 8)} (falló MP)`,
-        referencia_id: venta.id,
-      }]);
+      if (r.kit_id && Array.isArray(r.componentes)) {
+        for (const c of r.componentes as Array<{ producto_id: string; cantidad: number; costo_unitario: number }>) {
+          await supabase.from('movimientos_stock').insert([{
+            usuario_id: ownerId,
+            producto_id: c.producto_id,
+            tipo: 'AJUSTE_POSITIVO',
+            cantidad: c.cantidad * r.cantidad,
+            costo_unitario: c.costo_unitario,
+            motivo: `Cancela pedido #${venta.id.slice(0, 8)} (falló MP) · kit ${r.nombre}`,
+            referencia_id: venta.id,
+          }]);
+        }
+      } else {
+        await supabase.from('movimientos_stock').insert([{
+          usuario_id: ownerId,
+          producto_id: r.producto_id,
+          tipo: 'AJUSTE_POSITIVO',
+          cantidad: r.cantidad,
+          costo_unitario: r.costo,
+          motivo: `Cancela pedido #${venta.id.slice(0, 8)} (falló MP)`,
+          referencia_id: venta.id,
+        }]);
+      }
     }
     return json({ error: 'No se pudo iniciar el pago con Mercado Pago. Probá de nuevo o elegí Efectivo.' }, 502);
   }

@@ -1,259 +1,90 @@
 ---
-import { config } from '../config';
-
-const packs = [
-  {
-    name: "Pack Básico",
-    price: 1500,
-    description: "Tu primer paso en Domus",
-    features: [
-      "3 sahumerios variados",
-      "Acceso a 1 clase de yoga",
-      "Sorpresa sensorial",
-      "Entrega en el mes"
-    ]
-  },
-  {
-    name: "Pack Premium",
-    price: 2500,
-    description: "La experiencia completa",
-    features: [
-      "5 sahumerios curados",
-      "Cartas de tarot mensual",
-      "Acceso ilimitado a yoga",
-      "Descuento en pizzas",
-      "Box exclusivo"
-    ],
-    highlight: true
-  },
-  {
-    name: "Pack Deluxe",
-    price: 3500,
-    description: "Lo máximo de Domus",
-    features: [
-      "Todo lo anterior +",
-      "Pack de 5 pizzas congeladas",
-      "Prenda exclusiva",
-      "Videollamada con instructora",
-      "Sorpresas mensuales"
-    ]
-  }
-];
+import { getWhatsAppLink } from '../config';
 ---
-
-<section id="packs" class="packs-section">
-  <div class="container">
-    <h2 class="section-title reveal">Domus cada mes</h2>
-    <p class="section-subtitle reveal">Tu caja de sensaciones. Diseñada para ti.</p>
-    
-    <div class="packs-grid">
-      {packs.map((pack, index) => (
-        <div class={`pack-card reveal ${pack.highlight ? 'highlight' : ''}`} style={`animation-delay: ${index * 0.2}s`}>
-          {pack.highlight && <div class="pack-badge">Más popular</div>}
-          
-          <h3>{pack.name}</h3>
-          <p class="pack-description">{pack.description}</p>
-          
-          <div class="price">
-            <span class="currency">$</span>
-            <span class="amount">{pack.price}</span>
-            <span class="frequency">/mes</span>
-          </div>
-          
-          <ul class="features">
-            {pack.features.map((feature, featureIndex) => (
-              <li class="feature-item" style={`animation-delay: ${featureIndex * 0.1}s`}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-                {feature}
-              </li>
-            ))}
-          </ul>
-          
-          <button 
-            class="btn pack-btn" 
-            data-pack={pack.name}
-            data-price={pack.price}
-            data-message={`Hola! Me interesa el ${pack.name} ($${pack.price}/mes)`}
-          >
-            Comenzar
-          </button>
-        </div>
-      ))}
+<section id="packs" class="gifts domus-editorial" aria-labelledby="gifts-title">
+  <div class="container gifts-layout">
+    <div class="reveal">
+      <p class="eyebrow">Regalar DOMUS</p>
+      <h2 id="gifts-title" class="editorial-title">Hay cosas que se regalan.<br />Y otras que se hacen sentir.</h2>
     </div>
-    
-    <p class="cta-note reveal">
-      ¿No estás seguro? Prueba un pack regalo. Envíanos a un amigo.
-      <br/>
-      Total, la conexión es lo que importa.
-    </p>
+    <div class="gifts-copy reveal" id="gifts-copy">
+      <span class="gift-mark" aria-hidden="true">Para vos.<br />Para alguien.</span>
+      <p class="eyebrow">Próximamente</p>
+      <p>Estamos preparando nuevas formas de regalar DOMUS.</p>
+      <a href={getWhatsAppLink('Hola, quiero enterarme de las nuevas formas de regalar DOMUS.')} target="_blank" rel="noopener noreferrer" class="editorial-link">Quiero enterarme <span aria-hidden="true">↗</span></a>
+    </div>
+  </div>
+
+  <div class="container">
+    <div id="gifts-kits" class="gifts-kits" hidden></div>
   </div>
 </section>
 
+<script>
+  const IMG_FALLBACK = 'https://images.unsplash.com/photo-1602928321679-560bb453f190?w=600&h=600&fit=crop';
+  const fmt = (n: number) => `$${Math.round(n).toLocaleString('es-AR')}`;
+
+  async function cargarKitsIndex() {
+    try {
+      const res = await fetch('/api/tienda/kits', { cache: 'no-store' });
+      if (!res.ok) return;
+      const kits: Array<any> = await res.json();
+      if (!kits.length) return;
+
+      const box = document.getElementById('gifts-kits')!;
+      const copy = document.getElementById('gifts-copy');
+      if (copy) copy.hidden = true;
+
+      box.innerHTML = `
+        <p class="gifts-kits-title">Kits para regalar</p>
+        <div class="gifts-kits-grid">
+          ${kits.map((k) => {
+            const img = k.imagen_url || IMG_FALLBACK;
+            const sinStock = (k.stock_actual ?? 0) <= 0;
+            return `<a class="gift-card" href="/tienda?sector=Kits">
+              <div class="gift-card-media"><img src="${img}" alt="${(k.nombre || '').replace(/</g, '&lt;')}" loading="lazy" /></div>
+              <div class="gift-card-body">
+                <h3>${(k.nombre || '').replace(/</g, '&lt;')}</h3>
+                ${k.descripcion ? `<p>${(k.descripcion || '').replace(/</g, '&lt;')}</p>` : ''}
+                <div class="gift-card-foot">
+                  <span class="gift-card-price">${fmt(Number(k.precio_final ?? k.precio_venta))}</span>
+                  <span class="gift-card-cta">${sinStock ? 'Sin stock' : 'Ver kit ↗'}</span>
+                </div>
+              </div>
+            </a>`;
+          }).join('')}
+        </div>`;
+      box.hidden = false;
+    } catch { /* sin kits: queda el bloque Próximamente */ }
+  }
+
+  cargarKitsIndex();
+</script>
+
 <style>
-  .packs-section {
-    background: linear-gradient(180deg, 
-      var(--color-brown) 0%, 
-      var(--color-brown-light) 100%);
-    padding: var(--space-xl) 0;
+  .gifts { background: var(--color-tierra); color: var(--color-hueso); }
+  .gifts-layout { display: grid; grid-template-columns: 1.3fr 0.7fr; gap: clamp(3rem, 8vw, 8rem); align-items: end; }
+  .gifts .editorial-title { margin-bottom: 0; }
+  .gifts-copy p:not(.eyebrow) { max-width: 28ch; }
+  .gift-mark { display: block; font-family: var(--font-editorial); font-size: clamp(1.75rem, 3vw, 2.5rem); line-height: 1.25; margin-bottom: 4rem; }
+  @media (max-width: 750px) {
+    .gifts-layout { grid-template-columns: 1fr; }
+    .gift-mark { margin-bottom: 2.5rem; }
   }
+</style>
 
-  .section-title {
-    text-align: center;
-    margin-bottom: var(--space-sm);
-    color: var(--color-beige-light);
-  }
-
-  .section-subtitle {
-    text-align: center;
-    color: var(--color-beige);
-    max-width: 600px;
-    margin: 0 auto var(--space-xl);
-    font-size: 1.125rem;
-  }
-
-  .packs-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: var(--space-md);
-    max-width: 1000px;
-    margin: 0 auto;
-  }
-
-  .pack-card {
-    background: white;
-    border-radius: 16px;
-    padding: var(--space-lg);
-    text-align: center;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    transition: all var(--transition-base);
-    position: relative;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .pack-card:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-  }
-
-  .pack-card.highlight {
-    border: 3px solid var(--color-olive);
-    transform: scale(1.05);
-    z-index: 1;
-  }
-
-  .pack-card.highlight:hover {
-    transform: scale(1.05) translateY(-10px);
-  }
-
-  .pack-badge {
-    position: absolute;
-    top: -12px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--color-olive);
-    color: white;
-    padding: 0.5rem 1.5rem;
-    border-radius: 20px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .pack-card h3 {
-    color: var(--color-brown);
-    margin-bottom: var(--space-xs);
-    font-size: 1.5rem;
-  }
-
-  .pack-description {
-    color: var(--color-brown-light);
-    font-size: 1rem;
-    margin-bottom: var(--space-md);
-  }
-
-  .price {
-    margin-bottom: var(--space-md);
-    padding: var(--space-md) 0;
-    border-top: 1px solid rgba(61, 43, 31, 0.1);
-    border-bottom: 1px solid rgba(61, 43, 31, 0.1);
-  }
-
-  .currency {
-    font-size: 1.5rem;
-    color: var(--color-olive);
-    vertical-align: top;
-  }
-
-  .amount {
-    font-size: 3rem;
-    font-weight: 700;
-    color: var(--color-brown);
-    line-height: 1;
-  }
-
-  .frequency {
-    font-size: 1rem;
-    color: var(--color-brown-light);
-  }
-
-  .features {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 var(--space-lg);
-    text-align: left;
-    flex-grow: 1;
-  }
-
-  .feature-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-    padding: var(--space-xs) 0;
-    color: var(--color-brown-light);
-    font-size: 0.9375rem;
-  }
-
-  .feature-item svg {
-    width: 20px;
-    height: 20px;
-    color: var(--color-olive);
-    flex-shrink: 0;
-  }
-
-  .pack-btn {
-    width: 100%;
-  }
-
-  .cta-note {
-    text-align: center;
-    color: var(--color-beige);
-    margin-top: var(--space-xl);
-    font-style: italic;
-    opacity: 0.9;
-  }
-
-  /* Responsive */
-  @media (max-width: 768px) {
-    .packs-section {
-      padding: var(--space-lg) 0;
-    }
-
-    .packs-grid {
-      grid-template-columns: 1fr;
-      max-width: 400px;
-    }
-
-    .pack-card.highlight {
-      transform: none;
-      order: -1;
-    }
-
-    .pack-card.highlight:hover {
-      transform: translateY(-10px);
-    }
-  }
+<style is:global>
+  .gifts-kits { margin-top: 4rem; }
+  .gifts-kits-title { font: 400 0.75rem var(--font-heading); text-transform: uppercase; letter-spacing: 0.2em; color: var(--color-oliva); margin-bottom: 1.5rem; }
+  .gifts-kits-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 1.25rem; }
+  .gift-card { display: flex; flex-direction: column; background: var(--color-hueso-soft); border-radius: 12px; overflow: hidden; text-decoration: none; color: var(--color-tierra); transition: transform 0.25s ease, box-shadow 0.25s ease; }
+  .gift-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25); }
+  .gift-card-media { aspect-ratio: 4 / 3; overflow: hidden; background: var(--color-hueso-light); }
+  .gift-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .gift-card-body { padding: 0.875rem 1rem 1.125rem; display: flex; flex-direction: column; gap: 0.375rem; flex: 1; }
+  .gift-card-body h3 { font-family: var(--font-editorial); font-weight: 400; font-size: 1.125rem; margin: 0; }
+  .gift-card-body p { font-size: 0.875rem; line-height: 1.5; color: rgba(96, 72, 17, 0.7); margin: 0; }
+  .gift-card-foot { margin-top: auto; display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; padding-top: 0.75rem; }
+  .gift-card-price { font-family: var(--font-heading); font-weight: 700; font-size: 1.125rem; }
+  .gift-card-cta { font: 400 0.75rem var(--font-heading); text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-oliva-dark); }
 </style>

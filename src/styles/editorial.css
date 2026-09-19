@@ -1,0 +1,9 @@
+/* Lenguaje compartido de las secciones editoriales del inicio. */
+.domus-editorial { padding: clamp(4.5rem, 9vw, 8rem) 0; scroll-margin-top: 6rem; color: var(--color-tierra); background: var(--color-hueso); }
+.domus-editorial .eyebrow { font-family: var(--font-heading); font-size: 0.75rem; font-weight: 400; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 1.75rem; }
+.domus-editorial .editorial-title { font-family: var(--font-editorial); font-size: clamp(2.4rem, 5vw, 4.5rem); font-weight: 400; line-height: 1.12; letter-spacing: -0.035em; text-wrap: balance; margin-bottom: 2rem; }
+.domus-editorial .editorial-link { display: inline-flex; align-items: center; justify-content: space-between; gap: 2rem; padding: 0.85rem 0; border-bottom: 1px solid currentColor; font-family: var(--font-heading); font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; background: transparent; color: inherit; cursor: pointer; }
+.domus-editorial a:focus-visible, .domus-editorial button:focus-visible { outline: 2px solid currentColor; outline-offset: 6px; }
+.domus-editorial .editorial-link:hover { opacity: 0.75; }
+.domus-editorial .editorial-note { font-size: 0.875rem; line-height: 1.6; }
+@media (max-width: 600px) { .domus-editorial .container { padding-inline: 1.25rem; } }

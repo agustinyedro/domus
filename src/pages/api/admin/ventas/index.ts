@@ -5,6 +5,7 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import { getUsuarioActual, createSupabaseServer } from '@/lib/supabase';
 import { VentaSchema, VentaBatchSchema } from '@/lib/validations';
+import { resolverKit } from '@/lib/kits';
 
 export const GET: APIRoute = async ({ request, cookies }) => {
   const user = await getUsuarioActual(request, cookies);
@@ -15,7 +16,7 @@ export const GET: APIRoute = async ({ request, cookies }) => {
   const supabase = createSupabaseServer(request, cookies);
   const { data, error } = await supabase
     .from('ventas')
-    .select('id, fecha, total, ganancia, estado, source, ventas_items ( cantidad, precio_unitario, producto_id, productos ( nombre ) )')
+    .select('id, fecha, total, ganancia, estado, metodo_pago, source, ventas_items ( cantidad, precio_unitario, producto_id, productos ( nombre ) )')
     .eq('usuario_id', user.id)
     .order('fecha', { ascending: false })
     .limit(100);
@@ -55,13 +56,36 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   for (const item of items) {
     const { data: prod, error: prodError } = await supabase
       .from('productos')
-      .select('id, nombre, precio_venta, precio_oferta, es_oferta')
+      .select('id, nombre, precio_venta, precio_oferta, es_oferta, kit_id')
       .eq('id', item.producto_id)
       .eq('usuario_id', user.id)
       .single();
 
     if (prodError || !prod) {
       return new Response(JSON.stringify({ error: `Producto no encontrado: ${item.producto_id}` }), { status: 404 });
+    }
+
+    const precio = (prod.es_oferta && prod.precio_oferta && prod.precio_oferta < prod.precio_venta)
+      ? Number(prod.precio_oferta)
+      : Number(prod.precio_venta);
+
+    // Kit: stock y costo derivados de componentes
+    if (prod.kit_id) {
+      const kit = await resolverKit(supabase, prod.kit_id);
+      if (!kit) {
+        return new Response(JSON.stringify({ error: `El kit "${prod.nombre}" no tiene productos cargados.` }), { status: 400 });
+      }
+      if (item.cantidad > kit.stock) {
+        return new Response(
+          JSON.stringify({ error: `Stock insuficiente: quedan ${kit.stock} kit(s) de "${prod.nombre}". No se registró nada.` }),
+          { status: 400 }
+        );
+      }
+      resueltos.push({
+        producto_id: item.producto_id, kit_id: prod.kit_id, componentes: kit.componentes,
+        nombre: prod.nombre, cantidad: item.cantidad, precio, costo: kit.costo,
+      });
+      continue;
     }
 
     const { data: ultimaCompra } = await supabase
@@ -73,9 +97,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       .limit(1)
       .single();
 
-    const precio = (prod.es_oferta && prod.precio_oferta && prod.precio_oferta < prod.precio_venta)
-      ? Number(prod.precio_oferta)
-      : Number(prod.precio_venta);
     const costo = ultimaCompra ? Number(ultimaCompra.costo_unitario) : 0;
 
     const { data: movs } = await supabase
@@ -96,7 +117,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       );
     }
 
-    resueltos.push({ producto_id: item.producto_id, nombre: prod.nombre, cantidad: item.cantidad, precio, costo });
+    resueltos.push({ producto_id: item.producto_id, kit_id: null, componentes: null, nombre: prod.nombre, cantidad: item.cantidad, precio, costo });
   }
 
   const total = resueltos.reduce((s, r) => s + r.precio * r.cantidad, 0);
@@ -114,23 +135,42 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   for (const r of resueltos) {
-    await supabase.from('ventas_items').insert([{
+    const itemRow: Record<string, unknown> = {
       venta_id: venta.id,
       producto_id: r.producto_id,
       cantidad: r.cantidad,
       precio_unitario: r.precio,
       costo_unitario: r.costo,
-    }]);
+    };
+    if (r.kit_id) {
+      itemRow.kit_id = r.kit_id;
+      itemRow.componentes = r.componentes;
+    }
+    await supabase.from('ventas_items').insert([itemRow]);
 
-    await supabase.from('movimientos_stock').insert([{
-      usuario_id: user.id,
-      producto_id: r.producto_id,
-      tipo: 'VENTA',
-      cantidad: r.cantidad,
-      costo_unitario: r.costo,
-      motivo: `Venta manual`,
-      referencia_id: venta.id,
-    }]);
+    if (r.kit_id && Array.isArray(r.componentes)) {
+      for (const c of r.componentes as Array<{ producto_id: string; cantidad: number; costo_unitario: number }>) {
+        await supabase.from('movimientos_stock').insert([{
+          usuario_id: user.id,
+          producto_id: c.producto_id,
+          tipo: 'VENTA',
+          cantidad: c.cantidad * r.cantidad,
+          costo_unitario: c.costo_unitario,
+          motivo: `Venta manual · kit ${r.nombre}`,
+          referencia_id: venta.id,
+        }]);
+      }
+    } else {
+      await supabase.from('movimientos_stock').insert([{
+        usuario_id: user.id,
+        producto_id: r.producto_id,
+        tipo: 'VENTA',
+        cantidad: r.cantidad,
+        costo_unitario: r.costo,
+        motivo: `Venta manual`,
+        referencia_id: venta.id,
+      }]);
+    }
   }
 
   return new Response(JSON.stringify({ ...venta, items: resueltos }), {

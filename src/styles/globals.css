@@ -1,13 +1,23 @@
 /* DOMUS - Estilos Globales */
 
 :root {
-  /* Colores principales */
-  --color-beige: #F5F0E8;
-  --color-beige-light: #FAF8F4;
-  --color-brown: #3D2B1F;
-  --color-brown-light: #5C4033;
-  --color-olive: #988C2D;
-  --color-olive-light: #B8AB4A;
+  /* Identidad DOMUS */
+  --color-hueso: #DBD190;
+  --color-hueso-light: #E8E0B0;
+  --color-hueso-soft: #FAF8F4;
+  --color-oliva: #988C2D;
+  --color-oliva-dark: #7E7525;
+  --color-oliva-light: #B8AB4A;
+  --color-tierra: #604811;
+  --color-tierra-dark: #4A3815;
+  --color-tierra-light: #5C4033;
+
+  /* Aliases legacy (compatibilidad con secciones existentes) */
+  --color-beige: var(--color-hueso);
+  --color-beige-light: var(--color-hueso-soft);
+  --color-brown: var(--color-tierra);
+  --color-brown-light: var(--color-tierra-light);
+  --color-olive: var(--color-oliva);
   
   /* Colores por sector */
   --color-aromas: #8B7355;
@@ -21,8 +31,10 @@
   
   /* Tipografía */
   --font-heading: 'Montserrat', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-accent: 'Playfair Display', serif;
+  --font-wordmark: 'Montserrat', sans-serif;
+  --font-body: 'Bricolage Grotesque', 'Inter', sans-serif;
+  --font-editorial: 'Bricolage Grotesque', sans-serif;
+  --font-accent: 'Bricolage Grotesque', sans-serif;
   
   /* Espaciado */
   --space-xs: 0.5rem;
@@ -98,12 +110,15 @@ section {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem 2rem;
-  font-family: var(--font-heading);
-  font-weight: 500;
-  font-size: 1rem;
-  color: var(--color-beige-light);
-  background-color: var(--color-olive);
+  gap: 0.75rem;
+  padding: 1.1rem 2.5rem;
+  font-family: var(--font-wordmark);
+  font-weight: 400;
+  font-size: 0.8125rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-hueso);
+  background-color: var(--color-oliva);
   border: none;
   border-radius: 0;
   cursor: pointer;
@@ -113,7 +128,7 @@ section {
 }
 
 .btn:hover {
-  background-color: var(--color-olive-light);
+  background-color: var(--color-oliva-dark);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(152, 140, 45, 0.3);
 }
@@ -127,6 +142,24 @@ section {
 .btn-secondary:hover {
   background-color: var(--color-beige-light);
   color: var(--color-brown);
+}
+
+.link-underline {
+  font-family: var(--font-wordmark);
+  font-weight: 400;
+  font-size: 0.8125rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-tierra);
+  text-decoration: none;
+  border-bottom: 1px solid var(--color-tierra);
+  padding-bottom: 0.35rem;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.link-underline:hover {
+  color: var(--color-oliva-dark);
+  border-color: var(--color-oliva-dark);
 }
 
 /* Utilities */

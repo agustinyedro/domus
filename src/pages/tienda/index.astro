@@ -27,9 +27,15 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
     <!-- Más vendidos (se completa por JS; se oculta si no hay datos) -->
     <section id="mas-vendidos" class="tienda-section tienda-bests" hidden>
       <div class="container">
-        <div class="tienda-section-head">
-          <h2>Los más vendidos</h2>
-          <p>Los favoritos de la comunidad DOMUS.</p>
+        <div class="tienda-section-head tienda-head-row">
+          <div>
+            <h2>Los más vendidos</h2>
+            <p>Los favoritos de la comunidad DOMUS.</p>
+          </div>
+          <div class="tienda-nav">
+            <button type="button" class="t-nav" data-carousel="bests-grid" data-dir="-1" aria-label="Anterior">‹</button>
+            <button type="button" class="t-nav" data-carousel="bests-grid" data-dir="1" aria-label="Siguiente">›</button>
+          </div>
         </div>
         <div id="bests-grid" class="tienda-strip"></div>
       </div>
@@ -38,9 +44,15 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
     <!-- Ofertas (se completa por JS; se oculta si no hay datos) -->
     <section id="ofertas" class="tienda-section tienda-offers" hidden>
       <div class="container">
-        <div class="tienda-section-head">
-          <h2>Ofertas de la semana</h2>
-          <p>Descuentos reales, stock limitado.</p>
+        <div class="tienda-section-head tienda-head-row">
+          <div>
+            <h2>Ofertas de la semana</h2>
+            <p>Descuentos reales, stock limitado.</p>
+          </div>
+          <div class="tienda-nav">
+            <button type="button" class="t-nav" data-carousel="offers-grid" data-dir="-1" aria-label="Anterior">‹</button>
+            <button type="button" class="t-nav" data-carousel="offers-grid" data-dir="1" aria-label="Siguiente">›</button>
+          </div>
         </div>
         <div id="offers-grid" class="tienda-strip"></div>
       </div>
@@ -106,7 +118,7 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
           <h3>${nombre}</h3>
           ${precio}
           <button class="btn t-add" ${sinStock ? 'disabled' : ''}
-            onclick="CartManager.addItem({id: '${p.producto_id}', name: '${nombre.replace(/'/g, "\\'")}', price: ${precioFinal}, image: '${img}'})">
+            onclick="CartManager.addItem({id: '${p.producto_id}', name: '${nombre.replace(/'/g, "\\'")}', price: ${precioFinal}, image: '${img}', stock: ${(p.stock_actual ?? 0)}})">
             ${sinStock ? 'Sin stock' : 'Agregar'}
           </button>
         </div>
@@ -129,53 +141,66 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
     }
   }
 
-  cargarTira('/api/tienda/mas-vendidos?limit=4', 'bests-grid', 'mas-vendidos');
-  cargarTira('/api/tienda/ofertas?limit=4', 'offers-grid', 'ofertas');
+  cargarTira('/api/tienda/mas-vendidos?limit=8', 'bests-grid', 'mas-vendidos');
+  cargarTira('/api/tienda/ofertas?limit=8', 'offers-grid', 'ofertas');
+
+  // Flechas del carrusel
+  document.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest('.t-nav') as HTMLElement | null;
+    if (!btn) return;
+    const grid = document.getElementById(btn.dataset.carousel || '');
+    if (!grid) return;
+    const paso = grid.clientWidth * 0.8;
+    grid.scrollBy({ left: Number(btn.dataset.dir) * paso, behavior: 'smooth' });
+  });
 </script>
 
-<style>
+<style is:global>
   .tienda-page {
     padding-top: 80px;
   }
 
-  /* La tienda usa casi todo el ancho (landing: 1200px + 2rem de padding) */
+  /* Contenedor más contenido: grilla densa tipo marketplace */
   .tienda-page .container {
-    max-width: 1520px;
-    padding-left: 1rem;
-    padding-right: 1rem;
+    max-width: 1280px;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
   }
 
   .tienda-hero {
-    background: linear-gradient(135deg,
-      var(--color-brown) 0%,
-      var(--color-brown-light) 55%,
-      var(--color-olive) 130%);
-    color: white;
-    padding: 3.5rem 0;
+    background: var(--color-hueso);
+    border-bottom: 1px solid rgba(96, 72, 17, 0.22);
+    color: var(--color-tierra);
+    padding: 2.25rem 0;
   }
 
   .tienda-eyebrow {
     text-transform: uppercase;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.22em;
     font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--color-olive-light);
+    font-weight: 400;
+    font-family: 'Montserrat', sans-serif;
+    color: var(--color-oliva-dark);
     margin: 0 0 0.75rem;
   }
 
   .tienda-hero h1 {
     margin: 0 0 0.5rem;
-    font-size: clamp(2.25rem, 4.5vw, 3.5rem);
+    font-family: 'Bricolage Grotesque', serif;
+    font-weight: 400;
+    color: var(--color-tierra);
+    font-size: clamp(2rem, 4vw, 3rem);
   }
 
   .tienda-tagline {
     margin: 0;
-    font-size: 1.2rem;
-    opacity: 0.9;
+    font-family: 'Bricolage Grotesque', serif;
+    font-size: 1.125rem;
+    color: rgba(96, 72, 17, 0.8);
   }
 
   .tienda-section {
-    padding: 3.5rem 0;
+    padding: 2.5rem 0;
   }
 
   .tienda-section:nth-of-type(3) {
@@ -187,29 +212,79 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
   }
 
   .tienda-offers {
-    background: linear-gradient(180deg, #fff8f0 0%, #ffffff 100%);
+    background: var(--color-hueso-soft);
   }
 
   .tienda-section-head {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .tienda-head-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .tienda-nav {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .t-nav {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(96, 72, 17, 0.25);
+    background: #fff;
+    color: var(--color-tierra);
+    font-size: 1.375rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .t-nav:hover {
+    background: var(--color-oliva);
+    border-color: var(--color-oliva);
+    color: var(--color-hueso);
   }
 
   .tienda-section-head h2 {
     margin: 0 0 0.25rem;
     color: var(--color-brown);
-    font-size: clamp(1.5rem, 2.5vw, 2rem);
+    font-size: clamp(1.375rem, 2.2vw, 1.75rem);
   }
 
   .tienda-section-head p {
     margin: 0;
     color: var(--color-brown-light);
-    font-size: 1.0625rem;
+    font-size: 1rem;
   }
 
+  /* Carrusel horizontal (estilo marketplace) */
   .tienda-strip {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1.25rem;
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scroll-behavior: smooth;
+    padding-bottom: 0.75rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(96, 72, 17, 0.3) transparent;
+  }
+
+  .tienda-strip::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .tienda-strip::-webkit-scrollbar-thumb {
+    background: rgba(96, 72, 17, 0.25);
+    border-radius: 999px;
   }
 
   .t-card {
@@ -220,6 +295,49 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
     display: flex;
     flex-direction: column;
     height: 100%;
+  }
+
+  /* Tarjetas compactas del carrusel */
+  .tienda-strip .t-card {
+    flex: 0 0 196px;
+    scroll-snap-align: start;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  .tienda-strip .t-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(61, 43, 31, 0.14);
+  }
+
+  .tienda-strip .t-media {
+    aspect-ratio: 1 / 1;
+  }
+
+  .tienda-strip .t-body {
+    padding: 0.75rem 0.875rem 1rem;
+    gap: 0.25rem;
+  }
+
+  .tienda-strip .t-cat {
+    font-size: 0.6875rem;
+  }
+
+  .tienda-strip .t-body h3 {
+    font-size: 0.9375rem;
+    min-height: calc(1.3em * 2);
+  }
+
+  .tienda-strip .t-price {
+    font-size: 1.125rem;
+  }
+
+  .tienda-strip .t-price-old {
+    font-size: 0.8125rem;
+  }
+
+  .tienda-strip .t-add {
+    padding: 0.625rem 1rem;
+    font-size: 0.75rem;
   }
 
   .t-media {
@@ -311,16 +429,19 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
 
   @media (max-width: 768px) {
     .tienda-hero {
-      padding: 2.5rem 0;
+      padding: 1.75rem 0;
     }
 
     .tienda-section {
-      padding: 2.25rem 0;
+      padding: 2rem 0;
     }
 
-    .tienda-strip {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
+    .tienda-strip .t-card {
+      flex: 0 0 158px;
+    }
+
+    .tienda-nav {
+      display: none;
     }
 
     .tienda-tagline {
