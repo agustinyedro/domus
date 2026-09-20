@@ -4,6 +4,8 @@
 import { z } from 'zod';
 
 export const ProductoSchema = z.object({
+  grupo_id: z.string().uuid('Grupo de producto inválido').nullable().optional(),
+  variante: z.string().min(1, 'La variante es requerida').max(120).default('Única'),
   sku: z.string().min(1, 'SKU es requerido').max(100),
   nombre: z.string().min(1, 'Nombre es requerido').max(255),
   descripcion: z.string().max(1000).nullable().optional(),

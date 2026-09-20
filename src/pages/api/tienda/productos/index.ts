@@ -44,7 +44,7 @@ export const GET: APIRoute = async ({ url }) => {
 
     // Filtro búsqueda
     if (q) {
-      query = query.or(`nombre.ilike.%${q}%,sku.ilike.%${q}%,descripcion.ilike.%${q}%`);
+      query = query.or(`nombre.ilike.%${q}%,variante.ilike.%${q}%,sku.ilike.%${q}%,descripcion.ilike.%${q}%`);
     }
 
     // Filtro sector/categoría

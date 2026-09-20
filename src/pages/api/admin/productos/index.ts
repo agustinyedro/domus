@@ -42,9 +42,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   const supabase = createSupabaseServer(request, cookies);
+  const producto = { ...parsed.data };
+  if (!producto.grupo_id) delete producto.grupo_id;
   const { data, error } = await supabase
     .from('productos')
-    .insert([{ ...parsed.data, usuario_id: user.id }])
+    .insert([{ ...producto, usuario_id: user.id }])
     .select()
     .single();
 

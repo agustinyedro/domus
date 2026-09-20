@@ -179,13 +179,14 @@ const CartManager = {
     const existing = cart.find(item => item.id === product.id);
     const stock = Number(product.stock);
     const tieneStock = Number.isFinite(stock) && stock >= 0;
+    const cantidad = Math.max(1, Math.floor(Number(product.quantity) || 1));
 
     if (existing) {
-      if (tieneStock && existing.quantity + 1 > stock) {
+      if (tieneStock && existing.quantity + cantidad > stock) {
         this.showNotification(stock > 0 ? `Solo quedan ${stock} de ${product.name}` : `${product.name} sin stock por ahora`);
         return;
       }
-      existing.quantity += 1;
+      existing.quantity += cantidad;
       if (product.image && !existing.image) existing.image = product.image;
       if (tieneStock) existing.stock = stock;
     } else {
@@ -193,7 +194,11 @@ const CartManager = {
         this.showNotification(`${product.name} sin stock por ahora`);
         return;
       }
-      cart.push({ ...product, quantity: 1 });
+      if (tieneStock && cantidad > stock) {
+        this.showNotification(`Solo quedan ${stock} de ${product.name}`);
+        return;
+      }
+      cart.push({ ...product, quantity: cantidad });
     }
 
     this.saveCart(cart);

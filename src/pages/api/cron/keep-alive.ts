@@ -8,17 +8,37 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
+import { env } from 'cloudflare:workers';
 
-const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-const serviceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
-const cronSecret = import.meta.env.CRON_SECRET;
+type WorkerEnv = {
+  PUBLIC_SUPABASE_URL?: string;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
+  CRON_SECRET?: string;
+};
 
 export const GET: APIRoute = async ({ url }) => {
+  // Los Secrets configurados en Cloudflare existen en el runtime del Worker.
+  // El fallback mantiene el endpoint utilizable durante el desarrollo local.
+  const workerEnv = env as WorkerEnv;
+  const supabaseUrl = workerEnv.PUBLIC_SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL;
+  const serviceKey = workerEnv.SUPABASE_SERVICE_ROLE_KEY || import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+  const cronSecret = workerEnv.CRON_SECRET || import.meta.env.CRON_SECRET;
+
   // 1. Validar secreto (sin secreto no hay tick para nadie)
   const key = url.searchParams.get('key');
   if (!cronSecret || key !== cronSecret) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (!supabaseUrl || !serviceKey) {
+    return new Response(JSON.stringify({
+      ok: false,
+      error: 'Missing Supabase runtime configuration',
+    }), {
+      status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
   }

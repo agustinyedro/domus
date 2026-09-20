@@ -31,7 +31,6 @@
             <option value="precio_asc">Menor precio</option>
             <option value="precio_desc">Mayor precio</option>
             <option value="descuento">Mayor descuento</option>
-            <option value="rating">Mejor valorados</option>
             <option value="nombre">Nombre A–Z</option>
           </select>
         </label>
@@ -108,28 +107,14 @@
           </label>
         </div>
 
-        <div class="shop-filter-group">
-          <h3>Valoración mínima</h3>
-          <label v-for="r in [4, 3, 0]" :key="r" class="shop-check">
-            <input
-              type="radio"
-              name="shop-rating"
-              :value="r"
-              v-model.number="filtros.rating"
-              @change="onFiltrosChange"
-            />
-            <span v-if="r > 0">{{ '★'.repeat(r) }}<span class="shop-stars-off">{{ '★'.repeat(5 - r) }}</span> o más</span>
-            <span v-else>Todas</span>
-          </label>
-        </div>
       </aside>
 
       <!-- Resultados -->
       <div class="shop-results">
         <p class="shop-results-count" role="status">
           <template v-if="loading">Buscando productos…</template>
-          <template v-else-if="productos.length === 0">Sin resultados para esta combinación de filtros.</template>
-          <template v-else>{{ productos.length }} {{ productos.length === 1 ? 'producto' : 'productos' }}</template>
+          <template v-else-if="grupos.length === 0">Sin resultados para esta combinación de filtros.</template>
+          <template v-else>{{ grupos.length }} {{ grupos.length === 1 ? 'producto' : 'productos' }}</template>
         </p>
 
         <div v-if="error" class="shop-error">
@@ -137,52 +122,144 @@
         </div>
 
         <div v-else class="shop-grid">
-          <article v-for="p in productos" :key="p.producto_id || p.id" class="shop-card">
-            <div class="shop-card-media">
+          <article
+            v-for="g in grupos"
+            :key="g.grupo_id"
+            class="shop-card"
+            @click="abrirProducto(g)"
+          >
+            <button class="shop-card-media" type="button" @click.stop="abrirProducto(g)" :aria-label="`Ver ${g.principal.nombre}`">
               <img
-                :src="fotoDe(p)"
-                :alt="p.nombre"
+                :src="fotoDe(g.principal)"
+                :alt="g.principal.nombre"
                 loading="lazy"
-                @error="onImgError($event, p.categoria)"
+                @error="onImgError($event, g.principal.categoria)"
               />
-              <span v-if="p.vendidos_90d > 0" class="shop-badge shop-badge-sold">MÁS VENDIDO</span>
-              <span v-if="p.descuento_pct > 0" class="shop-badge shop-badge-off">-{{ p.descuento_pct }}%</span>
-            </div>
+              <span
+                v-if="g.principal.stock_actual > 0 && g.principal.stock_actual <= g.principal.stock_minimo"
+                class="shop-badge shop-badge-low"
+              >🔥 ÚLTIMA{{ g.principal.stock_actual === 1 ? '' : 'S' }} {{ g.principal.stock_actual }} UNIDAD{{ g.principal.stock_actual === 1 ? '' : 'ES' }}</span>
+              <span v-else-if="g.vendidos > 0" class="shop-badge shop-badge-sold">MÁS VENDIDO</span>
+              <span v-if="g.principal.descuento_pct > 0" class="shop-badge shop-badge-off">-{{ g.principal.descuento_pct }}%</span>
+            </button>
 
             <div class="shop-card-body">
-              <p class="shop-card-cat">{{ p.categoria || 'General' }}</p>
-              <h3 class="shop-card-name">{{ p.nombre }}</h3>
+              <p class="shop-card-cat">{{ g.principal.categoria || 'General' }}</p>
+              <h3 class="shop-card-name">{{ g.principal.nombre }}</h3>
 
-              <p class="shop-card-rating" :aria-label="`Valoración ${Number(p.rating_promedio || 0).toFixed(1)} de 5`">
-                <span class="shop-stars">{{ estrellas(p.rating_promedio) }}</span>
-                <span v-if="(p.rating_cantidad || 0) > 0" class="shop-rating-n">({{ p.rating_cantidad }})</span>
-              </p>
+              <p v-if="g.variantes.length > 1" class="shop-variant-summary">{{ g.variantes.length }} variantes disponibles</p>
+              <p v-if="g.principal.descripcion" class="shop-card-description">{{ g.principal.descripcion }}</p>
 
               <div class="shop-card-price">
-                <template v-if="p.descuento_pct > 0">
-                  <span class="shop-price-old">${{ Number(p.precio_venta).toLocaleString('es-AR') }}</span>
-                  <span class="shop-price">${{ Number(p.precio_final).toLocaleString('es-AR') }}</span>
+                <template v-if="g.principal.descuento_pct > 0">
+                  <span class="shop-price-old">${{ Number(g.principal.precio_venta).toLocaleString('es-AR') }}</span>
+                  <span class="shop-price">${{ Number(g.principal.precio_final).toLocaleString('es-AR') }}</span>
                 </template>
-                <span v-else class="shop-price">${{ Number(p.precio_final ?? p.precio_venta).toLocaleString('es-AR') }}</span>
+                <span v-else class="shop-price">${{ Number(g.principal.precio_final ?? g.principal.precio_venta).toLocaleString('es-AR') }}</span>
               </div>
 
-              <p v-if="(p.stock_actual ?? 0) <= 0" class="shop-stock shop-stock-out">Sin stock por ahora</p>
-              <p v-else-if="(p.stock_actual ?? 0) <= (p.stock_minimo ?? 5)" class="shop-stock shop-stock-low">
-                ¡Quedan {{ p.stock_actual }}!
+              <p v-if="(g.principal.stock_actual ?? 0) <= 0" class="shop-stock shop-stock-out">Sin stock por ahora</p>
+              <p v-else-if="(g.principal.stock_actual ?? 0) <= (g.principal.stock_minimo ?? 5)" class="shop-stock shop-stock-low">
+                ¡Quedan {{ g.principal.stock_actual }}!
               </p>
 
               <button
                 class="btn shop-add"
-                :disabled="(p.stock_actual ?? 0) <= 0"
-                @click="agregar(p)"
+                @click.stop="agregarDesdeCard(g)"
               >
-                {{ (p.stock_actual ?? 0) <= 0 ? 'No disponible' : 'Agregar' }}
+                Agregar
               </button>
             </div>
           </article>
         </div>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div v-if="modalGrupo && modalProducto" class="product-modal-backdrop" role="presentation" @click.self="cerrarProducto">
+        <section class="product-modal" role="dialog" aria-modal="true" :aria-labelledby="`product-title-${modalGrupo.grupo_id}`">
+          <button type="button" class="product-modal-close" aria-label="Cerrar" @click="cerrarProducto">×</button>
+          <div class="product-modal-media">
+            <img :src="fotoDe(modalProducto)" :alt="modalProducto.nombre" @error="onImgError($event, modalProducto.categoria)" />
+            <span
+              v-if="modalProducto.stock_actual > 0 && modalProducto.stock_actual <= modalProducto.stock_minimo"
+              class="shop-badge shop-badge-low product-modal-low"
+            >🔥 ÚLTIMA{{ modalProducto.stock_actual === 1 ? '' : 'S' }} {{ modalProducto.stock_actual }} UNIDAD{{ modalProducto.stock_actual === 1 ? '' : 'ES' }}</span>
+          </div>
+          <div class="product-modal-info">
+            <p class="shop-card-cat">{{ modalProducto.categoria || 'General' }}</p>
+            <div class="product-modal-heading">
+              <h2 :id="`product-title-${modalGrupo.grupo_id}`">{{ modalProducto.nombre }}</h2>
+              <button type="button" class="product-share" @click="compartirProducto" aria-label="Compartir producto">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                  <path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/>
+                </svg>
+                Compartir
+              </button>
+            </div>
+            <p v-if="shareStatus" class="product-share-status" role="status">{{ shareStatus }}</p>
+            <p v-if="modalProducto.descripcion" class="product-modal-description">{{ modalProducto.descripcion }}</p>
+
+            <label v-if="modalGrupo.variantes.length > 1" class="product-field">
+              <span>Variante</span>
+              <select v-model="modalVarianteId" @change="cantidad = 1">
+                <option v-for="v in modalGrupo.variantes" :key="v.producto_id" :value="v.producto_id">
+                  {{ v.variante }}{{ v.stock_actual <= 0 ? ' — sin stock' : '' }}
+                </option>
+              </select>
+            </label>
+            <p v-else-if="modalProducto.variante && modalProducto.variante !== 'Única'" class="product-modal-variant">
+              {{ modalProducto.variante }}
+            </p>
+
+            <div class="shop-card-price product-modal-price">
+              <span v-if="modalProducto.descuento_pct > 0" class="shop-price-old">${{ Number(modalProducto.precio_venta).toLocaleString('es-AR') }}</span>
+              <span class="shop-price">${{ Number(modalProducto.precio_final ?? modalProducto.precio_venta).toLocaleString('es-AR') }}</span>
+            </div>
+
+            <p v-if="modalProducto.stock_actual <= 0" class="shop-stock shop-stock-out">Sin stock por ahora</p>
+            <p v-else class="product-available">Disponible</p>
+
+            <div class="product-buy-row">
+              <div class="product-quantity" aria-label="Cantidad">
+                <button type="button" @click="cantidad = Math.max(1, cantidad - 1)" :disabled="cantidad <= 1">−</button>
+                <span>{{ cantidad }}</span>
+                <button type="button" @click="cantidad = Math.min(modalProducto.stock_actual, cantidad + 1)" :disabled="cantidad >= modalProducto.stock_actual">+</button>
+              </div>
+              <button class="btn product-modal-add" :disabled="modalProducto.stock_actual <= 0" @click="agregarDesdeModal">
+                {{ modalProducto.stock_actual <= 0 ? 'No disponible' : `Agregar ${cantidad} al carrito` }}
+              </button>
+            </div>
+            <p v-if="modalProducto.stock_actual > 0 && modalProducto.stock_actual <= modalProducto.stock_minimo" class="shop-stock shop-stock-low">
+              Quedan {{ modalProducto.stock_actual }} unidades de esta variante.
+            </p>
+          </div>
+
+          <div v-if="recomendados.length" class="product-recommendations">
+            <div class="product-recommendations-heading">
+              <p>También puede gustarte</p>
+              <span>Descubrí otros productos DOMUS</span>
+            </div>
+            <div class="product-recommendations-grid">
+              <button
+                v-for="r in recomendados"
+                :key="r.grupo_id"
+                type="button"
+                class="product-recommendation"
+                @click="abrirProducto(r)"
+              >
+                <img :src="fotoDe(r.principal)" :alt="r.principal.nombre" loading="lazy" />
+                <span>
+                  <strong>{{ r.principal.nombre }}</strong>
+                  <small>${{ Number(r.principal.precio_final ?? r.principal.precio_venta).toLocaleString('es-AR') }}</small>
+                </span>
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -192,6 +269,8 @@ import { ref, computed, onMounted } from 'vue';
 interface TiendaProducto {
   producto_id: string;
   id?: string;
+  grupo_id: string;
+  variante: string;
   sku: string;
   nombre: string;
   descripcion: string | null;
@@ -243,10 +322,53 @@ const filtros = ref({
   orden: 'relevancia',
   ofertas: false,
   stock: false,
-  rating: 0,
 });
 
 const productos = ref<TiendaProducto[]>([]);
+type GrupoProducto = {
+  grupo_id: string;
+  variantes: TiendaProducto[];
+  principal: TiendaProducto;
+  vendidos: number;
+};
+
+const modalGrupo = ref<GrupoProducto | null>(null);
+const modalVarianteId = ref('');
+const cantidad = ref(1);
+const shareStatus = ref('');
+const productoCompartido = ref('');
+const modalProducto = computed(() => {
+  if (!modalGrupo.value) return null;
+  return modalGrupo.value.variantes.find((v) => v.producto_id === modalVarianteId.value)
+    || modalGrupo.value.principal;
+});
+const recomendados = computed(() => {
+  if (!modalGrupo.value || !modalProducto.value) return [];
+  const otros = grupos.value.filter((g) => g.grupo_id !== modalGrupo.value?.grupo_id);
+  const mismaCategoria = otros.filter((g) => g.principal.categoria === modalProducto.value?.categoria);
+  return [...mismaCategoria, ...otros.filter((g) => !mismaCategoria.includes(g))].slice(0, 3);
+});
+
+const grupos = computed(() => {
+  const agrupados = new Map<string, TiendaProducto[]>();
+  for (const p of productos.value) {
+    const clave = p.grupo_id || p.producto_id;
+    const items = agrupados.get(clave) || [];
+    items.push(p);
+    agrupados.set(clave, items);
+  }
+  return [...agrupados.entries()].map(([grupo_id, variantes]) => {
+    variantes.sort((a, b) => a.variante.localeCompare(b.variante));
+    const principal = variantes.find((v) => v.stock_actual > 0)
+      || variantes[0];
+    return {
+      grupo_id,
+      variantes,
+      principal,
+      vendidos: variantes.reduce((total, v) => total + Number(v.vendidos_90d || 0), 0),
+    };
+  });
+});
 const loading = ref(true);
 const error = ref(false);
 const mostrarFiltros = ref(false);
@@ -276,7 +398,6 @@ const filtrosActivos = computed(() => {
   if (filtros.value.min !== null || filtros.value.max !== null) n++;
   if (filtros.value.ofertas) n++;
   if (filtros.value.stock) n++;
-  if (filtros.value.rating > 0) n++;
   return n;
 });
 
@@ -287,14 +408,8 @@ const chips = computed(() => {
   if (filtros.value.min !== null || filtros.value.max !== null) list.push({ key: 'precio', label: 'Precio', limpiar: () => { filtros.value.min = null; filtros.value.max = null; cargar(); } });
   if (filtros.value.ofertas) list.push({ key: 'ofertas', label: 'Ofertas', limpiar: () => { filtros.value.ofertas = false; cargar(); } });
   if (filtros.value.stock) list.push({ key: 'stock', label: 'Disponibles', limpiar: () => { filtros.value.stock = false; cargar(); } });
-  if (filtros.value.rating > 0) list.push({ key: 'rating', label: `${filtros.value.rating}★+`, limpiar: () => { filtros.value.rating = 0; cargar(); } });
   return list;
 });
-
-function estrellas(rating: number | null | undefined): string {
-  const r = Math.round(Number(rating) || 0);
-  return '★'.repeat(Math.min(5, Math.max(0, r))) + '☆'.repeat(5 - Math.min(5, Math.max(0, r)));
-}
 
 function onImgError(e: Event, categoria: string | null = null) {
   const img = e.target as HTMLImageElement;
@@ -304,6 +419,7 @@ function onImgError(e: Event, categoria: string | null = null) {
 
 function leerURL() {
   const params = new URLSearchParams(window.location.search);
+  productoCompartido.value = params.get('producto') || '';
   filtros.value.q = params.get('q') || '';
   filtros.value.sector = params.get('sector') || props.sectorInicial || '';
   filtros.value.min = params.get('min') ? Number(params.get('min')) : null;
@@ -311,7 +427,6 @@ function leerURL() {
   filtros.value.orden = params.get('orden') || 'relevancia';
   filtros.value.ofertas = params.get('ofertas') === '1';
   filtros.value.stock = params.get('stock') === '1';
-  filtros.value.rating = Number(params.get('rating')) || 0;
 }
 
 function escribirURL() {
@@ -323,7 +438,6 @@ function escribirURL() {
   if (filtros.value.orden !== 'relevancia') params.set('orden', filtros.value.orden);
   if (filtros.value.ofertas) params.set('ofertas', '1');
   if (filtros.value.stock) params.set('stock', '1');
-  if (filtros.value.rating > 0) params.set('rating', String(filtros.value.rating));
   const qs = params.toString();
   window.history.replaceState(null, '', qs ? `/tienda?${qs}` : '/tienda');
 }
@@ -346,12 +460,16 @@ async function cargar() {
   params.set('orden', filtros.value.orden);
   if (filtros.value.ofertas) params.set('ofertas', '1');
   if (filtros.value.stock) params.set('stock', '1');
-  if (filtros.value.rating > 0) params.set('rating', String(filtros.value.rating));
 
   try {
     const res = await fetch(`/api/tienda/productos?${params.toString()}`);
     if (!res.ok) throw new Error('fetch failed');
     productos.value = await res.json();
+    if (productoCompartido.value) {
+      const grupo = grupos.value.find((g) => g.grupo_id === productoCompartido.value);
+      productoCompartido.value = '';
+      if (grupo) abrirProducto(grupo);
+    }
   } catch {
     error.value = true;
     productos.value = [];
@@ -361,19 +479,73 @@ async function cargar() {
 }
 
 function limpiarTodo() {
-  filtros.value = { q: '', sector: '', min: null, max: null, orden: 'relevancia', ofertas: false, stock: false, rating: 0 };
+  filtros.value = { q: '', sector: '', min: null, max: null, orden: 'relevancia', ofertas: false, stock: false };
   cargar();
 }
 
-function agregar(p: TiendaProducto) {
-  const w = window as unknown as { CartManager?: { addItem: (item: { id: string; name: string; price: number; image?: string; stock?: number }) => void } };
+function abrirProducto(grupo: GrupoProducto) {
+  modalGrupo.value = grupo;
+  const primeraDisponible = grupo.variantes.find((v) => v.stock_actual > 0) || grupo.principal;
+  modalVarianteId.value = primeraDisponible.producto_id;
+  cantidad.value = 1;
+  shareStatus.value = '';
+  document.body.style.overflow = 'hidden';
+}
+
+async function compartirProducto() {
+  if (!modalGrupo.value || !modalProducto.value) return;
+  const url = `${window.location.origin}/tienda?producto=${encodeURIComponent(modalGrupo.value.grupo_id)}`;
+  const shareData = {
+    title: `${modalProducto.value.nombre} | DOMUS`,
+    text: modalProducto.value.variante && modalProducto.value.variante !== 'Única'
+      ? `Mirá ${modalProducto.value.nombre}, variante ${modalProducto.value.variante}, en DOMUS.`
+      : `Mirá ${modalProducto.value.nombre} en DOMUS.`,
+    url,
+  };
+  try {
+    if (navigator.share) {
+      await navigator.share(shareData);
+      shareStatus.value = 'Producto compartido.';
+    } else {
+      await navigator.clipboard.writeText(url);
+      shareStatus.value = 'Enlace copiado.';
+    }
+  } catch (error) {
+    if ((error as DOMException).name !== 'AbortError') shareStatus.value = 'No pudimos compartir el enlace.';
+  }
+}
+
+function cerrarProducto() {
+  modalGrupo.value = null;
+  modalVarianteId.value = '';
+  cantidad.value = 1;
+  document.body.style.overflow = '';
+}
+
+function agregar(p: TiendaProducto, unidades = 1) {
+  const w = window as unknown as { CartManager?: { addItem: (item: { id: string; name: string; price: number; image?: string; stock?: number; quantity?: number }) => void } };
   w.CartManager?.addItem({
     id: p.producto_id || (p.id as string),
-    name: p.nombre,
+    name: p.variante && p.variante !== 'Única' ? `${p.nombre} — ${p.variante}` : p.nombre,
     price: Number(p.precio_final ?? p.precio_venta),
     image: fotoDe(p),
     stock: Number(p.stock_actual ?? 0),
+    quantity: unidades,
   });
+}
+
+function agregarDesdeModal() {
+  if (!modalProducto.value) return;
+  agregar(modalProducto.value, cantidad.value);
+  cerrarProducto();
+}
+
+function agregarDesdeCard(grupo: GrupoProducto) {
+  if (grupo.variantes.length > 1) {
+    abrirProducto(grupo);
+    return;
+  }
+  agregar(grupo.principal, 1);
 }
 
 onMounted(() => {
@@ -384,6 +556,9 @@ onMounted(() => {
     if (!document.hidden) cargar();
   });
   window.addEventListener('domus:cart-cleared', () => cargar());
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && modalGrupo.value) cerrarProducto();
+  });
 });
 </script>
 
@@ -655,6 +830,7 @@ onMounted(() => {
   flex-direction: column;
   height: 100%;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
 }
 
 @media (max-width: 1200px) {
@@ -670,9 +846,14 @@ onMounted(() => {
 
 .shop-card-media {
   position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
   aspect-ratio: 4/3;
   overflow: hidden;
   background: var(--color-beige);
+  cursor: pointer;
 }
 
 .shop-card-media img {
@@ -696,6 +877,11 @@ onMounted(() => {
 .shop-badge-sold {
   left: 0.625rem;
   background: var(--color-olive);
+}
+
+.shop-badge-low {
+  left: 0.625rem;
+  background: #a74424;
 }
 
 .shop-badge-off {
@@ -732,20 +918,45 @@ onMounted(() => {
   min-height: calc(1.3em * 2);
 }
 
-.shop-card-rating {
-  margin: 0;
+.shop-variant {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0.25rem 0;
+  font-size: 0.75rem;
+  color: var(--color-brown-light);
+}
+
+.shop-variant select {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(61, 43, 31, 0.2);
+  border-radius: 7px;
+  background: white;
+  color: var(--color-brown);
+  font: inherit;
+}
+
+.shop-variant-single {
+  margin: 0.15rem 0;
+  color: var(--color-brown-light);
   font-size: 0.875rem;
 }
 
-.shop-stars {
-  color: #d69e2e;
-  letter-spacing: 0.1em;
+.shop-variant-summary {
+  margin: 0.15rem 0;
+  color: var(--color-brown-light);
+  font-size: 0.875rem;
 }
 
-.shop-rating-n {
+.shop-card-description {
+  margin: 0.15rem 0;
   color: var(--color-brown-light);
-  font-size: 0.75rem;
-  margin-left: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .shop-card-price {
@@ -789,6 +1000,315 @@ onMounted(() => {
 .shop-add:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.product-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(35, 25, 15, 0.62);
+  backdrop-filter: blur(4px);
+}
+
+.product-modal {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  width: min(1040px, calc(100vw - 2rem));
+  max-width: 100%;
+  max-height: calc(100vh - 2rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-radius: 18px;
+  background: #fffdf8;
+  box-shadow: 0 24px 70px rgba(35, 25, 15, 0.28);
+}
+
+.product-recommendations {
+  grid-column: 1 / -1;
+  min-width: 0;
+  width: 100%;
+  padding: 1.5rem;
+  border-top: 1px solid rgba(61, 43, 31, 0.1);
+  background: #f7f2e7;
+}
+
+.product-recommendations-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.product-recommendations-heading p {
+  margin: 0;
+  color: var(--color-brown);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.product-recommendations-heading span {
+  color: var(--color-brown-light);
+  font-size: 0.8rem;
+}
+
+.product-recommendations-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.product-recommendation {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.55rem;
+  border: 1px solid rgba(61, 43, 31, 0.1);
+  border-radius: 10px;
+  background: #fffdf8;
+  color: var(--color-brown);
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.product-recommendation img {
+  width: 64px;
+  height: 64px;
+  border-radius: 7px;
+  object-fit: cover;
+}
+
+.product-recommendation span {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.product-recommendation strong {
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.product-recommendation small {
+  color: var(--color-olive);
+  font-weight: 700;
+}
+
+.product-modal-close {
+  position: absolute;
+  z-index: 2;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.94);
+  color: var(--color-brown);
+  font-size: 1.65rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.product-modal-media {
+  position: relative;
+  min-height: 520px;
+  background: var(--color-beige);
+}
+
+.product-modal-low {
+  top: 1rem;
+  left: 1rem;
+  font-size: 0.75rem;
+  padding: 0.4rem 0.75rem;
+}
+
+.product-modal-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.product-modal-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: clamp(1.5rem, 4vw, 3rem);
+}
+
+.product-modal-info h2 {
+  margin: 0.35rem 0 0.75rem;
+  color: var(--color-brown);
+  font-size: clamp(1.7rem, 4vw, 2.6rem);
+  line-height: 1.08;
+}
+
+.product-modal-heading {
+  display: grid;
+  justify-items: start;
+  gap: 0.65rem;
+  min-width: 0;
+  margin-bottom: 0.75rem;
+}
+
+.product-modal-heading h2 {
+  width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  margin-bottom: 0;
+}
+
+.product-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: auto;
+  min-width: max-content;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(61, 43, 31, 0.2);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-brown);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.product-share svg {
+  width: 17px;
+  height: 17px;
+}
+
+.product-share-status {
+  margin: -0.35rem 0 0.75rem;
+  color: var(--color-olive);
+  font-size: 0.8rem;
+}
+
+.product-modal-description {
+  margin: 0 0 1.25rem;
+  color: var(--color-brown-light);
+  line-height: 1.6;
+}
+
+.product-field {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  color: var(--color-brown);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.product-field select {
+  width: 100%;
+  padding: 0.8rem;
+  border: 1px solid rgba(61, 43, 31, 0.25);
+  border-radius: 8px;
+  background: white;
+  color: var(--color-brown);
+  font: inherit;
+}
+
+.product-modal-variant,
+.product-available {
+  margin: 0 0 0.75rem;
+  color: var(--color-olive);
+  font-weight: 600;
+}
+
+.product-modal-price {
+  margin: 0.35rem 0 0.75rem;
+}
+
+.product-buy-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  margin-top: auto;
+  padding-top: 1.25rem;
+}
+
+.product-quantity {
+  display: grid;
+  grid-template-columns: 38px 42px 38px;
+  align-items: center;
+  border: 1px solid rgba(61, 43, 31, 0.22);
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  text-align: center;
+}
+
+.product-quantity button {
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--color-brown);
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.product-quantity button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.product-modal-add {
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .product-modal {
+    grid-template-columns: 1fr;
+    max-height: calc(100vh - 1rem);
+  }
+
+  .product-modal-media {
+    min-height: 0;
+    aspect-ratio: 4/3;
+  }
+
+  .product-modal-info {
+    padding: 1.25rem;
+  }
+
+  .product-buy-row {
+    grid-template-columns: 1fr;
+  }
+
+  .product-recommendations-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-recommendations-heading {
+    display: block;
+  }
+
+  .product-quantity {
+    height: 46px;
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+@media (min-width: 721px) and (max-height: 760px) {
+  .product-modal-media {
+    min-height: 430px;
+  }
+
+  .product-modal-info {
+    padding: 1.5rem;
+  }
 }
 
 @media (max-width: 900px) {

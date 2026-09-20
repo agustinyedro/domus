@@ -20,7 +20,7 @@
         <thead>
           <tr>
             <th>SKU</th>
-            <th>Nombre</th>
+            <th>Producto / variante</th>
             <th class="text-right">Costo</th>
             <th class="text-right">Precio</th>
             <th class="text-right">Margen</th>
@@ -31,7 +31,7 @@
         <tbody>
           <tr v-for="prod in productosFiltrados" :key="prod.producto_id">
             <td><code>{{ prod.sku }}</code></td>
-            <td>{{ prod.nombre }}</td>
+            <td>{{ prod.nombre }}<br /><small>{{ prod.variante || 'Única' }}</small></td>
             <td class="text-right">${{ prod.costo.toLocaleString() }}</td>
             <td class="text-right">${{ prod.precio_venta.toLocaleString() }}</td>
             <td class="text-right">
@@ -64,6 +64,7 @@ interface ProductoConStock {
   producto_id: string;
   sku: string;
   nombre: string;
+  variante: string;
   categoria: string | null;
   costo: number;
   precio_venta: number;
@@ -94,6 +95,7 @@ const productosFiltrados = computed(() => {
   return productos.value.filter(
     (p) =>
       p.nombre.toLowerCase().includes(term) ||
+      (p.variante || '').toLowerCase().includes(term) ||
       p.sku.toLowerCase().includes(term)
   );
 });

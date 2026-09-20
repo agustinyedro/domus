@@ -23,6 +23,26 @@
       />
     </div>
 
+    <div class="admin-card" style="padding: 1rem; margin-bottom: 1rem;">
+      <p style="margin: 0 0 0.75rem; font-size: 0.875rem; font-weight: 600;">Variantes</p>
+      <div class="admin-form-group">
+        <label class="admin-form-label">Pertenece al mismo producto que</label>
+        <select v-model="form.grupo_id" class="admin-input" @change="aplicarGrupo">
+          <option value="">Producto nuevo e independiente</option>
+          <option v-for="g in gruposDisponibles" :key="g.grupo_id" :value="g.grupo_id">
+            {{ g.nombre }}
+          </option>
+        </select>
+        <p style="margin: 0.375rem 0 0; font-size: 0.75rem; color: var(--admin-text-muted);">
+          Elegí un producto existente si este registro es otro aroma o presentación del mismo producto.
+        </p>
+      </div>
+      <div class="admin-form-group" style="margin-bottom: 0;">
+        <label class="admin-form-label">Nombre de la variante</label>
+        <input v-model="form.variante" type="text" class="admin-input" maxlength="120" placeholder="Ej: Bambú" required />
+      </div>
+    </div>
+
     <div class="admin-form-group">
       <label class="admin-form-label">Categoría</label>
       <div style="display: flex; gap: 0.5rem;">
@@ -116,7 +136,7 @@
     <div class="admin-card" style="padding: 1rem;">
       <p style="margin: 0 0 0.75rem; font-size: 0.875rem; font-weight: 600;">Tienda pública</p>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.75rem;">
+      <div style="margin-bottom: 0.75rem;">
         <div class="admin-form-group">
           <label class="admin-form-label">Precio Oferta ($, opcional)</label>
           <input
@@ -129,17 +149,6 @@
           />
         </div>
 
-        <div class="admin-form-group">
-          <label class="admin-form-label">Rating (0–5)</label>
-          <input
-            v-model.number="form.rating_promedio"
-            type="number"
-            class="admin-input"
-            min="0"
-            max="5"
-            step="0.5"
-          />
-        </div>
       </div>
 
       <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; margin-bottom: 0.5rem;">
@@ -213,6 +222,8 @@ interface Categoria {
 
 interface Producto {
   id: string;
+  grupo_id: string;
+  variante: string;
   sku: string;
   nombre: string;
   descripcion: string | null;
@@ -232,6 +243,8 @@ const props = defineProps<{ producto?: Producto | null }>();
 const emit = defineEmits<{ saved: [] }>();
 
 const form = ref({
+  grupo_id: props.producto?.grupo_id || '',
+  variante: props.producto?.variante || 'Única',
   sku: props.producto?.sku || '',
   nombre: props.producto?.nombre || '',
   descripcion: props.producto?.descripcion || '',
@@ -250,6 +263,26 @@ const form = ref({
 const loading = ref(false);
 const error = ref('');
 const success = ref('');
+const catalogo = ref<Array<Producto & { producto_id?: string }>>([]);
+
+const gruposDisponibles = computed(() => {
+  const grupos = new Map<string, Producto>();
+  for (const p of catalogo.value) {
+    if (!p.grupo_id || grupos.has(p.grupo_id)) continue;
+    grupos.set(p.grupo_id, p);
+  }
+  return [...grupos.values()].sort((a, b) => a.nombre.localeCompare(b.nombre));
+});
+
+function aplicarGrupo() {
+  if (!form.value.grupo_id) return;
+  const base = catalogo.value.find((p) => p.grupo_id === form.value.grupo_id);
+  if (!base) return;
+  form.value.nombre = base.nombre;
+  form.value.descripcion = base.descripcion || '';
+  form.value.categoria = base.categoria || '';
+  form.value.imagen_url = base.imagen_url || '';
+}
 
 const margen = computed(() => {
   if (form.value.precio_venta === 0) return 0;
@@ -267,6 +300,8 @@ const descuentoPreview = computed(() => {
 watch(() => props.producto, (p) => {
   if (p) {
     form.value = {
+      grupo_id: p.grupo_id || '',
+      variante: p.variante || 'Única',
       sku: p.sku,
       nombre: p.nombre,
       descripcion: p.descripcion || '',
@@ -295,6 +330,13 @@ async function cargarCategorias() {
   try {
     const res = await fetch('/api/admin/categorias');
     if (res.ok) categorias.value = await res.json();
+  } catch { /* noop */ }
+}
+
+async function cargarCatalogo() {
+  try {
+    const res = await fetch('/api/admin/productos');
+    if (res.ok) catalogo.value = await res.json();
   } catch { /* noop */ }
 }
 
@@ -397,7 +439,10 @@ async function onArchivo(e: Event) {
   }
 }
 
-onMounted(cargarCategorias);
+onMounted(() => {
+  cargarCategorias();
+  cargarCatalogo();
+});
 
 const handleSubmit = async () => {
   loading.value = true;
@@ -412,6 +457,7 @@ const handleSubmit = async () => {
 
     const payload = {
       ...form.value,
+      grupo_id: form.value.grupo_id || null,
       imagen_url: form.value.imagen_url.trim() || null,
       categoria: form.value.categoria.trim() || null,
     };

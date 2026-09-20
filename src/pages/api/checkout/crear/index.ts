@@ -65,7 +65,7 @@ export const POST: APIRoute = async ({ request }) => {
   const ids = [...new Set(items.map((i) => i.producto_id))];
   const { data: prods, error: prodsError } = await supabase
     .from('productos')
-    .select('id, nombre, precio_venta, precio_oferta, es_oferta, activo, usuario_id, kit_id')
+    .select('id, nombre, variante, precio_venta, precio_oferta, es_oferta, activo, usuario_id, kit_id')
     .in('id', ids);
 
   if (prodsError) return json({ error: prodsError.message }, 400);
@@ -87,6 +87,9 @@ export const POST: APIRoute = async ({ request }) => {
       return json({ error: `Producto no disponible.` }, 400);
     }
 
+    const nombreVenta = p.variante && p.variante !== 'Única'
+      ? `${p.nombre} — ${p.variante}`
+      : p.nombre;
     const precioBase = metodo === 'EFECTIVO'
       ? Math.round(precioVigente(p) * (1 - DESCUENTO_EFECTIVO))
       : precioVigente(p);
@@ -104,7 +107,7 @@ export const POST: APIRoute = async ({ request }) => {
         producto_id: item.producto_id,
         kit_id: p.kit_id,
         componentes: kit.componentes,
-        nombre: p.nombre,
+        nombre: nombreVenta,
         cantidad: item.cantidad,
         precio: precioBase,
         precioLista: precioVigente(p),
@@ -140,7 +143,7 @@ export const POST: APIRoute = async ({ request }) => {
       producto_id: item.producto_id,
       kit_id: null,
       componentes: null,
-      nombre: p.nombre,
+      nombre: nombreVenta,
       cantidad: item.cantidad,
       precio: precioBase,
       precioLista: precioVigente(p),

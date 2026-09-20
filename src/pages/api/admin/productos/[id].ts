@@ -19,7 +19,7 @@ export const GET: APIRoute = async ({ params, request, cookies }) => {
   const { data, error } = await supabase
     .from('v_stock_actual')
     .select('*')
-    .eq('id', id)
+    .eq('producto_id', id)
     .eq('usuario_id', user.id)
     .single();
 
