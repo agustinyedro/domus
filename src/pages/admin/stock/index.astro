@@ -134,7 +134,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
         if (!res.ok) return;
         productos = await res.json();
         sel.innerHTML = '<option value="">— Elegí un producto —</option>' + productos
-          .map((p: any) => `<option value="${p.producto_id || p.id}">${p.nombre} (stock: ${p.stock_actual ?? 0})</option>`)
+          .map((p: any) => `<option value="${p.producto_id || p.id}">${p.nombre} · ${p.variante || 'Única'} (stock: ${p.stock_actual ?? 0})</option>`)
           .join('');
         const cats = [...new Set(productos.map((p: any) => p.categoria).filter(Boolean))].sort();
         const selCat = document.getElementById('stock-cat') as HTMLSelectElement;
@@ -159,7 +159,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
         document.getElementById('mov-historial')!.innerHTML = movs.length
           ? movs.map((m) => {
               const signo = (m.tipo === 'VENTA' || m.tipo === 'AJUSTE_NEGATIVO') ? '−' : '+';
-              const nombre = m.productos?.nombre || '';
+              const nombre = `${m.productos?.nombre || ''}${m.productos?.variante && m.productos.variante !== 'Única' ? ` · ${m.productos.variante}` : ''}`;
               const fecha = new Date(m.created_at).toLocaleString('es-AR');
               return `<tr><td>${fecha}</td><td>${nombre}</td><td>${badge(m.tipo)}</td><td class="text-right">${signo}${m.cantidad}</td><td>${m.motivo || '—'}</td></tr>`;
             }).join('')
@@ -196,36 +196,58 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
         chip(`${bajos} bajos`, 'background: #fffbeb; color: #744210;') +
         chip(`${sinStock} sin stock`, sinStock ? 'background: #fff5f5; color: #742a2a;' : '');
 
-      const filas = productos
+      const filtrados = productos
         .filter((p: any) => {
           if (cat && (p.categoria || '') !== cat) return false;
           if (est && estadoDe(p).key !== est) return false;
-          if (q && !`${p.nombre || ''} ${p.sku || ''} ${p.categoria || ''}`.toLowerCase().includes(q)) return false;
+          if (q && !`${p.nombre || ''} ${p.variante || ''} ${p.nombre_opcion || ''} ${p.sku || ''} ${p.categoria || ''}`.toLowerCase().includes(q)) return false;
           return true;
-        })
-        .sort((a: any, b: any) => {
+        });
+
+      const grupos = new Map<string, Array<any>>();
+      filtrados.forEach((p: any) => {
+        const key = p.grupo_id || p.producto_id || p.id;
+        const items = grupos.get(key) || [];
+        items.push(p);
+        grupos.set(key, items);
+      });
+
+      const gruposOrdenados = [...grupos.entries()].map(([grupo_id, items]) => ({
+        grupo_id,
+        items: items.sort((a: any, b: any) => String(a.variante || '').localeCompare(String(b.variante || ''), 'es')),
+        nombre: String(items[0]?.nombre || ''),
+        stock: items.reduce((s: number, p: any) => s + Number(p.stock_actual ?? 0), 0),
+        precio: Math.min(...items.map((p: any) => Number(p.precio_venta ?? 0))),
+      })).sort((a: any, b: any) => {
           switch (orden) {
-            case 'stock_asc': return Number(a.stock_actual ?? 0) - Number(b.stock_actual ?? 0);
-            case 'stock_desc': return Number(b.stock_actual ?? 0) - Number(a.stock_actual ?? 0);
-            case 'precio_asc': return Number(a.precio_venta ?? 0) - Number(b.precio_venta ?? 0);
-            case 'precio_desc': return Number(b.precio_venta ?? 0) - Number(a.precio_venta ?? 0);
-            default: return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es');
+            case 'stock_asc': return a.stock - b.stock;
+            case 'stock_desc': return b.stock - a.stock;
+            case 'precio_asc': return a.precio - b.precio;
+            case 'precio_desc': return b.precio - a.precio;
+            default: return a.nombre.localeCompare(b.nombre, 'es');
           }
         });
 
-      document.getElementById('stock-tabla')!.innerHTML = filas.length
-        ? filas.map((p: any) => {
+      document.getElementById('stock-tabla')!.innerHTML = gruposOrdenados.length
+        ? gruposOrdenados.map((grupo: any) => {
+          const cabecera = `<tr class="stock-group-row">
+            <td colspan="4"><strong>${grupo.nombre}</strong><span>${grupo.items.length} ${grupo.items.length === 1 ? 'opción' : 'opciones'}</span></td>
+            <td class="text-right"><strong>${grupo.stock} u.</strong></td><td></td>
+          </tr>`;
+          const opciones = grupo.items.map((p: any) => {
             const id = p.producto_id || p.id;
             const est = estadoDe(p);
-            return `<tr data-prod="${id}" style="cursor: pointer;" title="Ver detalle">
-              <td><strong>${p.nombre || ''}</strong><br/><span style="font-size: 0.75rem; color: var(--admin-text-muted);">${p.sku || ''}</span></td>
+            return `<tr data-prod="${id}" class="stock-option-row" title="Ver detalle">
+              <td><span class="stock-option-kind">${p.nombre_opcion || 'Opción'}</span><span class="stock-option-badge">${p.variante || 'Única'}</span><br/><code>${p.sku || ''}</code></td>
               <td style="font-size: 0.875rem;">${p.categoria || '—'}</td>
               <td class="text-right">$${Number(p.precio_venta ?? 0).toLocaleString('es-AR')}</td>
               <td class="text-right">${p.stock_minimo ?? '—'}</td>
-              <td class="text-right" style="font-size: 1.25rem; font-weight: 700;">${p.stock_actual ?? 0}</td>
+              <td class="text-right"><span class="stock-count stock-count-${est.key}">${p.stock_actual ?? 0}</span></td>
               <td><span class="stock-badge" style="${est.estilo}">${est.texto}</span></td>
             </tr>`;
-          }).join('')
+          }).join('');
+          return cabecera + opciones;
+        }).join('')
         : '<tr><td colspan="6" class="text-center">Sin productos para este filtro.</td></tr>';
     }
 
@@ -276,6 +298,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
           <div class="pm-hero">
             <div class="pm-hero-info">
               <h3>${p.nombre || ''}</h3>
+              <span class="stock-option-badge">${p.variante || 'Única'}</span>
               <span class="stock-badge" style="${est.estilo}">${est.texto}</span>
             </div>
             <div class="pm-stock">
@@ -302,7 +325,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
           <p class="t-center">Control de stock</p>
           <p class="t-center">${ahora}</p>
           <p class="t-sep">--------------------------------</p>
-          <p><strong>${p.nombre || ''}</strong></p>
+          <p><strong>${p.nombre || ''} · ${p.variante || 'Única'}</strong></p>
           <p>SKU: ${p.sku || '—'}</p>
           <p>Categoría: ${p.categoria || '—'}</p>
           <p>Precio: $${Number(p.precio_venta ?? 0).toLocaleString('es-AR')}</p>
@@ -427,6 +450,16 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     .mov-in { background: #f0fff4; color: #22543d; }
     .mov-out { background: #fff5f5; color: #742a2a; }
     .mov-sale { background: #ebf8ff; color: #2a4365; }
+    .stock-group-row td { background: rgba(152, 140, 45, 0.11); border-top: 2px solid rgba(152, 140, 45, 0.28); padding-top: 0.75rem; padding-bottom: 0.75rem; }
+    .stock-group-row span { margin-left: 0.65rem; color: var(--admin-text-muted); font-size: 0.75rem; font-weight: 400; }
+    .stock-option-row { cursor: pointer; }
+    .stock-option-row td:first-child { padding-left: 1.35rem; }
+    .stock-option-kind { display: block; margin-bottom: 0.25rem; color: var(--admin-text-muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .stock-option-badge { display: inline-flex; margin: 0 0 0.3rem; padding: 0.22rem 0.6rem; border: 1px solid rgba(96,72,17,.25); border-radius: 999px; background: #fffdf8; color: #604811; font-size: 0.78rem; font-weight: 700; }
+    .stock-count { display: inline-flex; min-width: 46px; justify-content: center; padding: 0.3rem 0.55rem; border-radius: 8px; font-size: 1.1rem; font-weight: 800; }
+    .stock-count-ok { background: #f0fff4; color: #22543d; }
+    .stock-count-bajo { background: #fffbeb; color: #744210; }
+    .stock-count-sin { background: #fff5f5; color: #742a2a; }
 
     /* Modal de producto */
     #prod-modal-root { position: fixed; inset: 0; z-index: 2000; }

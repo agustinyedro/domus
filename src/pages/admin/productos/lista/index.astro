@@ -21,10 +21,10 @@ const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'lon
 
     <table class="admin-table lista-tabla">
       <thead>
-        <tr><th>Producto</th><th>Categoría</th><th class="text-right">Precio</th></tr>
+        <tr><th>Producto / opción</th><th>Categoría</th><th class="text-right">Stock</th><th class="text-right">Precio</th></tr>
       </thead>
       <tbody id="lista-body">
-        <tr><td colspan="3" class="text-center">Cargando…</td></tr>
+        <tr><td colspan="4" class="text-center">Cargando…</td></tr>
       </tbody>
     </table>
 
@@ -40,19 +40,42 @@ const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'lon
         if (!res.ok) return;
         const prods: Array<any> = await res.json();
         const activos = prods.filter((p) => p.activo !== false);
-        document.getElementById('lista-body')!.innerHTML = activos.length
-          ? activos.map((p) => {
+        const grupos = new Map<string, Array<any>>();
+        activos.forEach((p) => {
+          const key = p.grupo_id || p.producto_id || p.id;
+          const items = grupos.get(key) || [];
+          items.push(p);
+          grupos.set(key, items);
+        });
+        const ordenados = [...grupos.values()]
+          .map((items) => items.sort((a, b) => String(a.variante || '').localeCompare(String(b.variante || ''), 'es')))
+          .sort((a, b) => String(a[0]?.nombre || '').localeCompare(String(b[0]?.nombre || ''), 'es'));
+
+        document.getElementById('lista-body')!.innerHTML = ordenados.length
+          ? ordenados.map((items) => {
+              const base = items[0];
+              const stockTotal = items.reduce((total, p) => total + Number(p.stock_actual ?? 0), 0);
+              const cabecera = `<tr class="lista-group-row">
+                <td colspan="2"><strong>${base.nombre || ''}</strong><span>${items.length} ${items.length === 1 ? 'opción' : 'opciones'}</span></td>
+                <td class="text-right"><strong>${stockTotal} u.</strong></td><td></td>
+              </tr>`;
+              const opciones = items.map((p) => {
               const enOferta = p.es_oferta && p.precio_oferta && Number(p.precio_oferta) < Number(p.precio_venta);
               const precio = enOferta
                 ? `<s style="color: var(--admin-text-muted); font-weight: 400; margin-right: 0.5rem;">${fmt$(Number(p.precio_venta))}</s>${fmt$(Number(p.precio_oferta))}`
                 : fmt$(Number(p.precio_final ?? p.precio_venta));
-              return `<tr>
-                <td><strong>${p.nombre}</strong><br/><span style="font-size: 0.8125rem; color: var(--admin-text-muted);">${p.sku || ''}</span></td>
+              const stock = Number(p.stock_actual ?? 0);
+              const estado = stock <= 0 ? 'sin' : stock <= Number(p.stock_minimo ?? 5) ? 'bajo' : 'ok';
+              return `<tr class="lista-option-row">
+                <td><span class="lista-option-kind">${p.nombre_opcion || 'Opción'}</span><span class="lista-option-badge">${p.variante || 'Única'}</span><br/><code>${p.sku || ''}</code></td>
                 <td>${p.categoria || '—'}</td>
+                <td class="text-right"><span class="lista-stock lista-stock-${estado}">${stock}</span></td>
                 <td class="text-right">${precio}</td>
               </tr>`;
+              }).join('');
+              return cabecera + opciones;
             }).join('')
-          : '<tr><td colspan="3" class="text-center">Sin productos activos.</td></tr>';
+          : '<tr><td colspan="4" class="text-center">Sin productos activos.</td></tr>';
       } catch { /* noop */ }
     }
 
@@ -94,6 +117,28 @@ const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'lon
       font-style: italic;
     }
 
+    .lista-group-row td {
+      padding-top: 0.75rem;
+      padding-bottom: 0.75rem;
+      background: rgba(152, 140, 45, 0.12);
+      border-top: 2px solid rgba(152, 140, 45, 0.3);
+    }
+
+    .lista-group-row span {
+      margin-left: 0.65rem;
+      color: var(--admin-text-muted);
+      font-size: 0.75rem;
+      font-weight: 400;
+    }
+
+    .lista-option-row td:first-child { padding-left: 1.25rem; }
+    .lista-option-kind { display: block; margin-bottom: 0.2rem; color: var(--admin-text-muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .lista-option-badge { display: inline-flex; padding: 0.2rem 0.55rem; border: 1px solid rgba(96,72,17,.25); border-radius: 999px; color: #604811; font-size: 0.78rem; font-weight: 700; }
+    .lista-stock { display: inline-flex; min-width: 38px; justify-content: center; padding: 0.22rem 0.45rem; border-radius: 7px; font-weight: 800; }
+    .lista-stock-ok { background: #f0fff4; color: #22543d; }
+    .lista-stock-bajo { background: #fffbeb; color: #744210; }
+    .lista-stock-sin { background: #fff5f5; color: #742a2a; }
+
     @media print {
       .lista-print {
         border: none;
@@ -108,6 +153,24 @@ const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'lon
       .admin-table th,
       .admin-table td {
         padding: 0.5rem;
+      }
+
+      .lista-group-row {
+        break-after: avoid-page;
+        page-break-after: avoid;
+      }
+
+      .lista-option-row {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .lista-group-row td,
+      .lista-stock-ok,
+      .lista-stock-bajo,
+      .lista-stock-sin {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
       }
     }
   </style>

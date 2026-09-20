@@ -18,7 +18,7 @@ export const GET: APIRoute = async ({ request, cookies, url }) => {
 
   let query = supabase
     .from('movimientos_stock')
-    .select('id, tipo, cantidad, motivo, created_at, producto_id, productos ( nombre )')
+    .select('id, tipo, cantidad, motivo, created_at, producto_id, productos ( nombre, variante )')
     .eq('usuario_id', user.id)
     .order('created_at', { ascending: false })
     .limit(limit);

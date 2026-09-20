@@ -147,7 +147,7 @@
               <p class="shop-card-cat">{{ g.principal.categoria || 'General' }}</p>
               <h3 class="shop-card-name">{{ g.principal.nombre }}</h3>
 
-              <p v-if="g.variantes.length > 1" class="shop-variant-summary">{{ g.variantes.length }} variantes disponibles</p>
+              <p v-if="g.variantes.length > 1" class="shop-variant-summary">{{ g.variantes.length }} opciones de {{ (g.principal.nombre_opcion || 'producto').toLowerCase() }}</p>
               <p v-if="g.principal.descripcion" class="shop-card-description">{{ g.principal.descripcion }}</p>
 
               <div class="shop-card-price">
@@ -201,14 +201,23 @@
             <p v-if="shareStatus" class="product-share-status" role="status">{{ shareStatus }}</p>
             <p v-if="modalProducto.descripcion" class="product-modal-description">{{ modalProducto.descripcion }}</p>
 
-            <label v-if="modalGrupo.variantes.length > 1" class="product-field">
-              <span>Variante</span>
-              <select v-model="modalVarianteId" @change="cantidad = 1">
-                <option v-for="v in modalGrupo.variantes" :key="v.producto_id" :value="v.producto_id">
-                  {{ v.variante }}{{ v.stock_actual <= 0 ? ' — sin stock' : '' }}
-                </option>
-              </select>
-            </label>
+            <div v-if="modalGrupo.variantes.length > 1" class="product-field">
+              <span>{{ modalProducto.nombre_opcion }}</span>
+              <div class="product-options" role="group" :aria-label="`Elegir ${modalProducto.nombre_opcion}`">
+                <button
+                  v-for="v in modalGrupo.variantes"
+                  :key="v.producto_id"
+                  type="button"
+                  class="product-option"
+                  :class="{ selected: modalVarianteId === v.producto_id, unavailable: v.stock_actual <= 0 }"
+                  :aria-pressed="modalVarianteId === v.producto_id"
+                  @click="modalVarianteId = v.producto_id; cantidad = 1"
+                >
+                  {{ v.variante }}
+                  <small v-if="v.stock_actual <= 0">Sin stock</small>
+                </button>
+              </div>
+            </div>
             <p v-else-if="modalProducto.variante && modalProducto.variante !== 'Única'" class="product-modal-variant">
               {{ modalProducto.variante }}
             </p>
@@ -232,7 +241,7 @@
               </button>
             </div>
             <p v-if="modalProducto.stock_actual > 0 && modalProducto.stock_actual <= modalProducto.stock_minimo" class="shop-stock shop-stock-low">
-              Quedan {{ modalProducto.stock_actual }} unidades de esta variante.
+              Quedan {{ modalProducto.stock_actual }} unidades de esta opción.
             </p>
           </div>
 
@@ -271,6 +280,7 @@ interface TiendaProducto {
   id?: string;
   grupo_id: string;
   variante: string;
+  nombre_opcion: string;
   sku: string;
   nombre: string;
   descripcion: string | null;
@@ -498,7 +508,7 @@ async function compartirProducto() {
   const shareData = {
     title: `${modalProducto.value.nombre} | DOMUS`,
     text: modalProducto.value.variante && modalProducto.value.variante !== 'Única'
-      ? `Mirá ${modalProducto.value.nombre}, variante ${modalProducto.value.variante}, en DOMUS.`
+      ? `Mirá ${modalProducto.value.nombre}, aroma o presentación ${modalProducto.value.variante}, en DOMUS.`
       : `Mirá ${modalProducto.value.nombre} en DOMUS.`,
     url,
   };
@@ -1210,14 +1220,46 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.product-field select {
-  width: 100%;
-  padding: 0.8rem;
-  border: 1px solid rgba(61, 43, 31, 0.25);
-  border-radius: 8px;
+.product-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.product-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid rgba(61, 43, 31, 0.24);
+  border-radius: 999px;
   background: white;
   color: var(--color-brown);
   font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.product-option:hover {
+  border-color: var(--color-olive);
+}
+
+.product-option.selected {
+  border-color: var(--color-brown);
+  background: var(--color-brown);
+  color: var(--color-beige);
+}
+
+.product-option.unavailable {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.product-option small {
+  font-size: 0.65rem;
+  text-decoration: none;
+  text-transform: uppercase;
 }
 
 .product-modal-variant,

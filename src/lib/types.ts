@@ -6,6 +6,7 @@ export interface Producto {
   usuario_id: string;
   grupo_id: string;
   variante: string;
+  nombre_opcion: string;
   sku: string;
   nombre: string;
   descripcion: string | null;

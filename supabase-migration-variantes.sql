@@ -6,17 +6,21 @@
 
 ALTER TABLE productos
   ADD COLUMN IF NOT EXISTS grupo_id UUID,
-  ADD COLUMN IF NOT EXISTS variante VARCHAR(120);
+  ADD COLUMN IF NOT EXISTS variante VARCHAR(120),
+  ADD COLUMN IF NOT EXISTS nombre_opcion VARCHAR(80);
 
 -- Cada producto existente comienza como su propio grupo. Luego se pueden
 -- agrupar desde el administrador sin alterar su historial ni su stock.
 UPDATE productos SET grupo_id = id WHERE grupo_id IS NULL;
 UPDATE productos SET variante = 'Única' WHERE variante IS NULL OR BTRIM(variante) = '';
+UPDATE productos SET nombre_opcion = 'Aroma o presentación' WHERE nombre_opcion IS NULL OR BTRIM(nombre_opcion) = '';
 
 ALTER TABLE productos ALTER COLUMN grupo_id SET DEFAULT gen_random_uuid();
 ALTER TABLE productos ALTER COLUMN grupo_id SET NOT NULL;
 ALTER TABLE productos ALTER COLUMN variante SET DEFAULT 'Única';
 ALTER TABLE productos ALTER COLUMN variante SET NOT NULL;
+ALTER TABLE productos ALTER COLUMN nombre_opcion SET DEFAULT 'Aroma o presentación';
+ALTER TABLE productos ALTER COLUMN nombre_opcion SET NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_productos_grupo ON productos(usuario_id, grupo_id);
 
@@ -32,6 +36,7 @@ SELECT
   p.usuario_id,
   p.grupo_id,
   p.variante,
+  p.nombre_opcion,
   p.sku,
   p.nombre,
   p.descripcion,
@@ -80,4 +85,4 @@ GROUP BY p.id;
 
 COMMENT ON COLUMN productos.grupo_id IS 'Agrupa variantes que se muestran como un solo producto en la tienda';
 COMMENT ON COLUMN productos.variante IS 'Opción vendible, por ejemplo Bambú, Vainilla o 250 ml';
-
+COMMENT ON COLUMN productos.nombre_opcion IS 'Etiqueta visible de la opción, por ejemplo Aroma, Tamaño, Sabor o Color';

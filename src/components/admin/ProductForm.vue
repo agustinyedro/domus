@@ -24,7 +24,7 @@
     </div>
 
     <div class="admin-card" style="padding: 1rem; margin-bottom: 1rem;">
-      <p style="margin: 0 0 0.75rem; font-size: 0.875rem; font-weight: 600;">Variantes</p>
+      <p style="margin: 0 0 0.75rem; font-size: 0.875rem; font-weight: 600;">Opciones del producto</p>
       <div class="admin-form-group">
         <label class="admin-form-label">Pertenece al mismo producto que</label>
         <select v-model="form.grupo_id" class="admin-input" @change="aplicarGrupo">
@@ -38,7 +38,14 @@
         </p>
       </div>
       <div class="admin-form-group" style="margin-bottom: 0;">
-        <label class="admin-form-label">Nombre de la variante</label>
+        <label class="admin-form-label">Cómo se llama esta opción</label>
+        <input v-model="form.nombre_opcion" type="text" class="admin-input" maxlength="80" placeholder="Ej: Aroma, Tamaño, Sabor o Color" required />
+        <p style="margin: 0.375rem 0 0; font-size: 0.75rem; color: var(--admin-text-muted);">
+          Este nombre se mostrará en la tienda antes de las opciones.
+        </p>
+      </div>
+      <div class="admin-form-group" style="margin: 0.75rem 0 0;">
+        <label class="admin-form-label">Valor de la opción</label>
         <input v-model="form.variante" type="text" class="admin-input" maxlength="120" placeholder="Ej: Bambú" required />
       </div>
     </div>
@@ -224,6 +231,7 @@ interface Producto {
   id: string;
   grupo_id: string;
   variante: string;
+  nombre_opcion: string;
   sku: string;
   nombre: string;
   descripcion: string | null;
@@ -245,6 +253,7 @@ const emit = defineEmits<{ saved: [] }>();
 const form = ref({
   grupo_id: props.producto?.grupo_id || '',
   variante: props.producto?.variante || 'Única',
+  nombre_opcion: props.producto?.nombre_opcion || 'Aroma o presentación',
   sku: props.producto?.sku || '',
   nombre: props.producto?.nombre || '',
   descripcion: props.producto?.descripcion || '',
@@ -282,6 +291,7 @@ function aplicarGrupo() {
   form.value.descripcion = base.descripcion || '';
   form.value.categoria = base.categoria || '';
   form.value.imagen_url = base.imagen_url || '';
+  form.value.nombre_opcion = base.nombre_opcion || 'Aroma o presentación';
 }
 
 const margen = computed(() => {
@@ -302,6 +312,7 @@ watch(() => props.producto, (p) => {
     form.value = {
       grupo_id: p.grupo_id || '',
       variante: p.variante || 'Única',
+      nombre_opcion: p.nombre_opcion || 'Aroma o presentación',
       sku: p.sku,
       nombre: p.nombre,
       descripcion: p.descripcion || '',
