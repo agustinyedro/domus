@@ -435,5 +435,14 @@ import '@/styles/remito.css';
     .ped-confirm-rows dd { margin: 0; font-weight: 500; }
     .ped-confirm-note { font-size: 0.875rem; color: var(--admin-text-muted); margin: 0 0 1.25rem; }
     .ped-confirm-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+    @media (max-width: 560px) {
+      .ped-kpis { grid-template-columns: 1fr; }
+      .ped-confirm-overlay { align-items: flex-end; padding: 0; }
+      .ped-confirm-card { max-width: none; max-height: 92dvh; overflow-y: auto; padding: 1rem; border-radius: 14px 14px 0 0; }
+      .ped-confirm-rows > div { flex-direction: column; gap: 0.15rem; }
+      .ped-confirm-rows dt { min-width: 0; }
+      .ped-confirm-actions { flex-direction: column; }
+      .ped-confirm-actions .admin-btn { width: 100%; }
+    }
   </style>
 </AdminLayout>
