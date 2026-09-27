@@ -57,6 +57,7 @@ import '@/styles/remito.css';
   </div>
 
   <script>
+    import { descargarComprobantePdf } from '../../../lib/admin-pdf';
     const fmt$ = (n: number) => `$${Math.round(n).toLocaleString('es-AR')}`;
 
     function badge(estado: string): string {
@@ -360,6 +361,7 @@ import '@/styles/remito.css';
           </div>
           <div class="ticket-actions no-print">
             <button class="admin-btn admin-btn-primary" id="ped-ticket-print">Imprimir</button>
+            <button class="admin-btn admin-btn-success" id="ped-ticket-pdf">Descargar PDF</button>
             <button class="admin-btn admin-btn-ghost" id="ped-ticket-cerrar">Cerrar</button>
           </div>
         </div>
@@ -373,6 +375,36 @@ import '@/styles/remito.css';
       });
       document.addEventListener('keydown', escTicket);
       root.querySelector('#ped-ticket-print')!.addEventListener('click', () => window.print());
+      root.querySelector('#ped-ticket-pdf')!.addEventListener('click', async (event) => {
+        const button = event.currentTarget as HTMLButtonElement;
+        button.disabled = true;
+        button.textContent = 'Generando…';
+        try {
+          await descargarComprobantePdf({
+            id: p.id,
+            fecha: p.fecha,
+            total: Number(p.total ?? 0),
+            titulo: 'Remito de pedido',
+            datos: [
+              ['Cliente', p.cliente_nombre || '—'],
+              ['Teléfono', p.cliente_telefono || '—'],
+              ['Método', p.metodo_pago || '—'],
+              ['Estado', p.estado || '—'],
+            ],
+            items: (p.ventas_items || []).map((i: any) => ({
+              cantidad: Number(i.cantidad ?? 0),
+              nombre: i.productos?.nombre || '',
+              variante: i.productos?.variante,
+              precio_unitario: Number(i.precio_unitario ?? 0),
+            })),
+          });
+        } catch {
+          window.alert('No pudimos generar el PDF. Volvé a intentarlo.');
+        } finally {
+          button.disabled = false;
+          button.textContent = 'Descargar PDF';
+        }
+      });
     }
 
     cargar();

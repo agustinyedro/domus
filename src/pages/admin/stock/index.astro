@@ -117,6 +117,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
 
   <script>
     import { precioEfectivo, RECARGO_TARJETA_DEFAULT } from '../../../lib/precios';
+    import { descargarStockPdf } from '../../../lib/admin-pdf';
 
     let productos: Array<any> = [];
 
@@ -347,6 +348,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
           <div id="pm-movs"><p class="pm-loading">Cargando…</p></div>
           <div class="prod-modal-actions no-print">
             <button class="admin-btn admin-btn-primary" id="ticket-print">Imprimir ticket</button>
+            <button class="admin-btn admin-btn-success" id="ticket-pdf">Descargar PDF</button>
             <button class="admin-btn admin-btn-ghost" id="ticket-ajustar">Ajustar stock</button>
             <button class="admin-btn admin-btn-ghost" id="ticket-cerrar">Cerrar</button>
           </div>
@@ -380,6 +382,20 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
       });
       document.addEventListener('keydown', escCerrar);
       root.querySelector('#ticket-print')!.addEventListener('click', () => window.print());
+      let movimientosTicket: Array<any> = [];
+      root.querySelector('#ticket-pdf')!.addEventListener('click', async (event) => {
+        const button = event.currentTarget as HTMLButtonElement;
+        button.disabled = true;
+        button.textContent = 'Generando…';
+        try {
+          await descargarStockPdf(p, movimientosTicket);
+        } catch {
+          window.alert('No pudimos generar el PDF. Volvé a intentarlo.');
+        } finally {
+          button.disabled = false;
+          button.textContent = 'Descargar PDF';
+        }
+      });
       root.querySelector('#ticket-ajustar')!.addEventListener('click', () => {
         cerrar();
         sel.value = id;
@@ -390,6 +406,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
       try {
         const res = await fetch(`/api/admin/movimientos?producto_id=${encodeURIComponent(id)}&limit=10`);
         const movs = res.ok ? await res.json() : [];
+        movimientosTicket = movs;
         const box = document.getElementById('ticket-movs');
         const pmBox = document.getElementById('pm-movs');
         const rows = movs.length

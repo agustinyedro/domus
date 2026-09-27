@@ -14,9 +14,10 @@ const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'lon
         <h1>DOMUS · Lista de precios</h1>
         <p>Vigente al {hoy}</p>
       </div>
-      <button id="print-btn" class="admin-btn admin-btn-primary no-print" onclick="window.print()">
-        Imprimir / Guardar PDF
-      </button>
+      <div class="lista-actions no-print">
+        <button id="print-btn" class="admin-btn admin-btn-primary" onclick="window.print()">Imprimir</button>
+        <button id="pdf-btn" class="admin-btn admin-btn-success">Descargar PDF</button>
+      </div>
     </div>
 
     <table class="admin-table lista-tabla">
@@ -33,8 +34,11 @@ const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'lon
 
   <script>
     import { precioEfectivo, RECARGO_TARJETA_DEFAULT } from '../../../../lib/precios';
+    import { descargarListaPreciosPdf } from '../../../../lib/admin-pdf';
 
     const fmt$ = (n: number) => `$${Math.round(n).toLocaleString('es-AR')}`;
+    const fechaLista = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+    let productosLista: Array<any> = [];
 
     function recargoDe(p: any): number {
       const r = Number(p.recargo_tarjeta);
@@ -56,6 +60,7 @@ const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'lon
         if (!res.ok) return;
         const prods: Array<any> = await res.json();
         const activos = prods.filter((p) => p.activo !== false);
+        productosLista = activos.map((p) => ({ ...p, precio_efectivo: efectivoDe(p) }));
         const grupos = new Map<string, Array<any>>();
         activos.forEach((p) => {
           const key = p.grupo_id || p.producto_id || p.id;
@@ -95,6 +100,21 @@ const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'lon
       } catch { /* noop */ }
     }
 
+    document.getElementById('pdf-btn')!.addEventListener('click', async (event) => {
+      const button = event.currentTarget as HTMLButtonElement;
+      if (!productosLista.length) return;
+      button.disabled = true;
+      button.textContent = 'Generando…';
+      try {
+        await descargarListaPreciosPdf(productosLista, fechaLista);
+      } catch {
+        window.alert('No pudimos generar el PDF. Volvé a intentarlo.');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Descargar PDF';
+      }
+    });
+
     cargar();
   </script>
 
@@ -125,6 +145,8 @@ const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'lon
       color: var(--admin-text-muted);
       font-size: 0.875rem;
     }
+
+    .lista-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
     .lista-nota {
       margin: 1.5rem 0 0;
@@ -188,6 +210,12 @@ const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'lon
         print-color-adjust: exact;
         -webkit-print-color-adjust: exact;
       }
+    }
+
+    @media (max-width: 640px) {
+      .lista-print { padding: 1rem; }
+      .lista-header { flex-direction: column; }
+      .lista-actions, .lista-actions .admin-btn { width: 100%; }
     }
   </style>
 </AdminLayout>

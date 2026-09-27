@@ -65,6 +65,7 @@ import '@/styles/remito.css';
 
   <script>
     import { esPagoSinRecargo, precioEfectivo, RECARGO_TARJETA_DEFAULT, ETIQUETAS_METODO_PAGO } from '../../../lib/precios';
+    import { descargarComprobantePdf } from '../../../lib/admin-pdf';
 
     const rowsBox = document.getElementById('v-rows')!;
     const metodoSel = document.getElementById('v-metodo') as HTMLSelectElement;
@@ -331,6 +332,7 @@ import '@/styles/remito.css';
           </div>
           <div class="ticket-actions no-print">
             <button class="admin-btn admin-btn-primary" id="ven-ticket-print">Imprimir</button>
+            <button class="admin-btn admin-btn-success" id="ven-ticket-pdf">Descargar PDF</button>
             <button class="admin-btn admin-btn-ghost" id="ven-ticket-cerrar">Cerrar</button>
           </div>
         </div>
@@ -343,6 +345,29 @@ import '@/styles/remito.css';
         if ((ev.target as HTMLElement).classList.contains('ticket-overlay')) cerrarNota();
       });
       root.querySelector('#ven-ticket-print')!.addEventListener('click', () => window.print());
+      root.querySelector('#ven-ticket-pdf')!.addEventListener('click', async (event) => {
+        const button = event.currentTarget as HTMLButtonElement;
+        button.disabled = true;
+        button.textContent = 'Generando…';
+        try {
+          await descargarComprobantePdf({
+            id: v.id,
+            fecha: v.fecha,
+            total: v.total,
+            titulo: 'Nota de venta',
+            datos: [
+              ['Medio de pago', ETIQUETAS_METODO_PAGO[v.metodo || ''] || v.metodo || '—'],
+              ['Estado', ESTADOS_NOTA[v.estado || ''] || v.estado || '—'],
+            ],
+            items: v.items,
+          });
+        } catch {
+          window.alert('No pudimos generar el PDF. Volvé a intentarlo.');
+        } finally {
+          button.disabled = false;
+          button.textContent = 'Descargar PDF';
+        }
+      });
       document.addEventListener('keydown', escNota);
       (root.querySelector('#ven-ticket-print') as HTMLButtonElement | null)?.focus();
     }
