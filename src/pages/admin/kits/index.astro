@@ -532,5 +532,15 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     .kit-chip:hover { border-color: #988C2D; color: #988C2D; }
     .kit-warn { margin: 0.75rem 0 0; font-size: 0.8125rem; color: #b7791f; }
     .kit-warn.bad { color: #e53e3e; font-weight: 600; }
+    @media (max-width: 640px) {
+      .kit-modal-overlay { padding: 0; }
+      .kit-modal-card { min-height: 100dvh; max-width: none; padding: 1rem; border-radius: 0; }
+      .kit-modal-head { position: sticky; top: 0; z-index: 2; padding: 0.5rem 0; background: #fff; }
+      .kit-modal-x { width: 44px; height: 44px; }
+      .kit-modal-actions { position: sticky; bottom: 0; padding: 0.75rem 0; background: #fff; flex-direction: column; }
+      .kit-modal-actions .admin-btn { width: 100%; }
+      .kit-add-row > * { width: 100% !important; max-width: none !important; min-width: 0 !important; }
+      .kit-price-row input { width: 100%; max-width: none; }
+    }
   </style>
 </AdminLayout>

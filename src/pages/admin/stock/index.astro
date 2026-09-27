@@ -521,6 +521,18 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     .pm-mov-info small { font-size: 0.75rem; color: #8a7a5c; }
     .prod-modal-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1.25rem; }
 
+    @media (max-width: 600px) {
+      .prod-modal-overlay { padding: 0; }
+      .prod-modal-card { min-height: 100dvh; max-width: none; padding: 1rem; border-radius: 0; }
+      .pm-brand { position: sticky; top: 0; z-index: 2; padding: 0.5rem 0; background: #FDFBF5; }
+      .prod-modal-x { width: 44px; height: 44px; }
+      .pm-hero { align-items: flex-start; }
+      .pm-stock { min-width: 70px; }
+      .pm-grid { grid-template-columns: 1fr; }
+      .prod-modal-actions { position: sticky; bottom: 0; padding: 0.75rem 0; background: #FDFBF5; flex-direction: column; }
+      .prod-modal-actions .admin-btn { width: 100%; }
+    }
+
     /* Ticket 80mm (solo impresión) */
     #prod-modal-root .ticket { display: none; }
 

@@ -190,4 +190,28 @@ onBeforeUnmount(() => {
   max-height: calc(100vh - 10rem);
   overflow-y: auto;
 }
+
+@media (max-width: 640px) {
+  .pm-overlay {
+    padding: 0;
+  }
+
+  .pm-dialog {
+    min-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .pm-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 0.9rem 1rem;
+    background: var(--admin-bg, #fff);
+  }
+
+  .pm-body {
+    max-height: none;
+    padding: 1rem;
+  }
+}
 </style>
