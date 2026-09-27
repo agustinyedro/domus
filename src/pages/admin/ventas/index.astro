@@ -81,9 +81,20 @@ import '@/styles/remito.css';
     const labelTotal = () => (metodoSel.value === 'TRANSFERENCIA' ? 'Total transferencia' : 'Total efectivo');
 
     const varianteDe = (v?: string | null) => (v && v.trim() !== '' && v !== 'Única' ? ` — ${v}` : '');
+    const normalizarBusqueda = (value: unknown) => String(value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
 
-    function opcionesProductos(selValue = ''): string {
-      return '<option value="">— Elegí —</option>' + productos
+    function opcionesProductos(selValue = '', filtro = ''): string {
+      const query = normalizarBusqueda(filtro);
+      const encontrados = productos.filter((p: any) => {
+        const id = p.producto_id || p.id;
+        return id === selValue || !query || normalizarBusqueda(`${p.nombre} ${p.variante || ''} ${p.nombre_opcion || ''} ${p.sku || ''}`).includes(query);
+      });
+      const vacio = query && encontrados.length === 0 ? '<option value="">Sin coincidencias</option>' : '<option value="">— Elegí —</option>';
+      return vacio + encontrados
         .map((p: any) => {
           const id = p.producto_id || p.id;
           return `<option value="${id}" ${id === selValue ? 'selected' : ''}>${p.nombre}${varianteDe(p.variante)} (stock: ${p.stock_actual ?? 0})</option>`;
@@ -115,6 +126,7 @@ import '@/styles/remito.css';
       row.innerHTML = `
         <div class="admin-form-group">
           <label class="admin-form-label">Producto</label>
+          <input type="search" class="admin-input product-search v-prod-search" placeholder="Buscar por nombre, opción o SKU…" aria-label="Buscar producto" autocomplete="off" />
           <select class="admin-input v-prod" required>${opcionesProductos()}</select>
         </div>
         <div class="admin-form-group">
@@ -179,7 +191,15 @@ import '@/styles/remito.css';
 
     metodoSel.addEventListener('change', actualizarResumen);
 
-    rowsBox.addEventListener('input', actualizarResumen);
+    rowsBox.addEventListener('input', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.classList.contains('v-prod-search')) {
+        const row = target.closest('.v-row')!;
+        const select = row.querySelector('.v-prod') as HTMLSelectElement;
+        select.innerHTML = opcionesProductos(select.value, (target as HTMLInputElement).value);
+      }
+      actualizarResumen();
+    });
     rowsBox.addEventListener('change', actualizarResumen);
     rowsBox.addEventListener('click', (e) => {
       const del = (e.target as HTMLElement).closest('.v-del') as HTMLElement | null;
@@ -197,7 +217,9 @@ import '@/styles/remito.css';
         if (!res.ok) return;
         productos = await res.json();
         rowsBox.querySelectorAll('.v-prod').forEach((s) => {
-          (s as HTMLSelectElement).innerHTML = opcionesProductos((s as HTMLSelectElement).value);
+          const row = (s as HTMLElement).closest('.v-row')!;
+          const filtro = (row.querySelector('.v-prod-search') as HTMLInputElement)?.value || '';
+          (s as HTMLSelectElement).innerHTML = opcionesProductos((s as HTMLSelectElement).value, filtro);
         });
         actualizarResumen();
       } catch { /* noop */ }

@@ -63,13 +63,18 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     }
 
     function opcionesProductos(filtro = ''): string {
-      const f = filtro.trim().toLowerCase();
+      const normalizar = (value: unknown) => String(value ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+      const f = normalizar(filtro).trim();
       const lista = f
-        ? productos.filter((p: any) => `${p.nombre || ''} ${p.sku || ''}`.toLowerCase().includes(f))
+        ? productos.filter((p: any) => normalizar(`${p.nombre || ''} ${p.variante || ''} ${p.nombre_opcion || ''} ${p.sku || ''}`).includes(f))
         : productos;
       const opts = lista.map((p: any) => {
         const id = p.producto_id || p.id;
-        return `<option value="${id}">${p.nombre} — ${fmt$(precioVigente(p))} · stock ${p.stock_actual ?? 0}</option>`;
+        const opcion = p.variante && p.variante !== 'Única' ? ` · ${p.variante}` : '';
+        return `<option value="${id}">${p.nombre}${opcion} — ${fmt$(precioVigente(p))} · stock ${p.stock_actual ?? 0}</option>`;
       }).join('');
       return '<option value="">— Producto —</option>' + (opts || '<option value="" disabled>Sin coincidencias</option>');
     }
