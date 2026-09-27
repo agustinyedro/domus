@@ -79,12 +79,12 @@
 
         <dl class="cp-totals">
           <div class="cp-row">
-            <dt>Subtotal</dt>
+            <dt>Subtotal (efectivo)</dt>
             <dd>${{ fmt(base) }}</dd>
           </div>
-          <div v-if="metodo === 'EFECTIVO' && final < base" class="cp-row cp-row-off">
-            <dt>Descuento efectivo (15%)</dt>
-            <dd>−${{ fmt(base - final) }}</dd>
+          <div v-if="metodo === 'MP' && final > base" class="cp-row">
+            <dt>Recargo tarjeta</dt>
+            <dd>+${{ fmt(final - base) }}</dd>
           </div>
           <div class="cp-row cp-row-total">
             <dt>Total</dt>
@@ -120,15 +120,15 @@
             <label class="cp-radio">
               <input v-model="metodo" type="radio" value="EFECTIVO" />
               <span>
-                <strong>Efectivo · 15% OFF</strong>
-                <small>Se descuenta solo, coordinamos por WhatsApp</small>
+                <strong>Efectivo · precio final</strong>
+                <small>Sin recargos, coordinamos la entrega por WhatsApp</small>
               </span>
             </label>
             <label class="cp-radio">
               <input v-model="metodo" type="radio" value="MP" />
               <span>
                 <strong>Mercado Pago</strong>
-                <small>Tarjeta, débito o dinero en cuenta</small>
+                <small>Tarjeta o débito · se agrega el recargo de tarjeta</small>
               </span>
             </label>
           </fieldset>
@@ -595,12 +595,6 @@ onBeforeUnmount(() => {
 .cp-row dd {
   margin: 0;
   color: var(--color-brown);
-}
-
-.cp-row-off dt,
-.cp-row-off dd {
-  color: var(--color-olive);
-  font-weight: 600;
 }
 
 .cp-row-total {

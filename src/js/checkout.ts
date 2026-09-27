@@ -1,7 +1,7 @@
 import { config } from '../config';
+import { clampRecargo, precioTarjeta, RECARGO_TARJETA_DEFAULT } from '../lib/precios';
 
-export const CLAVE_CARRITO = 'domus_cart';
-export const DESCUENTO_EFECTIVO = 0.15;
+export const CLAVE_CARRITO = 'domus_cart_v2';
 
 export type MetodoPago = 'EFECTIVO' | 'MP';
 
@@ -12,6 +12,7 @@ export interface ItemCarrito {
   quantity: number;
   image?: string;
   stock?: number;
+  recargo?: number;
 }
 
 export function leerCarrito(): ItemCarrito[] {
@@ -31,15 +32,21 @@ export function subtotal(cart: ItemCarrito[]): number {
   return cart.reduce((total, item) => total + Number(item.price) * Number(item.quantity), 0);
 }
 
+// El precio del item ya está en efectivo (es el precio visible en la tienda).
+// Efectivo: se cobra tal cual. Tarjeta/MP: se agrega el recargo por producto.
 export function calcularTotales(cart: ItemCarrito[], metodo: MetodoPago): { base: number; final: number } {
   const base = subtotal(cart);
-  if (metodo !== 'EFECTIVO') return { base, final: base };
-  const final = cart.reduce(
-    (total, item) =>
-      total + Math.round(Number(item.price) * (1 - DESCUENTO_EFECTIVO)) * Number(item.quantity),
-    0,
-  );
-  return { base, final };
+  if (metodo !== 'EFECTIVO') {
+    const final = cart.reduce(
+      (total, item) =>
+        total +
+        precioTarjeta(Number(item.price), clampRecargo(Number(item.recargo) || RECARGO_TARJETA_DEFAULT)) *
+          Number(item.quantity),
+      0,
+    );
+    return { base, final };
+  }
+  return { base, final: base };
 }
 
 export function mensajeWhatsAppConsultar(cart: ItemCarrito[]): string {

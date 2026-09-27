@@ -17,7 +17,7 @@ export const GET: APIRoute = async () => {
 
   const { data, error } = await supabase
     .from('v_stock_actual')
-    .select('producto_id, nombre, descripcion, imagen_url, precio_final, precio_venta, stock_actual')
+    .select('producto_id, nombre, descripcion, imagen_url, precio_final, precio_efectivo, precio_venta, recargo_tarjeta, stock_actual')
     .eq('activo', true)
     .eq('categoria', 'Kits')
     .order('nombre');

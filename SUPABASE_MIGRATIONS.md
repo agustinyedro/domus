@@ -47,6 +47,10 @@ Correr en este orden en una base nueva:
    **Va después de la 8**: recrea `v_stock_actual` con `kit_id` y conserva las columnas de variantes
    (`grupo_id`, `variante`, `nombre_opcion`). Si la corrés antes, la vista queda sin variantes.
 
+10. `supabase-migration-metodo-pago-ventas.sql` — amplía el CHECK de `ventas.metodo_pago` a Transferencia/Débito/Crédito/Otro (alta manual en admin/ventas). No toca RLS.
+
+11. `supabase-migration-recargo-tarjeta.sql` — columna `productos.recargo_tarjeta` (default 15) + `precio_efectivo` en `v_stock_actual`. El admin carga precio en efectivo; tarjeta = efectivo + recargo.
+
 Semillas opcionales: `supabase-seed-productos.sql`.
 
 ## Template

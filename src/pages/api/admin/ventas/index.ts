@@ -5,6 +5,7 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import { getUsuarioActual, createSupabaseServer } from '@/lib/supabase';
 import { VentaSchema, VentaBatchSchema } from '@/lib/validations';
+import { esPagoSinRecargo, precioEfectivo, RECARGO_TARJETA_DEFAULT } from '@/lib/precios';
 import { resolverKit } from '@/lib/kits';
 
 export const GET: APIRoute = async ({ request, cookies }) => {
@@ -16,7 +17,7 @@ export const GET: APIRoute = async ({ request, cookies }) => {
   const supabase = createSupabaseServer(request, cookies);
   const { data, error } = await supabase
     .from('ventas')
-    .select('id, fecha, total, ganancia, estado, metodo_pago, source, ventas_items ( cantidad, precio_unitario, producto_id, productos ( nombre ) )')
+    .select('id, fecha, total, ganancia, estado, metodo_pago, source, ventas_items ( cantidad, precio_unitario, producto_id, productos ( nombre, variante ) )')
     .eq('usuario_id', user.id)
     .order('fecha', { ascending: false })
     .limit(100);
@@ -49,6 +50,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   const items = esBatch
     ? (parsed.data as { items: Array<{ producto_id: string; cantidad: number }> }).items
     : [{ producto_id: (parsed.data as { producto_id: string }).producto_id, cantidad: (parsed.data as { cantidad: number }).cantidad }];
+  const metodoPago = (parsed.data as { metodo_pago?: string }).metodo_pago ?? null;
   const supabase = createSupabaseServer(request, cookies);
 
   // Fase 1: resolver precio/costo/stock de TODOS los items antes de escribir nada
@@ -56,7 +58,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   for (const item of items) {
     const { data: prod, error: prodError } = await supabase
       .from('productos')
-      .select('id, nombre, precio_venta, precio_oferta, es_oferta, kit_id')
+      .select('id, nombre, variante, precio_venta, precio_oferta, es_oferta, recargo_tarjeta, kit_id')
       .eq('id', item.producto_id)
       .eq('usuario_id', user.id)
       .single();
@@ -65,9 +67,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       return new Response(JSON.stringify({ error: `Producto no encontrado: ${item.producto_id}` }), { status: 404 });
     }
 
-    const precio = (prod.es_oferta && prod.precio_oferta && prod.precio_oferta < prod.precio_venta)
+    const precioLista = (prod.es_oferta && prod.precio_oferta && prod.precio_oferta < prod.precio_venta)
       ? Number(prod.precio_oferta)
       : Number(prod.precio_venta);
+    // Efectivo / Transferencia: el precio con recargo se calcula SIEMPRE en el servidor
+    const recargo = Number.isFinite(Number(prod.recargo_tarjeta)) ? Number(prod.recargo_tarjeta) : RECARGO_TARJETA_DEFAULT;
+    const precio = esPagoSinRecargo(metodoPago) ? precioEfectivo(precioLista, recargo) : precioLista;
 
     // Kit: stock y costo derivados de componentes
     if (prod.kit_id) {
@@ -83,7 +88,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       }
       resueltos.push({
         producto_id: item.producto_id, kit_id: prod.kit_id, componentes: kit.componentes,
-        nombre: prod.nombre, cantidad: item.cantidad, precio, costo: kit.costo,
+        nombre: prod.nombre, variante: prod.variante, cantidad: item.cantidad, precio, costo: kit.costo,
       });
       continue;
     }
@@ -117,7 +122,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       );
     }
 
-    resueltos.push({ producto_id: item.producto_id, kit_id: null, componentes: null, nombre: prod.nombre, cantidad: item.cantidad, precio, costo });
+    resueltos.push({ producto_id: item.producto_id, kit_id: null, componentes: null, nombre: prod.nombre, variante: prod.variante, cantidad: item.cantidad, precio, costo });
   }
 
   const total = resueltos.reduce((s, r) => s + r.precio * r.cantidad, 0);
@@ -126,7 +131,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   // Fase 2: escribir todo (1 venta + N items + N movimientos)
   const { data: venta, error: ventaError } = await supabase
     .from('ventas')
-    .insert([{ usuario_id: user.id, total, ganancia, estado: 'COMPLETADA', source: 'MANUAL' }])
+    .insert([{ usuario_id: user.id, total, ganancia, estado: 'COMPLETADA', source: 'MANUAL', metodo_pago: metodoPago }])
     .select()
     .single();
 

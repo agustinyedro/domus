@@ -2,6 +2,7 @@
 // Schemas Zod para validación de formularios y API
 
 import { z } from 'zod';
+import { METODOS_PAGO_VENTA } from './precios';
 
 export const ProductoSchema = z.object({
   grupo_id: z.string().uuid('Grupo de producto inválido').nullable().optional(),
@@ -14,6 +15,7 @@ export const ProductoSchema = z.object({
   imagen_url: z.string().url().max(500).nullable().optional(),
   costo: z.number().min(0, 'Costo debe ser >= 0'),
   precio_venta: z.number().min(0, 'Precio de venta debe ser >= 0'),
+  recargo_tarjeta: z.number().int().min(0, 'Recargo inválido').max(95, 'Recargo inválido').default(15),
   precio_oferta: z.number().min(0).nullable().optional(),
   es_oferta: z.boolean().default(false),
   destacado: z.boolean().default(false),
@@ -35,6 +37,7 @@ export const VentaSchema = z.object({
   cantidad: z.number().int().min(1, 'Cantidad mínima es 1'),
   precio_unitario: z.number().min(0),
   costo_unitario: z.number().min(0),
+  metodo_pago: z.enum(METODOS_PAGO_VENTA).optional(),
 });
 
 export const GastoSchema = z.object({
@@ -97,6 +100,7 @@ export const VentaBatchSchema = z.object({
     producto_id: z.string().uuid('ID de producto inválido'),
     cantidad: z.number().int().min(1, 'Cantidad mínima es 1'),
   })).min(1, 'Agregá al menos un producto').max(50, 'Máximo 50 productos por venta'),
+  metodo_pago: z.enum(METODOS_PAGO_VENTA).optional(),
 });
 
 export const CategoriaSchema = z.object({

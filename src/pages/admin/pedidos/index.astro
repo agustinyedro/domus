@@ -3,6 +3,7 @@
 // Bandeja de pedidos de la tienda: aprobar efectivo / rechazar
 export const prerender = false;
 import AdminLayout from '@/layouts/AdminLayout.astro';
+import '@/styles/remito.css';
 ---
 
 <AdminLayout title="Pedidos">
@@ -328,9 +329,10 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
 
       const root = document.createElement('div');
       root.id = 'ped-ticket-root';
+      root.className = 'ticket-root';
       root.innerHTML = `
-      <div class="ped-ticket-overlay">
-        <div class="ped-ticket-card">
+      <div class="ticket-overlay">
+        <div class="ticket-card">
           <div class="remito" id="pedido-ticket">
             <div class="rm-head">
               <div>
@@ -356,7 +358,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
             <div class="rm-total"><span>TOTAL</span><strong>$${Number(p.total ?? 0).toLocaleString('es-AR')}</strong></div>
             <p class="rm-foot">Gracias por tu compra · todo lo que hace de un lugar, hogar.</p>
           </div>
-          <div class="ped-ticket-actions no-print">
+          <div class="ticket-actions no-print">
             <button class="admin-btn admin-btn-primary" id="ped-ticket-print">Imprimir</button>
             <button class="admin-btn admin-btn-ghost" id="ped-ticket-cerrar">Cerrar</button>
           </div>
@@ -366,8 +368,8 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
       document.body.style.overflow = 'hidden';
 
       root.querySelector('#ped-ticket-cerrar')!.addEventListener('click', cerrarTicket);
-      root.querySelector('.ped-ticket-overlay')!.addEventListener('click', (ev) => {
-        if ((ev.target as HTMLElement).classList.contains('ped-ticket-overlay')) cerrarTicket();
+      root.querySelector('.ticket-overlay')!.addEventListener('click', (ev) => {
+        if ((ev.target as HTMLElement).classList.contains('ticket-overlay')) cerrarTicket();
       });
       document.addEventListener('keydown', escTicket);
       root.querySelector('#ped-ticket-print')!.addEventListener('click', () => window.print());
@@ -433,54 +435,5 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     .ped-confirm-rows dd { margin: 0; font-weight: 500; }
     .ped-confirm-note { font-size: 0.875rem; color: var(--admin-text-muted); margin: 0 0 1.25rem; }
     .ped-confirm-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
-
-    /* Remito de pedido */
-    #ped-ticket-root { position: fixed; inset: 0; z-index: 2000; }
-    .ped-ticket-overlay {
-      position: absolute; inset: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex; align-items: flex-start; justify-content: center;
-      overflow-y: auto; padding: 2rem 1rem;
-    }
-    .ped-ticket-card {
-      background: #FDFBF5; border-radius: 14px;
-      width: 100%; max-width: 640px;
-      padding: 1.5rem;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      border-top: 4px solid #988C2D;
-    }
-    .remito { background: #fff; border: 1px solid rgba(96, 72, 17, 0.25); border-radius: 10px; padding: 1.5rem; color: #3d2b1f; }
-    .rm-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding-bottom: 1rem; border-bottom: 2px solid #988C2D; margin-bottom: 1rem; }
-    .rm-logo { margin: 0; font-weight: 700; letter-spacing: 0.3em; font-size: 1.375rem; color: #604811; }
-    .rm-sub { margin: 0.125rem 0 0; font-size: 0.75rem; color: #8a7a5c; }
-    .rm-doc { text-align: right; }
-    .rm-doctitle { margin: 0; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; color: #988C2D; }
-    .rm-num { margin: 0.125rem 0 0; font-size: 1.25rem; font-weight: 800; }
-    .rm-fecha { margin: 0.125rem 0 0; font-size: 0.75rem; color: #8a7a5c; }
-    .rm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem; margin-bottom: 1rem; }
-    .rm-grid > div { display: flex; flex-direction: column; }
-    .rm-grid span { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.08em; color: #8a7a5c; }
-    .rm-grid strong { font-size: 0.9375rem; }
-    .rm-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; margin-bottom: 1rem; }
-    .rm-table th { text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.08em; color: #8a7a5c; border-bottom: 1px solid rgba(96, 72, 17, 0.3); padding: 0.375rem 0.5rem; }
-    .rm-table td { border-bottom: 1px solid rgba(96, 72, 17, 0.12); padding: 0.5rem; }
-    .rm-table .text-right { text-align: right; }
-    .rm-table .text-center { text-align: center; }
-    .rm-total { display: flex; justify-content: space-between; align-items: center; background: #604811; color: #DBD190; border-radius: 8px; padding: 0.75rem 1rem; font-size: 1.125rem; font-weight: 800; letter-spacing: 0.04em; }
-    .rm-foot { margin: 1rem 0 0; text-align: center; font-size: 0.75rem; color: #8a7a5c; font-style: italic; }
-    .ped-ticket-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem; }
-
-    @media print {
-      body > *:not(#ped-ticket-root) { display: none !important; }
-      #ped-ticket-root { position: static !important; }
-      .ped-ticket-overlay {
-        position: static !important; background: #fff !important;
-        padding: 0 !important; overflow: visible !important; display: block !important;
-      }
-      .ped-ticket-card { box-shadow: none !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; border: none !important; background: #fff !important; }
-      .no-print { display: none !important; }
-      .remito { border: 1px solid #000 !important; }
-      .rm-total { background: #eee !important; color: #000 !important; border: 1px solid #000; }
-    }
   </style>
 </AdminLayout>

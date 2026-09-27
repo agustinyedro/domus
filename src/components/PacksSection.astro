@@ -41,13 +41,25 @@ import { getWhatsAppLink } from '../config';
           ${kits.map((k) => {
             const img = k.imagen_url || IMG_FALLBACK;
             const sinStock = (k.stock_actual ?? 0) <= 0;
+            const precioCard = Number(k.precio_final ?? k.precio_venta);
+            const col = Number(k.precio_efectivo);
+            const recargo = Number(k.recargo_tarjeta);
+            const efectivo = Number.isFinite(col)
+              ? col
+              : Math.round(precioCard / (1 + (Number.isFinite(recargo) ? recargo : 15) / 100));
+            const conTarjeta = precioCard > efectivo
+              ? `<span class="gift-card-price-card">con tarjeta ${fmt(precioCard)}</span>`
+              : '';
             return `<a class="gift-card" href="/tienda?sector=Kits">
               <div class="gift-card-media"><img src="${img}" alt="${(k.nombre || '').replace(/</g, '&lt;')}" loading="lazy" /></div>
               <div class="gift-card-body">
                 <h3>${(k.nombre || '').replace(/</g, '&lt;')}</h3>
                 ${k.descripcion ? `<p>${(k.descripcion || '').replace(/</g, '&lt;')}</p>` : ''}
                 <div class="gift-card-foot">
-                  <span class="gift-card-price">${fmt(Number(k.precio_final ?? k.precio_venta))}</span>
+                  <span class="gift-card-prices">
+                    <span class="gift-card-price">${fmt(efectivo)}</span>
+                    ${conTarjeta}
+                  </span>
                   <span class="gift-card-cta">${sinStock ? 'Sin stock' : 'Ver kit ↗'}</span>
                 </div>
               </div>
@@ -84,7 +96,9 @@ import { getWhatsAppLink } from '../config';
   .gift-card-body { padding: 0.875rem 1rem 1.125rem; display: flex; flex-direction: column; gap: 0.375rem; flex: 1; }
   .gift-card-body h3 { font-family: var(--font-editorial); font-weight: 400; font-size: 1.125rem; margin: 0; }
   .gift-card-body p { font-size: 0.875rem; line-height: 1.5; color: rgba(96, 72, 17, 0.7); margin: 0; }
-  .gift-card-foot { margin-top: auto; display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; padding-top: 0.75rem; }
+  .gift-card-foot { margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between; gap: 0.5rem; padding-top: 0.75rem; }
+  .gift-card-prices { display: flex; flex-direction: column; gap: 0.125rem; }
   .gift-card-price { font-family: var(--font-heading); font-weight: 700; font-size: 1.125rem; }
+  .gift-card-price-card { font-size: 0.75rem; color: rgba(96, 72, 17, 0.7); }
   .gift-card-cta { font: 400 0.75rem var(--font-heading); text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-oliva-dark); }
 </style>

@@ -54,19 +54,46 @@
                   <div>
                     <span class="option-label">{{ prod.nombre_opcion || 'Opción' }}</span>
                     <span class="option-badge">{{ prod.variante || 'Única' }}</span>
+                    <span v-if="prod.activo === false" class="option-off">Inactivo</span>
                   </div>
                 </div>
               </td>
               <td class="text-right">${{ Number(prod.costo).toLocaleString('es-AR') }}</td>
-              <td class="text-right">${{ Number(prod.precio_venta).toLocaleString('es-AR') }}</td>
               <td class="text-right">
-                {{ prod.precio_venta > 0 ? ((prod.precio_venta - prod.costo) / prod.precio_venta * 100).toFixed(1) : '0.0' }}%
+                <template v-if="efectivoDe(prod) > 0">
+                  <div>${{ efectivoDe(prod).toLocaleString('es-AR') }}</div>
+                  <div class="price-card">con tarjeta ${{ Number(prod.precio_venta).toLocaleString('es-AR') }}</div>
+                </template>
+                <template v-else>—</template>
+              </td>
+              <td class="text-right">
+                {{ efectivoDe(prod) > 0 ? ((efectivoDe(prod) - prod.costo) / efectivoDe(prod) * 100).toFixed(1) : '0.0' }}%
               </td>
               <td class="text-right">
                 <span class="stock-number" :class="estadoStock(prod)">{{ prod.stock_actual ?? 0 }}</span>
               </td>
               <td class="text-center">
-                <a :href="`/admin/productos/${prod.producto_id}`" class="admin-btn admin-btn-ghost option-edit">Editar</a>
+                <div class="option-actions">
+                  <a :href="`/admin/productos/${prod.producto_id}`" class="admin-btn admin-btn-ghost option-edit">Editar</a>
+                  <button
+                    type="button"
+                    class="admin-btn admin-btn-ghost option-edit"
+                    :disabled="ocupado === prod.producto_id || Boolean(prod.kit_id)"
+                    :title="prod.kit_id ? 'Gestioná la publicación del kit desde la sección Kits' : undefined"
+                    @click="toggleActivo(prod)"
+                  >
+                    {{ prod.activo === false ? 'Activar' : 'Desactivar' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="admin-btn admin-btn-danger option-edit"
+                    :disabled="ocupado === prod.producto_id || Number(prod.stock_actual ?? 0) > 0 || Boolean(prod.kit_id)"
+                    :title="prod.kit_id ? 'Despublicá el kit desde la sección Kits' : Number(prod.stock_actual ?? 0) > 0 ? 'Dejá el stock en 0 para poder eliminar' : 'Eliminar producto'"
+                    @click="eliminar(prod)"
+                  >
+                    Eliminar
+                  </button>
+                </div>
               </td>
             </tr>
           </template>
@@ -79,6 +106,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { fotoDe, urlFallback } from '@/lib/fotos';
+import { precioEfectivo, RECARGO_TARJETA_DEFAULT } from '@/lib/precios';
 
 interface ProductoConStock {
   producto_id: string;
@@ -91,13 +119,24 @@ interface ProductoConStock {
   imagen_url: string | null;
   costo: number;
   precio_venta: number;
+  precio_efectivo?: number | null;
+  recargo_tarjeta?: number | null;
   stock_minimo: number;
   stock_actual: number;
+  activo: boolean;
+  kit_id?: string | null;
+}
+
+type VentanaAdmin = Window & { adminToast?: (mensaje: string) => void };
+
+function avisar(mensaje: string) {
+  (window as VentanaAdmin).adminToast?.(mensaje);
 }
 
 const productos = ref<ProductoConStock[]>([]);
 const loading = ref(true);
 const busqueda = ref('');
+const ocupado = ref('');
 
 onMounted(async () => {
   try {
@@ -140,6 +179,13 @@ const gruposFiltrados = computed(() => {
   })).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 });
 
+function efectivoDe(p: ProductoConStock): number {
+  const col = Number(p.precio_efectivo);
+  if (Number.isFinite(col) && col > 0) return col;
+  const r = Number.isFinite(Number(p.recargo_tarjeta)) ? Number(p.recargo_tarjeta) : RECARGO_TARJETA_DEFAULT;
+  return precioEfectivo(Number(p.precio_venta), r);
+}
+
 function estadoStock(p: ProductoConStock): string {
   const stock = Number(p.stock_actual || 0);
   if (stock <= 0) return 'stock-number-out';
@@ -151,6 +197,58 @@ function onImgError(e: Event, p: ProductoConStock) {
   const img = e.target as HTMLImageElement;
   const fb = urlFallback(p.categoria);
   if (img.src !== fb) img.src = fb;
+}
+
+async function toggleActivo(p: ProductoConStock) {
+  const nuevo = !p.activo;
+  ocupado.value = p.producto_id;
+  try {
+    const res = await fetch(`/api/admin/productos/${p.producto_id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activo: nuevo }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      avisar(typeof data.error === 'string' ? data.error : 'No se pudo actualizar el producto.');
+      return;
+    }
+    p.activo = nuevo;
+    avisar(
+      nuevo
+        ? `«${p.sku}» activado: ya se muestra en la tienda.`
+        : `«${p.sku}» desactivado: se ocultó de la tienda.`
+    );
+  } catch {
+    avisar('Error de conexión.');
+  } finally {
+    ocupado.value = '';
+  }
+}
+
+async function eliminar(p: ProductoConStock) {
+  if (Number(p.stock_actual ?? 0) > 0) {
+    avisar(`No se puede eliminar «${p.sku}»: quedan ${p.stock_actual} unidades en stock.`);
+    return;
+  }
+  if (!confirm(`¿Eliminar «${p.sku}» (${p.nombre_opcion || p.variante})? Esta acción no se puede deshacer.`)) {
+    return;
+  }
+  ocupado.value = p.producto_id;
+  try {
+    const res = await fetch(`/api/admin/productos/${p.producto_id}`, { method: 'DELETE' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      avisar(typeof data.error === 'string' ? data.error : 'No se pudo eliminar el producto.');
+      return;
+    }
+    productos.value = productos.value.filter((x) => x.producto_id !== p.producto_id);
+    avisar(`«${p.sku}» eliminado.`);
+  } catch {
+    avisar('Error de conexión.');
+  } finally {
+    ocupado.value = '';
+  }
 }
 </script>
 
@@ -175,4 +273,20 @@ function onImgError(e: Event, p: ProductoConStock) {
 .stock-number-low { background: #fffbeb; color: #744210; }
 .stock-number-out { background: #fff5f5; color: #742a2a; }
 .option-edit { padding: 0.375rem 0.75rem; font-size: 0.8125rem; }
+.option-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: center; }
+.option-actions .admin-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.option-off {
+  display: inline-flex;
+  margin-left: 0.4rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid rgba(116, 42, 42, 0.35);
+  border-radius: 999px;
+  background: #fff5f5;
+  color: #742a2a;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.price-card { color: var(--admin-text-muted); font-size: 0.72rem; margin-top: 0.15rem; }
 </style>

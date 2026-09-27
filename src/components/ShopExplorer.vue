@@ -181,9 +181,15 @@
               <div class="shop-card-price">
                 <span v-if="descuentoCard(g) > 0" class="shop-price-old">${{ Number(g.principal.precio_venta).toLocaleString('es-AR') }}</span>
                 <span class="shop-price">
-                  <span v-if="precioDesde(g) < precioHasta(g)" class="shop-price-from">desde </span>${{ Number(precioDesde(g)).toLocaleString('es-AR') }}
+                  <span v-if="precioDesde(g) < precioHasta(g)" class="shop-price-from">desde </span>${{ efectivoDesde(g).toLocaleString('es-AR') }}
                 </span>
+                <span class="shop-price-tag">Efectivo</span>
               </div>
+
+              <p v-if="precioDesde(g) > efectivoDesde(g)" class="shop-price-card">
+                con tarjeta
+                <span v-if="precioDesde(g) < precioHasta(g)" class="shop-price-from">desde </span>${{ Number(precioDesde(g)).toLocaleString('es-AR') }}
+              </p>
 
               <p v-if="stockTotal(g) <= 0" class="shop-stock shop-stock-out">Sin stock por ahora</p>
               <p v-else-if="stockTotal(g) <= stockMinimo(g)" class="shop-stock shop-stock-low">
@@ -247,8 +253,13 @@
 
             <div class="shop-card-price product-modal-price">
               <span v-if="modalProducto.descuento_pct > 0" class="shop-price-old">${{ Number(modalProducto.precio_venta).toLocaleString('es-AR') }}</span>
-              <span class="shop-price">${{ Number(modalProducto.precio_final ?? modalProducto.precio_venta).toLocaleString('es-AR') }}</span>
+              <span class="shop-price">${{ efectivoDe(modalProducto).toLocaleString('es-AR') }}</span>
+              <span class="shop-price-tag">Efectivo</span>
             </div>
+
+            <p v-if="Number(modalProducto.precio_final ?? modalProducto.precio_venta) > efectivoDe(modalProducto)" class="shop-price-card">
+              con tarjeta ${{ Number(modalProducto.precio_final ?? modalProducto.precio_venta).toLocaleString('es-AR') }}
+            </p>
 
             <p v-if="modalProducto.stock_actual <= 0" class="shop-stock shop-stock-out">Sin stock por ahora</p>
             <p v-else class="product-available">Disponible</p>
@@ -288,7 +299,7 @@
                 <img :src="fotoDe(r.principal)" :alt="r.principal.nombre" loading="lazy" />
                 <span>
                   <strong>{{ r.principal.nombre }}</strong>
-                  <small>${{ Number(r.principal.precio_final ?? r.principal.precio_venta).toLocaleString('es-AR') }}</small>
+                  <small>${{ efectivoDe(r.principal).toLocaleString('es-AR') }}</small>
                 </span>
               </button>
             </div>
@@ -302,6 +313,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { fotoDe, FALLBACKS, fallbackImg } from '@/lib/fotos';
+import { precioEfectivo, RECARGO_TARJETA_DEFAULT } from '@/lib/precios';
 
 interface TiendaProducto {
   producto_id: string;
@@ -316,6 +328,8 @@ interface TiendaProducto {
   imagen_url: string | null;
   precio_venta: number;
   precio_final: number;
+  precio_efectivo?: number;
+  recargo_tarjeta?: number;
   descuento_pct: number;
   rating_promedio: number;
   rating_cantidad: number;
@@ -394,8 +408,15 @@ const stockTotal = (g: GrupoProducto) => g.variantes.reduce((s, v) => s + Number
 const stockMinimo = (g: GrupoProducto) => g.variantes.reduce((m, v) => Math.max(m, Number(v.stock_minimo ?? 5)), 0);
 const agotado = (g: GrupoProducto) => stockTotal(g) <= 0;
 const precioFinalDe = (v: TiendaProducto) => Number(v.precio_final ?? v.precio_venta);
+const recargoDe = (v: TiendaProducto) =>
+  Number.isFinite(Number(v.recargo_tarjeta)) ? Number(v.recargo_tarjeta) : RECARGO_TARJETA_DEFAULT;
+const efectivoDe = (v: TiendaProducto) => {
+  const col = Number(v.precio_efectivo);
+  return Number.isFinite(col) ? col : precioEfectivo(precioFinalDe(v), recargoDe(v));
+};
 const precioDesde = (g: GrupoProducto) => Math.min(...g.variantes.map(precioFinalDe));
 const precioHasta = (g: GrupoProducto) => Math.max(...g.variantes.map(precioFinalDe));
+const efectivoDesde = (g: GrupoProducto) => Math.min(...g.variantes.map(efectivoDe));
 const descuentoCard = (g: GrupoProducto) => g.variantes.reduce((m, v) => Math.max(m, Number(v.descuento_pct || 0)), 0);
 const urlProducto = (p: { sku?: string }) => `/tienda/producto/${encodeURIComponent(String(p.sku || '').trim())}`;
 
@@ -404,7 +425,7 @@ const enCarritoGrupo = (g: GrupoProducto) => g.variantes.some((v) => enCarrito.v
 function sincronizarCarrito() {
   const ids = new Set<string>();
   try {
-    const cart = JSON.parse(localStorage.getItem('domus_cart') || '[]');
+    const cart = JSON.parse(localStorage.getItem('domus_cart_v2') || '[]');
     if (Array.isArray(cart)) {
       for (const item of cart) if (item?.id) ids.add(String(item.id));
     }
@@ -584,14 +605,15 @@ function cerrarProducto() {
 }
 
 function agregar(p: TiendaProducto, unidades = 1) {
-  const w = window as unknown as { CartManager?: { addItem: (item: { id: string; name: string; price: number; image?: string; stock?: number; quantity?: number }) => void } };
+  const w = window as unknown as { CartManager?: { addItem: (item: { id: string; name: string; price: number; image?: string; stock?: number; quantity?: number; recargo?: number }) => void } };
   w.CartManager?.addItem({
     id: p.producto_id || (p.id as string),
     name: p.variante && p.variante !== 'Única' ? `${p.nombre} — ${p.variante}` : p.nombre,
-    price: Number(p.precio_final ?? p.precio_venta),
+    price: efectivoDe(p),
     image: fotoDe(p),
     stock: Number(p.stock_actual ?? 0),
     quantity: unidades,
+    recargo: recargoDe(p),
   });
 }
 
@@ -1137,12 +1159,32 @@ onBeforeUnmount(() => {
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--color-brown);
+  white-space: nowrap;
 }
 
 .shop-price-old {
   font-size: 0.9375rem;
   color: var(--color-brown-light);
   text-decoration: line-through;
+}
+
+.shop-price-tag {
+  display: inline-block;
+  align-self: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--color-hueso);
+  color: var(--color-tierra);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.shop-price-card {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-brown-light);
 }
 
 .shop-stock {
@@ -1578,6 +1620,7 @@ onBeforeUnmount(() => {
 
   .shop-toolbar {
     flex-direction: column;
+    flex-wrap: nowrap;
     align-items: stretch;
   }
 
@@ -1586,20 +1629,25 @@ onBeforeUnmount(() => {
   }
 
   .shop-toolbar-actions {
+    min-width: 0;
     justify-content: space-between;
   }
 
   .shop-filters-toggle {
     display: inline-flex;
     flex: 1;
+    min-width: 0;
   }
 
   .shop-orden {
     flex: 1;
+    min-width: 0;
   }
 
   .shop-orden select {
     flex: 1;
+    min-width: 0;
+    width: 100%;
   }
 
   .shop-filters {

@@ -74,6 +74,8 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
 </BaseLayout>
 
 <script>
+  import { precioEfectivo, RECARGO_TARJETA_DEFAULT } from '../../lib/precios';
+
   const IMG = {
     aromas: 'https://images.unsplash.com/photo-1602928321679-560bb453f190?w=400&h=400&fit=crop',
     comida: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop',
@@ -98,6 +100,9 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
   function cardHTML(p) {
     const precioFinal = Number(p.precio_final ?? p.precio_venta);
     const precioVenta = Number(p.precio_venta);
+    const recargo = Number.isFinite(Number(p.recargo_tarjeta)) ? Number(p.recargo_tarjeta) : RECARGO_TARJETA_DEFAULT;
+    const col = Number(p.precio_efectivo);
+    const efectivoVigente = Number.isFinite(col) ? col : precioEfectivo(precioFinal, recargo);
     const nombre = (p.nombre || '').replace(/</g, '&lt;');
     const variante = p.variante && p.variante !== 'Única' ? String(p.variante) : '';
     const visible = variante ? `${nombre} — ${variante}` : nombre;
@@ -113,17 +118,21 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
           : '') +
       (p.descuento_pct > 0 ? `<span class="t-badge t-badge-off">-${p.descuento_pct}%</span>` : '');
 
-    const precio = p.descuento_pct > 0
-      ? `<span class="t-price-old">$${precioVenta.toLocaleString('es-AR')}</span>
-         <span class="t-price">$${precioFinal.toLocaleString('es-AR')}</span>`
-      : `<span class="t-price">$${precioFinal.toLocaleString('es-AR')}</span>`;
+    const precioOferta = p.descuento_pct > 0
+      ? `<span class="t-price-old">$${precioVenta.toLocaleString('es-AR')}</span>`
+      : '';
+
+    const cardLine = precioFinal > efectivoVigente
+      ? `<span class="t-price-card">con tarjeta $${precioFinal.toLocaleString('es-AR')}</span>`
+      : '';
 
     const item = JSON.stringify({
       id: p.producto_id,
       name: visible,
-      price: precioFinal,
+      price: efectivoVigente,
       image: img,
       stock: Number(p.stock_actual ?? 0),
+      recargo,
     }).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 
     return `
@@ -144,7 +153,12 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
         <div class="t-body">
           <p class="t-cat">${p.categoria || 'General'}</p>
           <h3><a class="t-title" href="${href}">${visible}</a></h3>
-          ${precio}
+          <div class="t-price-row">
+            ${precioOferta}
+            <span class="t-price">$${efectivoVigente.toLocaleString('es-AR')}</span>
+            <span class="t-price-tag">Efectivo</span>
+          </div>
+          ${cardLine}
         </div>
       </article>`;
   }
@@ -152,13 +166,13 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
   // Agregar rápido desde la tarjeta: animación + tilde de confirmación
   type CarritoGlobal = {
     getCount?: () => number;
-    addItem?: (item: { id: string; name: string; price: number; image?: string; stock?: number; quantity?: number }) => void;
+    addItem?: (item: { id: string; name: string; price: number; image?: string; stock?: number; quantity?: number; recargo?: number }) => void;
   };
 
   function idsEnCarrito(): Set<string> {
     const ids = new Set<string>();
     try {
-      const cart = JSON.parse(localStorage.getItem('domus_cart') || '[]');
+      const cart = JSON.parse(localStorage.getItem('domus_cart_v2') || '[]');
       if (Array.isArray(cart)) {
         for (const item of cart) if (item?.id) ids.add(String(item.id));
       }
@@ -194,7 +208,7 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
     e.stopPropagation();
     const carrito = (window as unknown as { CartManager?: CarritoGlobal }).CartManager;
     if (!carrito) return;
-    let item: { id: string; name: string; price: number; image?: string; stock?: number };
+    let item: { id: string; name: string; price: number; image?: string; stock?: number; recargo?: number };
     try { item = JSON.parse(btn.dataset.item || ''); } catch { return; }
     const antes = carrito.getCount?.() ?? 0;
     carrito.addItem?.(item);
@@ -611,6 +625,7 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
     font-size: 1.5rem;
     font-weight: 700;
     color: var(--color-brown);
+    white-space: nowrap;
   }
 
   .t-price-old {
@@ -620,9 +635,37 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
     margin-right: 0.5rem;
   }
 
+  .t-price-row {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.5rem;
+  }
+
+  .t-price-tag {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    background: var(--color-hueso);
+    color: var(--color-tierra);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    align-self: center;
+  }
+
+  .t-price-card {
+    display: block;
+    margin-top: 0.1rem;
+    font-size: 0.8125rem;
+    color: var(--color-brown-light);
+  }
+
   .t-title {
     color: inherit;
     text-decoration: none;
+    overflow-wrap: anywhere;
   }
 
   .t-title:hover {

@@ -115,7 +115,20 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
   </div>
 
   <script>
+    import { precioEfectivo, RECARGO_TARJETA_DEFAULT } from '../../../lib/precios';
+
     let productos: Array<any> = [];
+
+    function efectivoDe(p: any): number {
+      const col = Number(p.precio_efectivo);
+      if (Number.isFinite(col)) return col;
+      const r = Number(p.recargo_tarjeta);
+      const recargo = Number.isFinite(r) ? r : RECARGO_TARJETA_DEFAULT;
+      const vigente = p.es_oferta && p.precio_oferta && Number(p.precio_oferta) < Number(p.precio_venta)
+        ? Number(p.precio_oferta)
+        : Number(p.precio_final ?? p.precio_venta);
+      return precioEfectivo(vigente, recargo);
+    }
 
     const sel = document.getElementById('mov-producto') as HTMLSelectElement;
     const stockInfo = document.getElementById('mov-stock-actual')!;
@@ -217,7 +230,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
         items: items.sort((a: any, b: any) => String(a.variante || '').localeCompare(String(b.variante || ''), 'es')),
         nombre: String(items[0]?.nombre || ''),
         stock: items.reduce((s: number, p: any) => s + Number(p.stock_actual ?? 0), 0),
-        precio: Math.min(...items.map((p: any) => Number(p.precio_venta ?? 0))),
+        precio: Math.min(...items.map((p: any) => efectivoDe(p))),
       })).sort((a: any, b: any) => {
           switch (orden) {
             case 'stock_asc': return a.stock - b.stock;
@@ -240,7 +253,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
             return `<tr data-prod="${id}" class="stock-option-row" title="Ver detalle">
               <td><span class="stock-option-kind">${p.nombre_opcion || 'Opción'}</span><span class="stock-option-badge">${p.variante || 'Única'}</span><br/><code>${p.sku || ''}</code></td>
               <td style="font-size: 0.875rem;">${p.categoria || '—'}</td>
-              <td class="text-right">$${Number(p.precio_venta ?? 0).toLocaleString('es-AR')}</td>
+              <td class="text-right">$${efectivoDe(p).toLocaleString('es-AR')}</td>
               <td class="text-right">${p.stock_minimo ?? '—'}</td>
               <td class="text-right"><span class="stock-count stock-count-${est.key}">${p.stock_actual ?? 0}</span></td>
               <td><span class="stock-badge" style="${est.estilo}">${est.texto}</span></td>
@@ -309,7 +322,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
           <dl class="pm-grid">
             <div><dt>SKU</dt><dd>${p.sku || '—'}</dd></div>
             <div><dt>Categoría</dt><dd>${p.categoria || '—'}</dd></div>
-            <div><dt>Precio</dt><dd>$${Number(p.precio_venta ?? 0).toLocaleString('es-AR')}</dd></div>
+            <div><dt>Precio</dt><dd>$${efectivoDe(p).toLocaleString('es-AR')}</dd></div>
             <div><dt>Mínimo</dt><dd>${p.stock_minimo ?? '—'} u.</dd></div>
           </dl>
           <h4 class="pm-movs-title">Últimos movimientos</h4>
@@ -328,7 +341,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
           <p><strong>${p.nombre || ''} · ${p.variante || 'Única'}</strong></p>
           <p>SKU: ${p.sku || '—'}</p>
           <p>Categoría: ${p.categoria || '—'}</p>
-          <p>Precio: $${Number(p.precio_venta ?? 0).toLocaleString('es-AR')}</p>
+          <p>Precio: $${efectivoDe(p).toLocaleString('es-AR')}</p>
           <p class="t-big">STOCK: ${p.stock_actual ?? 0} u.</p>
           <p>Mínimo: ${p.stock_minimo ?? '—'} · Estado: ${est.texto.toUpperCase()}</p>
           <p class="t-sep">--------------------------------</p>

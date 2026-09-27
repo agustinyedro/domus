@@ -7,6 +7,7 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 import { CheckoutSchema } from '@/lib/validations';
+import { precioEfectivo, RECARGO_TARJETA_DEFAULT } from '@/lib/precios';
 import { config } from '@/config';
 import { resolverKit } from '@/lib/kits';
 
@@ -14,9 +15,6 @@ const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const serviceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 const mpAccessToken = import.meta.env.MP_ACCESS_TOKEN;
 const siteUrl = import.meta.env.SITE_URL || 'https://domus.com.ar';
-
-// Precio publicado = tarjeta/MP. En efectivo se descuenta este porcentaje.
-const DESCUENTO_EFECTIVO = 0.15;
 
 function getAdmin() {
   if (!supabaseUrl || !serviceKey) {
@@ -30,6 +28,11 @@ function precioVigente(p: { precio_venta: number; precio_oferta: number | null; 
     return Number(p.precio_oferta);
   }
   return Number(p.precio_venta);
+}
+
+function recargoDe(p: { recargo_tarjeta?: number | null }): number {
+  const r = Number(p.recargo_tarjeta);
+  return Number.isFinite(r) ? r : RECARGO_TARJETA_DEFAULT;
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -65,7 +68,7 @@ export const POST: APIRoute = async ({ request }) => {
   const ids = [...new Set(items.map((i) => i.producto_id))];
   const { data: prods, error: prodsError } = await supabase
     .from('productos')
-    .select('id, nombre, variante, precio_venta, precio_oferta, es_oferta, activo, usuario_id, kit_id')
+    .select('id, nombre, variante, precio_venta, precio_oferta, es_oferta, recargo_tarjeta, activo, usuario_id, kit_id')
     .in('id', ids);
 
   if (prodsError) return json({ error: prodsError.message }, 400);
@@ -91,7 +94,7 @@ export const POST: APIRoute = async ({ request }) => {
       ? `${p.nombre} — ${p.variante}`
       : p.nombre;
     const precioBase = metodo === 'EFECTIVO'
-      ? Math.round(precioVigente(p) * (1 - DESCUENTO_EFECTIVO))
+      ? precioEfectivo(precioVigente(p), recargoDe(p))
       : precioVigente(p);
 
     // Kit: stock y costo derivados de los componentes
@@ -174,7 +177,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   if (ventaError) return json({ error: ventaError.message }, 400);
 
-  const motivoMov = `Pedido tienda #${venta.id.slice(0, 8)} (${metodo}${metodo === 'EFECTIVO' ? ' -15%' : ''})`;
+  const motivoMov = `Pedido tienda #${venta.id.slice(0, 8)} (${metodo})`;
 
   for (const r of resueltos) {
     const itemRow: Record<string, unknown> = {
@@ -219,9 +222,13 @@ export const POST: APIRoute = async ({ request }) => {
   // ---- EFECTIVO: link de WhatsApp con el pedido ----
   if (metodo === 'EFECTIVO') {
     const lineas = resueltos.map((r) => `- ${r.nombre} x${r.cantidad} - $${(r.precio * r.cantidad).toLocaleString('es-AR')}`);
-    const msg = `Hola DOMUS! Hice el pedido #${venta.id.slice(0, 8)} en la tienda:\n\n${lineas.join('\n')}\n\nTotal lista: ~$${totalLista.toLocaleString('es-AR')}~\nTotal en efectivo (-15%): $${total.toLocaleString('es-AR')}\nSoy ${cliente.nombre} (${cliente.telefono}). Pago en efectivo, ¿coordinamos?`;
+    const ahorro = Math.max(0, totalLista - total);
+    const msg = ahorro > 0
+      ? `Hola DOMUS! Hice el pedido #${venta.id.slice(0, 8)} en la tienda:\n\n${lineas.join('\n')}\n\nTotal con tarjeta: ~$${totalLista.toLocaleString('es-AR')}~\nTotal en efectivo: $${total.toLocaleString('es-AR')}\nSoy ${cliente.nombre} (${cliente.telefono}). Pago en efectivo, ¿coordinamos?`
+      : `Hola DOMUS! Hice el pedido #${venta.id.slice(0, 8)} en la tienda:\n\n${lineas.join('\n')}\n\nTotal: $${total.toLocaleString('es-AR')}\nSoy ${cliente.nombre} (${cliente.telefono}). Pago en efectivo, ¿coordinamos?`;
     const whatsapp_url = `https://wa.me/${config.whatsapp.phoneNumber}?text=${encodeURIComponent(msg)}`;
-    return json({ venta_id: venta.id, estado, total, totalLista, descuento_pct: 15, whatsapp_url }, 201);
+    const descuento_pct = totalLista > 0 ? Math.round((1 - total / totalLista) * 100) : 0;
+    return json({ venta_id: venta.id, estado, total, totalLista, descuento_pct, whatsapp_url }, 201);
   }
 
   // ---- MP: crear preferencia ----

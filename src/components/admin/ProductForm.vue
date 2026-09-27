@@ -104,7 +104,7 @@
       ></textarea>
     </div>
 
-    <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem;">
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); gap: 1rem;">
       <div class="admin-form-group">
         <label class="admin-form-label">Costo ($)</label>
         <input
@@ -118,9 +118,9 @@
       </div>
 
       <div class="admin-form-group">
-        <label class="admin-form-label">Precio Venta ($)</label>
+        <label class="admin-form-label">Precio en efectivo ($)</label>
         <input
-          v-model.number="form.precio_venta"
+          v-model.number="efectivoInput"
           type="number"
           class="admin-input warning"
           min="0"
@@ -128,9 +128,41 @@
           required
         />
       </div>
+
+      <div class="admin-form-group">
+        <label class="admin-form-label">Recargo tarjeta (%)</label>
+        <input
+          v-model.number="recargoInput"
+          type="number"
+          class="admin-input"
+          min="0"
+          max="95"
+          step="1"
+        />
+      </div>
     </div>
 
+    <p style="margin: -0.25rem 0 1rem; font-size: 0.875rem;">
+      Precio con tarjeta: <strong>${{ precioTarjetaForm.toLocaleString('es-AR') }}</strong>
+      <span style="color: var(--admin-text-muted);">(efectivo + {{ recargoNorm }}%) · en la tienda se muestra como «con tarjeta»</span>
+    </p>
+
     <div class="admin-card" style="padding: 1rem;">
+      <div class="admin-form-group" style="max-width: 11rem; margin-bottom: 0.75rem;">
+        <label class="admin-form-label" for="pf-margen">% Margen (sobre el precio de efectivo)</label>
+        <input
+          id="pf-margen"
+          ref="margenInput"
+          v-model.number="margenPct"
+          type="number"
+          class="admin-input"
+          min="0"
+          max="95"
+          step="any"
+          placeholder="Ej: 30"
+          @input="aplicarMargen"
+        />
+      </div>
       <p style="margin: 0; font-size: 0.875rem;">
         Margen: <strong :style="{ color: margen >= 30 ? '#48bb78' : margen >= 15 ? '#ed8936' : '#f56565' }">
           {{ margen.toFixed(1) }}%
@@ -154,11 +186,16 @@
     <div class="admin-card" style="padding: 1rem;">
       <p style="margin: 0 0 0.75rem; font-size: 0.875rem; font-weight: 600;">Tienda pública</p>
 
+      <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; margin-bottom: 0.75rem;">
+        <input type="checkbox" v-model="form.activo" />
+        Visible en la tienda (producto activo)
+      </label>
+
       <div style="margin-bottom: 0.75rem;">
         <div class="admin-form-group">
-          <label class="admin-form-label">Precio Oferta ($, opcional)</label>
+          <label class="admin-form-label">Precio de oferta en efectivo ($, opcional)</label>
           <input
-            v-model.number="form.precio_oferta"
+            v-model.number="ofertaInput"
             type="number"
             class="admin-input"
             min="0"
@@ -171,7 +208,7 @@
 
       <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; margin-bottom: 0.5rem;">
         <input type="checkbox" v-model="form.es_oferta" />
-        En oferta (requiere precio oferta menor al precio venta)
+        En oferta (requiere precio oferta menor al precio en efectivo)
       </label>
 
       <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">
@@ -231,6 +268,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
+import { precioEfectivo, precioTarjeta, clampRecargo, RECARGO_TARJETA_DEFAULT } from '@/lib/precios';
 
 interface Categoria {
   id: string;
@@ -250,12 +288,14 @@ interface Producto {
   imagen_url: string | null;
   costo: number;
   precio_venta: number;
+  recargo_tarjeta?: number;
   precio_oferta: number | null;
   es_oferta: boolean;
   destacado: boolean;
   rating_promedio: number;
   rating_cantidad: number;
   stock_minimo: number;
+  activo?: boolean;
 }
 
 type VentanaAdmin = Window & { adminToast?: (mensaje: string) => void };
@@ -280,6 +320,7 @@ const form = ref({
   rating_promedio: props.producto?.rating_promedio || 0,
   rating_cantidad: props.producto?.rating_cantidad || 0,
   stock_minimo: props.producto?.stock_minimo ?? 5,
+  activo: props.producto?.activo ?? true,
 });
 
 const loading = ref(false);
@@ -287,6 +328,38 @@ const error = ref('');
 const success = ref('');
 const varianteInput = ref<HTMLInputElement | null>(null);
 const catalogo = ref<Array<Producto & { producto_id?: string }>>([]);
+
+// Precios: el admin carga el precio EN EFECTIVO; el de tarjeta se deriva con el recargo.
+const recargoInicial = clampRecargo(Number(props.producto?.recargo_tarjeta ?? RECARGO_TARJETA_DEFAULT));
+const recargoInput = ref<number | string>(recargoInicial);
+const efectivoInput = ref<number>(
+  props.producto ? precioEfectivo(Number(props.producto.precio_venta), recargoInicial) : 0
+);
+const ofertaInput = ref<number | string | null>(
+  props.producto?.precio_oferta != null && Number(props.producto.precio_oferta) > 0
+    ? precioEfectivo(Number(props.producto.precio_oferta), recargoInicial)
+    : null
+);
+
+const recargoNorm = computed(() => {
+  const raw = recargoInput.value;
+  const r = Number(raw);
+  return String(raw).trim() !== '' && Number.isFinite(r) ? clampRecargo(r) : RECARGO_TARJETA_DEFAULT;
+});
+
+const precioTarjetaForm = computed(() => {
+  const ef = Number(efectivoInput.value);
+  return Number.isFinite(ef) && ef > 0 ? precioTarjeta(ef, recargoNorm.value) : 0;
+});
+
+function aplicarPrecios() {
+  const ef = Number(efectivoInput.value);
+  form.value.precio_venta = Number.isFinite(ef) && ef > 0 ? precioTarjeta(ef, recargoNorm.value) : 0;
+  const of = Number(ofertaInput.value);
+  form.value.precio_oferta = Number.isFinite(of) && of > 0 ? precioTarjeta(of, recargoNorm.value) : null;
+}
+
+watch([efectivoInput, recargoInput, ofertaInput], aplicarPrecios);
 
 const gruposDisponibles = computed(() => {
   const grupos = new Map<string, Producto>();
@@ -309,16 +382,35 @@ function aplicarGrupo() {
 }
 
 const margen = computed(() => {
-  if (form.value.precio_venta === 0) return 0;
-  return ((form.value.precio_venta - form.value.costo) / form.value.precio_venta) * 100;
+  const ef = Number(efectivoInput.value);
+  if (!Number.isFinite(ef) || ef === 0) return 0;
+  return ((ef - form.value.costo) / ef) * 100;
 });
 
-const gananciaUnitaria = computed(() => form.value.precio_venta - form.value.costo);
+const gananciaUnitaria = computed(() => (Number(efectivoInput.value) || 0) - form.value.costo);
+
+// % de margen editable: efectivo = costo / (1 - %), redondeado a pesos enteros
+const margenPct = ref(0);
+const margenInput = ref<HTMLInputElement | null>(null);
+
+function aplicarMargen() {
+  const p = Number(margenPct.value);
+  if (!Number.isFinite(p) || p < 0 || p > 95 || form.value.costo <= 0) return;
+  efectivoInput.value = Math.round(form.value.costo / (1 - p / 100));
+}
+
+watch([efectivoInput, () => form.value.costo], () => {
+  if (margenInput.value && document.activeElement === margenInput.value) return;
+  margenPct.value = Number(efectivoInput.value) > 0
+    ? Math.round(margen.value * 10) / 10
+    : 0;
+}, { immediate: true });
 
 const descuentoPreview = computed(() => {
-  const po = form.value.precio_oferta;
-  if (!form.value.es_oferta || po === null || po <= 0 || po >= form.value.precio_venta) return 0;
-  return Math.round((1 - po / form.value.precio_venta) * 100);
+  const ef = Number(efectivoInput.value);
+  const of = Number(ofertaInput.value);
+  if (!form.value.es_oferta || !Number.isFinite(of) || of <= 0 || !Number.isFinite(ef) || ef <= 0 || of >= ef) return 0;
+  return Math.round((1 - of / ef) * 100);
 });
 
 watch(() => props.producto, (p) => {
@@ -340,7 +432,14 @@ watch(() => props.producto, (p) => {
       rating_promedio: p.rating_promedio,
       rating_cantidad: p.rating_cantidad,
       stock_minimo: p.stock_minimo,
+      activo: p.activo ?? true,
     };
+    const r = clampRecargo(Number(p.recargo_tarjeta ?? RECARGO_TARJETA_DEFAULT));
+    recargoInput.value = r;
+    efectivoInput.value = precioEfectivo(Number(p.precio_venta), r);
+    ofertaInput.value = p.precio_oferta != null && Number(p.precio_oferta) > 0
+      ? precioEfectivo(Number(p.precio_oferta), r)
+      : null;
   }
 });
 
@@ -480,11 +579,13 @@ const handleSubmit = async () => {
       : '/api/admin/productos';
     const method = props.producto ? 'PUT' : 'POST';
 
+    aplicarPrecios();
     const payload = {
       ...form.value,
       grupo_id: form.value.grupo_id || null,
       imagen_url: form.value.imagen_url.trim() || null,
       categoria: form.value.categoria.trim() || null,
+      recargo_tarjeta: recargoNorm.value,
     };
 
     const res = await fetch(url, {

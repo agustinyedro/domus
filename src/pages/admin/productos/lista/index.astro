@@ -32,7 +32,23 @@ const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'lon
   </div>
 
   <script>
+    import { precioEfectivo, RECARGO_TARJETA_DEFAULT } from '../../../../lib/precios';
+
     const fmt$ = (n: number) => `$${Math.round(n).toLocaleString('es-AR')}`;
+
+    function recargoDe(p: any): number {
+      const r = Number(p.recargo_tarjeta);
+      return Number.isFinite(r) ? r : RECARGO_TARJETA_DEFAULT;
+    }
+
+    function efectivoDe(p: any): number {
+      const col = Number(p.precio_efectivo);
+      if (Number.isFinite(col)) return col;
+      const vigente = p.es_oferta && p.precio_oferta && Number(p.precio_oferta) < Number(p.precio_venta)
+        ? Number(p.precio_oferta)
+        : Number(p.precio_final ?? p.precio_venta);
+      return precioEfectivo(vigente, recargoDe(p));
+    }
 
     async function cargar() {
       try {
@@ -62,8 +78,8 @@ const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'lon
               const opciones = items.map((p) => {
               const enOferta = p.es_oferta && p.precio_oferta && Number(p.precio_oferta) < Number(p.precio_venta);
               const precio = enOferta
-                ? `<s style="color: var(--admin-text-muted); font-weight: 400; margin-right: 0.5rem;">${fmt$(Number(p.precio_venta))}</s>${fmt$(Number(p.precio_oferta))}`
-                : fmt$(Number(p.precio_final ?? p.precio_venta));
+                ? `<s style="color: var(--admin-text-muted); font-weight: 400; margin-right: 0.5rem;">${fmt$(precioEfectivo(Number(p.precio_venta), recargoDe(p)))}</s>${fmt$(efectivoDe(p))}`
+                : fmt$(efectivoDe(p));
               const stock = Number(p.stock_actual ?? 0);
               const estado = stock <= 0 ? 'sin' : stock <= Number(p.stock_minimo ?? 5) ? 'bajo' : 'ok';
               return `<tr class="lista-option-row">

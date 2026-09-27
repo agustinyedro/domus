@@ -19,10 +19,15 @@
       <div class="pdp-price">
         <template v-if="producto.descuento_pct > 0">
           <s>${{ Number(producto.precio_venta).toLocaleString('es-AR') }}</s>
-          <span class="pdp-price-now">${{ precioFinal.toLocaleString('es-AR') }}</span>
+          <span class="pdp-price-now">${{ precioEfectivoVigente.toLocaleString('es-AR') }}</span>
         </template>
-        <span v-else class="pdp-price-now">${{ precioFinal.toLocaleString('es-AR') }}</span>
+        <span v-else class="pdp-price-now">${{ precioEfectivoVigente.toLocaleString('es-AR') }}</span>
+        <span class="pdp-price-tag">Efectivo</span>
       </div>
+
+      <p v-if="precioFinal > precioEfectivoVigente" class="pdp-price-card">
+        con tarjeta ${{ precioFinal.toLocaleString('es-AR') }}
+      </p>
 
       <p class="pdp-stock" :class="stock <= 0 ? 'pdp-stock-out' : stock <= minimo ? 'pdp-stock-low' : ''">
         {{ stock <= 0 ? 'Sin stock por ahora' : stock <= minimo ? `¡Quedan ${stock}!` : 'Disponible' }}
@@ -102,6 +107,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { fotoDe, urlFallback } from '@/lib/fotos';
+import { precioEfectivo, RECARGO_TARJETA_DEFAULT } from '@/lib/precios';
 import type { ProductoTienda } from '@/lib/tienda-catalogo';
 
 const props = defineProps<{ producto: ProductoTienda; variantes: ProductoTienda[] }>();
@@ -116,6 +122,13 @@ const stock = computed(() => Number(props.producto.stock_actual ?? 0));
 const minimo = computed(() => Number(props.producto.stock_minimo ?? 5));
 const esVariante = computed(() => !!props.producto.variante && props.producto.variante !== 'Única');
 const precioFinal = computed(() => Number(props.producto.precio_final ?? props.producto.precio_venta));
+const recargo = computed(() =>
+  Number.isFinite(Number(props.producto.recargo_tarjeta)) ? Number(props.producto.recargo_tarjeta) : RECARGO_TARJETA_DEFAULT
+);
+const precioEfectivoVigente = computed(() => {
+  const col = Number(props.producto.precio_efectivo);
+  return Number.isFinite(col) ? col : precioEfectivo(precioFinal.value, recargo.value);
+});
 const alt = computed(() =>
   esVariante.value ? `${props.producto.nombre} ${props.producto.variante}` : props.producto.nombre
 );
@@ -131,7 +144,7 @@ const enCarrito = ref(false);
 
 function sincronizarCarrito() {
   try {
-    const cart = JSON.parse(localStorage.getItem('domus_cart') || '[]');
+    const cart = JSON.parse(localStorage.getItem('domus_cart_v2') || '[]');
     enCarrito.value = Array.isArray(cart) && cart.some((item) => String(item?.id) === props.producto.producto_id);
   } catch {
     enCarrito.value = false;
@@ -145,7 +158,7 @@ function onError(e: Event) {
 }
 
 type Carrito = {
-  addItem: (item: { id: string; name: string; price: number; image?: string; stock?: number; quantity?: number }) => void;
+  addItem: (item: { id: string; name: string; price: number; image?: string; stock?: number; quantity?: number; recargo?: number }) => void;
   getCount?: () => number;
 };
 const carrito = (): Carrito | undefined =>
@@ -159,10 +172,11 @@ function alCarrito(unidades: number): boolean {
   c.addItem({
     id: props.producto.producto_id,
     name: nombreCarrito.value,
-    price: precioFinal.value,
+    price: precioEfectivoVigente.value,
     image: fotoDe(props.producto),
     stock: stock.value,
     quantity: unidades,
+    recargo: recargo.value,
   });
   return (c.getCount?.() ?? antes) > antes;
 }
@@ -313,6 +327,26 @@ onBeforeUnmount(() => {
   font-size: clamp(1.75rem, 3vw, 2.25rem);
   font-weight: 700;
   color: var(--color-brown);
+}
+
+.pdp-price-tag {
+  display: inline-block;
+  align-self: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--color-hueso);
+  color: var(--color-tierra);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pdp-price-card {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-brown-light);
 }
 
 .pdp-stock {

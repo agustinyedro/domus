@@ -158,7 +158,7 @@ const initParallax = () => {
 // ============================================
 
 const CartManager = {
-  key: 'domus_cart',
+  key: 'domus_cart_v2',
   
   getCart() {
     try {

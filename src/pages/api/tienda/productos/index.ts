@@ -52,9 +52,9 @@ export const GET: APIRoute = async ({ url }) => {
       query = query.eq('categoria', sector);
     }
 
-    // Filtro precio
-    if (min) query = query.gte('precio_final', Number(min));
-    if (max) query = query.lte('precio_final', Number(max));
+    // Filtro precio (sobre el precio en efectivo, que es el que se muestra)
+    if (min) query = query.gte('precio_efectivo', Number(min));
+    if (max) query = query.lte('precio_efectivo', Number(max));
 
     // Solo ofertas
     if (ofertas) {
@@ -74,10 +74,10 @@ export const GET: APIRoute = async ({ url }) => {
     // Orden
     switch (orden) {
       case 'precio_asc':
-        query = query.order('precio_final', { ascending: true });
+        query = query.order('precio_efectivo', { ascending: true });
         break;
       case 'precio_desc':
-        query = query.order('precio_final', { ascending: false });
+        query = query.order('precio_efectivo', { ascending: false });
         break;
       case 'descuento':
         query = query.order('descuento_pct', { ascending: false });

@@ -12,6 +12,8 @@ export interface ProductoTienda {
   imagen_url: string | null;
   precio_venta: number;
   precio_final: number;
+  precio_efectivo: number;
+  recargo_tarjeta: number;
   precio_oferta: number | null;
   es_oferta: boolean;
   descuento_pct: number;
@@ -27,7 +29,7 @@ export interface ProductoTienda {
 }
 
 const COLUMNAS =
-  'producto_id, sku, nombre, descripcion, categoria, imagen_url, precio_venta, precio_final, precio_oferta, es_oferta, descuento_pct, variante, nombre_opcion, grupo_id, stock_actual, stock_minimo, vendidos_90d, rating_promedio, rating_cantidad, destacado';
+  'producto_id, sku, nombre, descripcion, categoria, imagen_url, precio_venta, precio_final, precio_efectivo, recargo_tarjeta, precio_oferta, es_oferta, descuento_pct, variante, nombre_opcion, grupo_id, stock_actual, stock_minimo, vendidos_90d, rating_promedio, rating_cantidad, destacado';
 
 let cliente: SupabaseClient | null = null;
 
