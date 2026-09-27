@@ -408,5 +408,9 @@ import '@/styles/remito.css';
         grid-column: 1 / -1;
       }
     }
+    @media (max-width: 480px) {
+      .v-row { grid-template-columns: 1fr !important; }
+      .v-row .admin-form-group:first-child { grid-column: auto; }
+    }
   </style>
 </AdminLayout>

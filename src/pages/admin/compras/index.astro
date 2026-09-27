@@ -392,6 +392,11 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
       .c-row .admin-form-group:first-child {
         grid-column: 1 / -1;
       }
+      .compra-import-actions > * { width: 100%; max-width: none; }
+    }
+    @media (max-width: 480px) {
+      .c-row { grid-template-columns: 1fr !important; }
+      .c-row .admin-form-group:first-child { grid-column: auto; }
     }
   </style>
 </AdminLayout>
