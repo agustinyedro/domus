@@ -42,8 +42,20 @@
             <tr v-for="prod in grupo.items" :key="prod.producto_id" class="product-option-row">
               <td><code>{{ prod.sku }}</code></td>
               <td>
-                <span class="option-label">{{ prod.nombre_opcion || 'Opción' }}</span>
-                <span class="option-badge">{{ prod.variante || 'Única' }}</span>
+                <div class="option-cell">
+                  <img
+                    v-if="prod.imagen_url || prod.categoria"
+                    class="option-thumb"
+                    :src="fotoDe(prod)"
+                    :alt="prod.imagen_url ? `Foto de ${prod.nombre}` : ''"
+                    loading="lazy"
+                    @error="onImgError($event, prod)"
+                  />
+                  <div>
+                    <span class="option-label">{{ prod.nombre_opcion || 'Opción' }}</span>
+                    <span class="option-badge">{{ prod.variante || 'Única' }}</span>
+                  </div>
+                </div>
               </td>
               <td class="text-right">${{ Number(prod.costo).toLocaleString('es-AR') }}</td>
               <td class="text-right">${{ Number(prod.precio_venta).toLocaleString('es-AR') }}</td>
@@ -66,6 +78,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { fotoDe, urlFallback } from '@/lib/fotos';
 
 interface ProductoConStock {
   producto_id: string;
@@ -75,6 +88,7 @@ interface ProductoConStock {
   variante: string;
   nombre_opcion: string;
   categoria: string | null;
+  imagen_url: string | null;
   costo: number;
   precio_venta: number;
   stock_minimo: number;
@@ -132,6 +146,12 @@ function estadoStock(p: ProductoConStock): string {
   if (stock <= Number(p.stock_minimo || 0)) return 'stock-number-low';
   return 'stock-number-ok';
 }
+
+function onImgError(e: Event, p: ProductoConStock) {
+  const img = e.target as HTMLImageElement;
+  const fb = urlFallback(p.categoria);
+  if (img.src !== fb) img.src = fb;
+}
 </script>
 
 <style scoped>
@@ -146,6 +166,8 @@ function estadoStock(p: ProductoConStock): string {
 .product-group-row small { margin-left: 0.6rem; color: var(--admin-text-muted); }
 .product-category { margin-left: 0.65rem; padding: 0.18rem 0.5rem; border-radius: 999px; background: white; color: var(--admin-text-muted); font-size: 0.7rem; }
 .product-option-row td:first-child { padding-left: 1.35rem; }
+.option-cell { display: flex; align-items: center; gap: 0.75rem; }
+.option-thumb { width: 44px; height: 44px; flex-shrink: 0; border-radius: 8px; object-fit: cover; border: 1px solid rgba(96, 72, 17, 0.18); background: #fffdf8; }
 .option-label { display: block; margin-bottom: 0.25rem; color: var(--admin-text-muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; }
 .option-badge { display: inline-flex; padding: 0.25rem 0.65rem; border: 1px solid rgba(96, 72, 17, 0.25); border-radius: 999px; background: #fffdf8; color: #604811; font-size: 0.8rem; font-weight: 700; }
 .stock-number { display: inline-flex; min-width: 42px; justify-content: center; padding: 0.3rem 0.55rem; border-radius: 8px; font-size: 1rem; font-weight: 800; }

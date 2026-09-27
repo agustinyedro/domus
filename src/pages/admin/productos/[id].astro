@@ -30,11 +30,10 @@ if (id) {
   <div class="admin-card">
     <div class="admin-card-header">
       <h1 style="margin: 0; font-size: 1.5rem;">Editar Producto</h1>
-      <a href="/admin/productos" class="admin-btn admin-btn-ghost">Volver</a>
     </div>
 
     {producto ? (
-      <ProductForm client:visible producto={producto} />
+      <ProductForm client:visible producto={producto} volverA="/admin/productos" />
     ) : (
       <p class="admin-alert admin-alert-error">Producto no encontrado.</p>
     )}

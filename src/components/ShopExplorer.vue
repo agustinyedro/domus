@@ -126,49 +126,69 @@
             v-for="g in grupos"
             :key="g.grupo_id"
             class="shop-card"
-            @click="abrirProducto(g)"
+            :class="{ 'is-added': agregadas[g.grupo_id], 'is-in-cart': enCarritoGrupo(g) }"
+            @click="navegarCard($event, g)"
           >
-            <button class="shop-card-media" type="button" @click.stop="abrirProducto(g)" :aria-label="`Ver ${g.principal.nombre}`">
-              <img
-                :src="fotoDe(g.principal)"
-                :alt="g.principal.nombre"
-                loading="lazy"
-                @error="onImgError($event, g.principal.categoria)"
-              />
+            <div class="shop-card-media">
+              <a class="shop-card-link" :href="urlProducto(g.principal)" :aria-label="`Ver ${g.principal.nombre}`">
+                <img
+                  :src="fotoDe(g.principal)"
+                  :alt="g.principal.nombre"
+                  loading="lazy"
+                  @error="onImgError($event, g.principal.categoria)"
+                />
+              </a>
+              <button
+                type="button"
+                class="shop-quick-add"
+                :class="{ 'is-added': agregadas[g.grupo_id], 'is-in-cart': enCarritoGrupo(g) }"
+                :disabled="agotado(g)"
+                :aria-label="agregadas[g.grupo_id]
+                  ? 'Agregado al carrito'
+                  : enCarritoGrupo(g)
+                    ? `En el carrito. Agregar otra unidad de ${g.principal.nombre}`
+                    : `Agregar ${g.principal.nombre} al carrito`"
+                @click.stop="quickAdd(g)"
+              >
+                <svg v-if="agregadas[g.grupo_id] || enCarritoGrupo(g)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M16 5h6" /><path d="M19 2v6" />
+                  <path d="m2.05 2.05 1.099-.028a1 1 0 011.008.815l2.69 14.347A1 1 0 007.83 18H18" />
+                  <path d="M4.564 5H12" />
+                  <path d="M6.25 14h12.712a2 2 0 001.991-1.57l.172-1.041" />
+                  <circle cx="18" cy="20" r="2" /><circle cx="8" cy="20" r="2" />
+                </svg>
+              </button>
               <span
-                v-if="g.principal.stock_actual > 0 && g.principal.stock_actual <= g.principal.stock_minimo"
+                v-if="stockTotal(g) > 0 && stockTotal(g) <= stockMinimo(g)"
                 class="shop-badge shop-badge-low"
-              >🔥 ÚLTIMA{{ g.principal.stock_actual === 1 ? '' : 'S' }} {{ g.principal.stock_actual }} UNIDAD{{ g.principal.stock_actual === 1 ? '' : 'ES' }}</span>
+              >🔥 ÚLTIMA{{ stockTotal(g) === 1 ? '' : 'S' }} {{ stockTotal(g) }} UNIDAD{{ stockTotal(g) === 1 ? '' : 'ES' }}</span>
               <span v-else-if="g.vendidos > 0" class="shop-badge shop-badge-sold">MÁS VENDIDO</span>
-              <span v-if="g.principal.descuento_pct > 0" class="shop-badge shop-badge-off">-{{ g.principal.descuento_pct }}%</span>
-            </button>
+              <span v-if="descuentoCard(g) > 0" class="shop-badge shop-badge-off">-{{ descuentoCard(g) }}%</span>
+            </div>
 
             <div class="shop-card-body">
               <p class="shop-card-cat">{{ g.principal.categoria || 'General' }}</p>
-              <h3 class="shop-card-name">{{ g.principal.nombre }}</h3>
+              <h3 class="shop-card-name">
+                <a class="shop-card-title" :href="urlProducto(g.principal)">{{ g.principal.nombre }}</a>
+              </h3>
 
               <p v-if="g.variantes.length > 1" class="shop-variant-summary">{{ g.variantes.length }} opciones de {{ (g.principal.nombre_opcion || 'producto').toLowerCase() }}</p>
               <p v-if="g.principal.descripcion" class="shop-card-description">{{ g.principal.descripcion }}</p>
 
               <div class="shop-card-price">
-                <template v-if="g.principal.descuento_pct > 0">
-                  <span class="shop-price-old">${{ Number(g.principal.precio_venta).toLocaleString('es-AR') }}</span>
-                  <span class="shop-price">${{ Number(g.principal.precio_final).toLocaleString('es-AR') }}</span>
-                </template>
-                <span v-else class="shop-price">${{ Number(g.principal.precio_final ?? g.principal.precio_venta).toLocaleString('es-AR') }}</span>
+                <span v-if="descuentoCard(g) > 0" class="shop-price-old">${{ Number(g.principal.precio_venta).toLocaleString('es-AR') }}</span>
+                <span class="shop-price">
+                  <span v-if="precioDesde(g) < precioHasta(g)" class="shop-price-from">desde </span>${{ Number(precioDesde(g)).toLocaleString('es-AR') }}
+                </span>
               </div>
 
-              <p v-if="(g.principal.stock_actual ?? 0) <= 0" class="shop-stock shop-stock-out">Sin stock por ahora</p>
-              <p v-else-if="(g.principal.stock_actual ?? 0) <= (g.principal.stock_minimo ?? 5)" class="shop-stock shop-stock-low">
-                ¡Quedan {{ g.principal.stock_actual }}!
+              <p v-if="stockTotal(g) <= 0" class="shop-stock shop-stock-out">Sin stock por ahora</p>
+              <p v-else-if="stockTotal(g) <= stockMinimo(g)" class="shop-stock shop-stock-low">
+                ¡Quedan {{ stockTotal(g) }}!
               </p>
-
-              <button
-                class="btn shop-add"
-                @click.stop="agregarDesdeCard(g)"
-              >
-                Agregar
-              </button>
             </div>
           </article>
         </div>
@@ -213,8 +233,11 @@
                   :aria-pressed="modalVarianteId === v.producto_id"
                   @click="modalVarianteId = v.producto_id; cantidad = 1"
                 >
-                  {{ v.variante }}
-                  <small v-if="v.stock_actual <= 0">Sin stock</small>
+                  <img class="product-option-thumb" :src="fotoDe(v)" alt="" loading="lazy" @error="onImgError($event, v.categoria)" />
+                  <span class="product-option-label">
+                    {{ v.variante }}
+                    <small v-if="v.stock_actual <= 0">Sin stock</small>
+                  </span>
                 </button>
               </div>
             </div>
@@ -243,6 +266,10 @@
             <p v-if="modalProducto.stock_actual > 0 && modalProducto.stock_actual <= modalProducto.stock_minimo" class="shop-stock shop-stock-low">
               Quedan {{ modalProducto.stock_actual }} unidades de esta opción.
             </p>
+            <a class="product-detail-link" :href="urlProducto(modalProducto)">
+              Ver todos los detalles
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </a>
           </div>
 
           <div v-if="recomendados.length" class="product-recommendations">
@@ -273,7 +300,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { fotoDe, FALLBACKS, fallbackImg } from '@/lib/fotos';
 
 interface TiendaProducto {
   producto_id: string;
@@ -299,30 +327,6 @@ interface TiendaProducto {
 }
 
 const props = defineProps<{ sectorInicial?: string }>();
-
-const IMG_AROMAS = 'https://images.unsplash.com/photo-1602928321679-560bb453f190?w=400&h=400&fit=crop';
-const IMG_COMIDA = 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop';
-const IMG_ROPA = 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop';
-const IMG_EXPERIENCIAS = 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=400&fit=crop';
-
-// Fallback por categoría mientras el producto no tenga foto propia
-const FALLBACKS: Record<string, string> = {
-  'Sahumerios': IMG_AROMAS,
-  'Difusores': IMG_AROMAS,
-  'Velas': IMG_AROMAS,
-  'Aromas': IMG_AROMAS,
-  'Comida': IMG_COMIDA,
-  'Ropa': IMG_ROPA,
-  'Experiencias': IMG_EXPERIENCIAS,
-};
-
-const fallbackImg = IMG_AROMAS;
-
-function fotoDe(p: { categoria: string | null; imagen_url: string | null }): string {
-  if (p.imagen_url) return p.imagen_url;
-  const c = (p.categoria || '').trim();
-  return FALLBACKS[c] || fallbackImg;
-}
 
 const filtros = ref({
   q: '',
@@ -382,7 +386,54 @@ const grupos = computed(() => {
 const loading = ref(true);
 const error = ref(false);
 const mostrarFiltros = ref(false);
+const agregadas = ref<Record<string, boolean>>({});
+const enCarrito = ref<Set<string>>(new Set());
 let debounce: ReturnType<typeof setTimeout> | null = null;
+
+const stockTotal = (g: GrupoProducto) => g.variantes.reduce((s, v) => s + Number(v.stock_actual || 0), 0);
+const stockMinimo = (g: GrupoProducto) => g.variantes.reduce((m, v) => Math.max(m, Number(v.stock_minimo ?? 5)), 0);
+const agotado = (g: GrupoProducto) => stockTotal(g) <= 0;
+const precioFinalDe = (v: TiendaProducto) => Number(v.precio_final ?? v.precio_venta);
+const precioDesde = (g: GrupoProducto) => Math.min(...g.variantes.map(precioFinalDe));
+const precioHasta = (g: GrupoProducto) => Math.max(...g.variantes.map(precioFinalDe));
+const descuentoCard = (g: GrupoProducto) => g.variantes.reduce((m, v) => Math.max(m, Number(v.descuento_pct || 0)), 0);
+const urlProducto = (p: { sku?: string }) => `/tienda/producto/${encodeURIComponent(String(p.sku || '').trim())}`;
+
+const enCarritoGrupo = (g: GrupoProducto) => g.variantes.some((v) => enCarrito.value.has(v.producto_id));
+
+function sincronizarCarrito() {
+  const ids = new Set<string>();
+  try {
+    const cart = JSON.parse(localStorage.getItem('domus_cart') || '[]');
+    if (Array.isArray(cart)) {
+      for (const item of cart) if (item?.id) ids.add(String(item.id));
+    }
+  } catch { /* noop */ }
+  enCarrito.value = ids;
+}
+
+function marcarAgregada(grupo_id: string) {
+  agregadas.value[grupo_id] = true;
+  window.setTimeout(() => { delete agregadas.value[grupo_id]; }, 1600);
+}
+
+function quickAdd(g: GrupoProducto) {
+  if (agotado(g)) return;
+  if (g.variantes.length > 1) {
+    abrirProducto(g);
+    return;
+  }
+  const cm = (window as unknown as { CartManager?: { getCount: () => number } }).CartManager;
+  const antes = cm?.getCount?.() ?? 0;
+  agregar(g.variantes[0], 1);
+  if ((cm?.getCount?.() ?? antes) > antes) marcarAgregada(g.grupo_id);
+}
+
+function navegarCard(e: MouseEvent, g: GrupoProducto) {
+  const target = e.target as HTMLElement;
+  if (target.closest('button') || target.closest('a')) return;
+  window.location.href = urlProducto(g.principal);
+}
 
 const presetsPrecio = [
   { label: 'Hasta $1.000', min: null as number | null, max: 1000 as number | null },
@@ -504,7 +555,7 @@ function abrirProducto(grupo: GrupoProducto) {
 
 async function compartirProducto() {
   if (!modalGrupo.value || !modalProducto.value) return;
-  const url = `${window.location.origin}/tienda?producto=${encodeURIComponent(modalGrupo.value.grupo_id)}`;
+  const url = `${window.location.origin}${urlProducto(modalProducto.value)}`;
   const shareData = {
     title: `${modalProducto.value.nombre} | DOMUS`,
     text: modalProducto.value.variante && modalProducto.value.variante !== 'Única'
@@ -550,25 +601,39 @@ function agregarDesdeModal() {
   cerrarProducto();
 }
 
-function agregarDesdeCard(grupo: GrupoProducto) {
-  if (grupo.variantes.length > 1) {
-    abrirProducto(grupo);
-    return;
-  }
-  agregar(grupo.principal, 1);
+
+function alVolverPestana() {
+  if (!document.hidden) cargar();
 }
 
 onMounted(() => {
   leerURL();
+  sincronizarCarrito();
   cargar();
   // Stock siempre fresco: recargar al volver a la pestaña y tras confirmar una compra
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) cargar();
-  });
-  window.addEventListener('domus:cart-cleared', () => cargar());
-  window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && modalGrupo.value) cerrarProducto();
-  });
+  document.addEventListener('visibilitychange', alVolverPestana);
+  window.addEventListener('domus:cart-updated', sincronizarCarrito);
+  window.addEventListener('domus:cart-cleared', sincronizarCarrito);
+  window.addEventListener('storage', sincronizarCarrito);
+  window.addEventListener('domus:cart-cleared', recargarPorCompra);
+  window.addEventListener('keydown', onKeydown);
+});
+
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && modalGrupo.value) cerrarProducto();
+}
+
+function recargarPorCompra() {
+  cargar();
+}
+
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', alVolverPestana);
+  window.removeEventListener('domus:cart-updated', sincronizarCarrito);
+  window.removeEventListener('domus:cart-cleared', sincronizarCarrito);
+  window.removeEventListener('storage', sincronizarCarrito);
+  window.removeEventListener('domus:cart-cleared', recargarPorCompra);
+  window.removeEventListener('keydown', onKeydown);
 });
 </script>
 
@@ -858,12 +923,15 @@ onMounted(() => {
   position: relative;
   display: block;
   width: 100%;
-  padding: 0;
-  border: 0;
   aspect-ratio: 4/3;
   overflow: hidden;
   background: var(--color-beige);
-  cursor: pointer;
+}
+
+.shop-card-link {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .shop-card-media img {
@@ -871,6 +939,95 @@ onMounted(() => {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.shop-quick-add {
+  position: absolute;
+  right: 0.625rem;
+  bottom: 0.625rem;
+  z-index: 2;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(61, 43, 31, 0.16);
+  background: white;
+  color: var(--color-olive);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(61, 43, 31, 0.2);
+  transition: transform 0.18s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.shop-quick-add svg {
+  width: 20px;
+  height: 20px;
+}
+
+.shop-quick-add:hover:not(:disabled) {
+  background: var(--color-olive);
+  color: white;
+  border-color: var(--color-olive);
+  transform: scale(1.08);
+}
+
+.shop-quick-add:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.shop-quick-add:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: white;
+  color: var(--color-brown-light);
+}
+
+.shop-quick-add:focus-visible,
+.shop-card-title:focus-visible {
+  outline: 2px solid var(--color-olive);
+  outline-offset: 2px;
+}
+
+.shop-quick-add.is-added {
+  background: var(--color-olive);
+  color: white;
+  border-color: var(--color-olive);
+  animation: domus-pop-qa 0.35s ease;
+}
+
+.shop-card.is-added {
+  box-shadow: 0 0 0 2px var(--color-olive), 0 12px 28px rgba(61, 43, 31, 0.14);
+}
+
+/* Ya está en el carrito: borde oliva persistente */
+.shop-card.is-in-cart {
+  box-shadow: 0 0 0 2px var(--color-olive), 0 8px 22px rgba(152, 140, 45, 0.18);
+}
+
+.shop-card.is-in-cart .shop-card-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(152, 140, 45, 0.08);
+  pointer-events: none;
+}
+
+.shop-quick-add.is-in-cart {
+  background: var(--color-olive);
+  color: white;
+  border-color: var(--color-olive);
+  box-shadow: 0 6px 16px rgba(152, 140, 45, 0.4);
+}
+
+.shop-quick-add.is-in-cart:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+@keyframes domus-pop-qa {
+  0% { transform: scale(0.7); }
+  60% { transform: scale(1.14); }
+  100% { transform: scale(1); }
 }
 
 .shop-badge {
@@ -1002,6 +1159,22 @@ onMounted(() => {
   color: #9b2c2c;
 }
 
+.shop-card-title {
+  color: inherit;
+  text-decoration: none;
+}
+
+.shop-card-title:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.shop-price-from {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-brown-light);
+}
+
 .shop-add {
   margin-top: auto;
   width: 100%;
@@ -1010,6 +1183,28 @@ onMounted(() => {
 .shop-add:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.product-detail-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.9rem;
+  color: var(--color-olive);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  text-decoration: none;
+}
+
+.product-detail-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.product-detail-link:focus-visible {
+  outline: 2px solid var(--color-olive);
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 .product-modal-backdrop {
@@ -1256,6 +1451,28 @@ onMounted(() => {
   text-decoration: line-through;
 }
 
+.product-option-thumb {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--color-beige);
+}
+
+.product-option-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  text-align: left;
+  line-height: 1.25;
+}
+
+.product-option.unavailable .product-option-thumb {
+  filter: grayscale(1);
+}
+
 .product-option small {
   font-size: 0.65rem;
   text-decoration: none;
@@ -1284,6 +1501,7 @@ onMounted(() => {
 .product-quantity {
   display: grid;
   grid-template-columns: 38px 42px 38px;
+  justify-self: start;
   align-items: center;
   border: 1px solid rgba(61, 43, 31, 0.22);
   border-radius: 8px;

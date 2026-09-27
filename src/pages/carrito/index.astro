@@ -1,0 +1,29 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Navbar from '../../components/Navbar.astro';
+import Cart from '../../components/Cart.astro';
+import Footer from '../../components/Footer.astro';
+import CartPage from '../../components/CartPage.vue';
+---
+
+<BaseLayout
+  title="Mi carrito - DOMUS"
+  description="Revisá tu carrito, completá tus datos y confirmá tu pedido DOMUS en efectivo (15% OFF) o con Mercado Pago."
+>
+  <Navbar />
+  <Cart />
+
+  <main class="carrito-main">
+    <CartPage client:load />
+  </main>
+
+  <Footer />
+</BaseLayout>
+
+<style>
+  .carrito-main {
+    padding: 120px 0 4rem;
+    background: var(--color-beige-light);
+    min-height: 70vh;
+  }
+</style>

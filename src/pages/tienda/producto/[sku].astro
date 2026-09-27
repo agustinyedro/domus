@@ -1,0 +1,130 @@
+---
+// src/pages/tienda/producto/[sku].astro
+// Página de detalle por variante (SSR: stock y precio siempre frescos)
+export const prerender = false;
+
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import Navbar from '../../../components/Navbar.astro';
+import Cart from '../../../components/Cart.astro';
+import Footer from '../../../components/Footer.astro';
+import ProductDetail from '../../../components/ProductDetail.vue';
+import { buscarProducto, variantesDeGrupo } from '../../../lib/tienda-catalogo';
+
+const sku = Astro.params.sku ?? '';
+const producto = await buscarProducto(sku);
+const variantes = producto ? await variantesDeGrupo(producto.grupo_id) : [];
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+if (!producto) Astro.response.status = 404;
+
+const esVariante = (valor: string | null | undefined) => !!valor && valor !== 'Única';
+const etiqueta = producto && esVariante(producto.variante) ? ` · ${producto.variante}` : '';
+const titulo = producto
+  ? `${producto.nombre}${etiqueta} | DOMUS`
+  : 'Producto no encontrado | DOMUS';
+const descripcion = producto?.descripcion?.trim()
+  || (producto
+    ? `${producto.nombre}${etiqueta} en DOMUS. ${producto.categoria || 'Catálogo DOMUS'}. Envío y retiro coordinado por WhatsApp.`
+    : 'Buscaste un producto que ya no está disponible en la tienda DOMUS.');
+---
+
+<BaseLayout title={titulo} description={descripcion}>
+  <Navbar />
+  <Cart />
+
+  <main class="producto-page">
+    {producto ? (
+      <nav class="producto-crumb" aria-label="Migas de pan">
+        <a href="/tienda">Tienda</a>
+        <span aria-hidden="true">/</span>
+        {producto.categoria && (
+          <>
+            <a href={`/tienda?sector=${encodeURIComponent(producto.categoria)}`}>{producto.categoria}</a>
+            <span aria-hidden="true">/</span>
+          </>
+        )}
+        <span aria-current="page">{producto.nombre}{etiqueta}</span>
+      </nav>
+
+      <ProductDetail client:load producto={producto} variantes={variantes} />
+    ) : (
+      <section class="producto-404">
+        <p class="producto-404-eyebrow">DOMUS</p>
+        <h1>No encontramos ese producto</h1>
+        <p>Puede que se haya dejado de publicar o que el enlace esté incompleto.</p>
+        <a class="btn producto-404-cta" href="/tienda">Volver a la tienda</a>
+      </section>
+    )}
+  </main>
+
+  <Footer />
+</BaseLayout>
+
+<style>
+  .producto-page {
+    padding-top: 88px;
+    min-height: 60vh;
+  }
+
+  .producto-crumb {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 1.25rem 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    font-size: 0.8125rem;
+    color: var(--color-brown-light);
+  }
+
+  .producto-crumb a {
+    color: var(--color-olive);
+    text-decoration: none;
+  }
+
+  .producto-crumb a:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .producto-crumb span[aria-current] {
+    color: var(--color-brown);
+    font-weight: 600;
+  }
+
+  .producto-404 {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 3rem 1.25rem 5rem;
+    text-align: center;
+  }
+
+  .producto-404-eyebrow {
+    margin: 0 0 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.28em;
+    font-size: 0.75rem;
+    color: var(--color-olive);
+  }
+
+  .producto-404 h1 {
+    margin: 0 0 0.75rem;
+    font-family: var(--font-heading, 'Montserrat', sans-serif);
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    color: var(--color-brown);
+  }
+
+  .producto-404 p {
+    margin: 0 auto 1.75rem;
+    color: var(--color-brown-light);
+    max-width: 42ch;
+  }
+
+  .producto-404-cta {
+    border-radius: 999px;
+    padding: 0.75rem 1.75rem;
+    background: var(--color-olive);
+    color: white;
+  }
+</style>

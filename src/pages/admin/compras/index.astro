@@ -3,6 +3,7 @@
 // Registrar compras multi-producto + historial
 export const prerender = false;
 import AdminLayout from '@/layouts/AdminLayout.astro';
+import ProductoModal from '@/components/admin/ProductoModal.vue';
 ---
 
 <AdminLayout title="Compras">
@@ -20,7 +21,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
         <input id="c-file" type="file" class="admin-input" accept=".xlsx,.csv" aria-describedby="c-import-help" />
         <button type="button" id="c-template" class="admin-btn admin-btn-ghost">Descargar plantilla CSV</button>
       </div>
-      <p id="c-import-help">Columnas: <strong>SKU (o Producto), Cantidad y Costo unitario</strong>. Hasta 50 filas y 5 MB. Usá el SKU del catálogo; para conservar ceros iniciales, guardalo como texto en Excel. No crea productos nuevos.</p>
+      <p id="c-import-help">Columnas: <strong>SKU (o Producto + Variante), Cantidad y Costo unitario</strong>. Hasta 50 filas y 5 MB. Si un producto tiene variantes, agregá la columna <strong>Variante</strong> (o Sabor/Aroma/Tamaño) para que cada fila caiga en la opción correcta. Usá el SKU del catálogo; para conservar ceros iniciales, guardalo como texto en Excel. No crea productos nuevos.</p>
       <div id="c-sheet-box" hidden>
         <label class="admin-form-label" for="c-sheet">El archivo tiene varias hojas. Elegí la que querés cargar.</label>
         <select id="c-sheet" class="admin-input"><option value="">Elegí una hoja</option></select>
@@ -40,38 +41,6 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
         </button>
       </div>
 
-      <div id="c-new-prod" style="display: none; margin-top: 1rem; padding: 1rem; border: 1px dashed var(--admin-border); border-radius: 6px;">
-        <p style="margin: 0 0 0.75rem; font-size: 0.875rem; font-weight: 600;">Nuevo producto (se crea con costo $0; la compra le pone el costo)</p>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem;">
-          <div class="admin-form-group">
-            <label class="admin-form-label" for="np-nombre">Nombre</label>
-            <input id="np-nombre" type="text" class="admin-input" maxlength="255" placeholder="Ej: Vela cítrica" />
-          </div>
-          <div class="admin-form-group">
-            <label class="admin-form-label" for="np-sku">SKU</label>
-            <input id="np-sku" type="text" class="admin-input" maxlength="100" placeholder="Ej: VELA001" />
-          </div>
-          <div class="admin-form-group">
-            <label class="admin-form-label" for="np-cat">Categoría</label>
-            <div style="display: flex; gap: 0.5rem;">
-              <select id="np-cat" class="admin-input" style="flex: 1;">
-                <option value="">— Elegí —</option>
-              </select>
-              <button type="button" id="np-cat-new" class="admin-btn admin-btn-ghost" style="white-space: nowrap;" title="Crear categoría">+</button>
-            </div>
-          </div>
-          <div class="admin-form-group">
-            <label class="admin-form-label" for="np-precio">Precio venta ($)</label>
-            <input id="np-precio" type="number" class="admin-input" min="0" step="0.01" placeholder="0" />
-          </div>
-        </div>
-        <div id="np-error" class="admin-alert admin-alert-error" style="display:none; margin-top: 0.75rem;"></div>
-        <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
-          <button type="button" id="np-save" class="admin-btn admin-btn-primary">Crear y agregar a la compra</button>
-          <button type="button" id="np-cancel" class="admin-btn admin-btn-ghost">Cancelar</button>
-        </div>
-      </div>
-
       <div class="admin-form-group" style="margin-top: 1rem; max-width: 480px;">
         <label class="admin-form-label" for="c-obs">Observaciones (para toda la compra)</label>
         <input id="c-obs" type="text" class="admin-input" maxlength="500" placeholder="Ej: proveedor X" />
@@ -86,6 +55,8 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
       Cada producto suma stock y actualiza su costo al último costo de compra.
     </p>
   </div>
+
+  <ProductoModal client:load />
 
   <div class="admin-card">
     <h2 class="admin-card-title" style="margin-bottom: 1rem;">Historial</h2>
@@ -104,6 +75,15 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
   <script>
     import { readCompraFile, prepareCompraImport, MAX_COMPRA_ROWS } from '@/lib/compra-import';
 
+    interface ProductoNuevo {
+      id: string;
+      nombre: string;
+      costo?: number;
+      grupo_id?: string | null;
+      variante?: string;
+    }
+
+
     const rowsBox = document.getElementById('c-rows')!;
     const errDiv = document.getElementById('c-error')!;
     const okDiv = document.getElementById('c-ok')!;
@@ -112,12 +92,41 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!));
     let productos: Array<any> = [];
 
+    function productoConVariante(p: any): string {
+      const variante = String(p?.variante ?? '').trim();
+      const base = String(p?.nombre ?? '');
+      return variante && !/^ú?nica$/i.test(variante) ? `${base} · ${variante}` : base;
+    }
+
+    function etiquetaOpcion(p: any, enGrupo = false): string {
+      const variante = String(p.variante ?? '').trim();
+      const nombre = String(p.nombre ?? '');
+      const base = enGrupo
+        ? (variante || nombre)
+        : (variante && !/^ú?nica$/i.test(variante) ? `${nombre} · ${variante}` : nombre);
+      return `${escapeHtml(base)} · ${escapeHtml(p.sku || '')}`;
+    }
+
     function opcionesProductos(selValue = ''): string {
-      return '<option value="">— Elegí —</option>' + productos
-        .map((p: any) => {
+      const grupos = new Map<string, Array<any>>();
+      for (const p of productos) {
+        const key = String(p.grupo_id || p.nombre || p.id);
+        if (!grupos.has(key)) grupos.set(key, []);
+        grupos.get(key)!.push(p);
+      }
+      const orden = new Intl.Collator('es');
+      const optsDe = (items: Array<any>, enGrupo: boolean) => items
+        .slice()
+        .sort((a, b) => orden.compare(String(a.variante || ''), String(b.variante || '')))
+        .map(p => {
           const id = p.producto_id || p.id;
-          return `<option value="${escapeHtml(id)}" data-costo="${escapeHtml(p.costo)}" ${id === selValue ? 'selected' : ''}>${escapeHtml(p.nombre)} · ${escapeHtml(p.sku || '')}</option>`;
+          return `<option value="${escapeHtml(id)}" data-costo="${escapeHtml(p.costo)}" ${id === selValue ? 'selected' : ''}>${etiquetaOpcion(p, enGrupo)}</option>`;
         })
+        .join('');
+      return '<option value="">— Elegí —</option>' + [...grupos.values()]
+        .map(items => items.length > 1
+          ? `<optgroup label="${escapeHtml(String(items[0]?.nombre || ''))}">${optsDe(items, true)}</optgroup>`
+          : optsDe(items, false))
         .join('');
     }
 
@@ -197,7 +206,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     let importing = false;
 
     document.getElementById('c-template')!.addEventListener('click', () => {
-      const csv = '\uFEFFSKU;Cantidad;Costo unitario\r\nTU-SKU;10;1250,50\r\n';
+      const csv = '\uFEFFSKU;Producto;Variante;Cantidad;Costo unitario\r\nTU-SKU;Producto nombre;Única;10;1250,50\r\nSKU-BAM;Difusor Aromanza;Bambú;10;1250,50\r\nSKU-VAI;Difusor Aromanza;Vainilla;10;1250,50\r\n';
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
       const link = document.createElement('a');
       link.href = url;
@@ -256,112 +265,25 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     fileInput.addEventListener('change', () => { sheetBox.hidden = true; importarArchivo(); });
     sheetInput.addEventListener('change', () => { if (sheetInput.value) importarArchivo(sheetInput.value); });
 
-    // Alta rápida de producto
-    const npBox = document.getElementById('c-new-prod')!;
-    const npErr = document.getElementById('np-error')!;
-    const npSave = document.getElementById('np-save') as HTMLButtonElement;
-    const npCat = document.getElementById('np-cat') as HTMLSelectElement;
-
-    async function cargarCategoriasNp() {
-      try {
-        const res = await fetch('/api/admin/categorias');
-        if (!res.ok) return;
-        const cats: Array<any> = await res.json();
-        const actual = npCat.value;
-        npCat.innerHTML = '<option value="">— Elegí —</option>' + cats
-          .map((c: any) => `<option value="${c.nombre}">${c.nombre}</option>`)
-          .join('');
-        if (actual) npCat.value = actual;
-      } catch { /* noop */ }
-    }
-
-    document.getElementById('np-cat-new')!.addEventListener('click', async () => {
-      const nombre = prompt('Nombre de la nueva categoría:')?.trim().replace(/\s+/g, ' ');
-      if (!nombre) return;
-      try {
-        const res = await fetch('/api/admin/categorias', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nombre }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          npErr.textContent = typeof data.error === 'string' ? data.error : 'No se pudo crear.';
-          npErr.style.display = 'block';
-          return;
-        }
-        await cargarCategoriasNp();
-        npCat.value = data.nombre;
-      } catch {
-        npErr.textContent = 'Error de conexión';
-        npErr.style.display = 'block';
-      }
-    });
-
-    cargarCategoriasNp();
-
+    // Alta rápida de producto: el formulario vive en un modal
     document.getElementById('c-new-prod-btn')!.addEventListener('click', () => {
-      npBox.style.display = npBox.style.display === 'none' ? 'block' : 'none';
-      npErr.style.display = 'none';
-    });
-    document.getElementById('np-cancel')!.addEventListener('click', () => {
-      npBox.style.display = 'none';
+      window.dispatchEvent(new CustomEvent('domus:abrir-producto-modal'));
     });
 
-    // Sugerir SKU desde el nombre
-    document.getElementById('np-nombre')!.addEventListener('input', (e) => {
-      const skuInput = document.getElementById('np-sku') as HTMLInputElement;
-      if (!skuInput.value) {
-        skuInput.value = (e.target as HTMLInputElement).value
-          .toUpperCase()
-          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^A-Z0-9]+/g, '')
-          .slice(0, 20);
-      }
-    });
-
-    npSave.addEventListener('click', async () => {
-      npErr.style.display = 'none';
-      const nombre = (document.getElementById('np-nombre') as HTMLInputElement).value.trim();
-      const sku = (document.getElementById('np-sku') as HTMLInputElement).value.trim();
-      const categoria = npCat.value || null;
-      const precio_venta = Number((document.getElementById('np-precio') as HTMLInputElement).value) || 0;
-
-      if (!nombre || !sku) {
-        npErr.textContent = 'Nombre y SKU son obligatorios.';
-        npErr.style.display = 'block';
-        return;
-      }
-
-      npSave.setAttribute('disabled', 'true');
-      try {
-        const res = await fetch('/api/admin/productos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nombre, sku, categoria: categoria || null, costo: 0, precio_venta, stock_minimo: 5 }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          npErr.textContent = typeof data.error === 'string' ? data.error : 'No se pudo crear (¿SKU duplicado?).';
-          npErr.style.display = 'block';
-          return;
-        }
-        await cargarProductos();
-        agregarFila(data.id);
-        npBox.style.display = 'none';
-        (document.getElementById('np-nombre') as HTMLInputElement).value = '';
-        (document.getElementById('np-sku') as HTMLInputElement).value = '';
-        npCat.value = '';
-        (document.getElementById('np-precio') as HTMLInputElement).value = '';
-        okDiv.textContent = `Producto "${data.nombre}" creado. Completá cantidad y costo en su fila.`;
+    document.addEventListener('domus:producto-creado', ((e: CustomEvent<ProductoNuevo>) => {
+      const creado = e.detail;
+      if (!creado?.id) return;
+      void cargarProductos().then(() => {
+        const costo = Number(creado.costo);
+        const conCosto = Number.isFinite(costo) && costo > 0;
+        agregarFila(creado.id, 1, conCosto ? costo : undefined);
+        const grupo = String(creado.grupo_id || '');
+        okDiv.textContent = grupo
+          ? `Variante "${creado.variante || ''}" de "${creado.nombre}" creada. Completá ${conCosto ? 'cantidad' : 'cantidad y costo'} en su fila.`
+          : `Producto "${creado.nombre}" creado. Completá ${conCosto ? 'cantidad' : 'cantidad y costo'} en su fila.`;
         okDiv.style.display = 'block';
-      } catch {
-        npErr.textContent = 'Error de conexión';
-        npErr.style.display = 'block';
-      } finally {
-        npSave.removeAttribute('disabled');
-      }
-    });
+      });
+    }) as EventListener);
 
     async function cargarProductos() {
       try {
@@ -382,7 +304,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
         document.getElementById('c-historial')!.innerHTML = movs.length
           ? movs.map((m) => `<tr>
               <td>${new Date(m.fecha).toLocaleString('es-AR')}</td>
-              <td>${escapeHtml(m.productos?.nombre || '')}</td>
+              <td>${escapeHtml(productoConVariante(m.productos))}</td>
               <td class="text-right">${m.cantidad}</td>
               <td class="text-right">${fmt$(Number(m.costo_unitario))}</td>
               <td class="text-right">${fmt$(Number(m.costo_total))}</td>

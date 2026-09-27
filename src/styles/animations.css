@@ -375,35 +375,6 @@
 }
 
 /* ============================================
-   10b. CART NOTIFICATION
-   ============================================ */
-
-.cart-notification {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  background: var(--color-brown);
-  color: var(--color-beige-light);
-  padding: 1rem 1.5rem;
-  border-radius: 8px;
-  font-family: var(--font-heading);
-  font-size: 0.875rem;
-  font-weight: 500;
-  box-shadow: 0 8px 32px rgba(61, 43, 31, 0.25);
-  transform: translateX(120%);
-  opacity: 0;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-              opacity 0.3s ease;
-  z-index: 1000;
-  pointer-events: none;
-}
-
-.cart-notification.show {
-  transform: translateX(0);
-  opacity: 1;
-}
-
-/* ============================================
    10c. MOBILE MENU
    ============================================ */
 

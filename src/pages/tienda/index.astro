@@ -91,15 +91,26 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
     return FALLBACKS[(p.categoria || '').trim()] || fallbackImg;
   }
 
+  // Lucide shopping-cart-plus
+  const SVG_CARRITO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 5h6"/><path d="M19 2v6"/><path d="m2.05 2.05 1.099-.028a1 1 0 011.008.815l2.69 14.347A1 1 0 007.83 18H18"/><path d="M4.564 5H12"/><path d="M6.25 14h12.712a2 2 0 001.991-1.57l.172-1.041"/><circle cx="18" cy="20" r="2"/><circle cx="8" cy="20" r="2"/></svg>';
+  const SVG_TILDE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+
   function cardHTML(p) {
     const precioFinal = Number(p.precio_final ?? p.precio_venta);
     const precioVenta = Number(p.precio_venta);
     const nombre = (p.nombre || '').replace(/</g, '&lt;');
+    const variante = p.variante && p.variante !== 'Única' ? String(p.variante) : '';
+    const visible = variante ? `${nombre} — ${variante}` : nombre;
+    const href = `/tienda/producto/${encodeURIComponent(String(p.sku || '').trim())}`;
     const img = fotoDe(p);
     const sinStock = (p.stock_actual ?? 0) <= 0;
 
     const badges =
-      (p.vendidos_90d > 0 ? '<span class="t-badge t-badge-sold">MÁS VENDIDO</span>' : '') +
+      (sinStock
+        ? '<span class="t-badge t-badge-out">SIN STOCK</span>'
+        : p.vendidos_90d > 0
+          ? '<span class="t-badge t-badge-sold">MÁS VENDIDO</span>'
+          : '') +
       (p.descuento_pct > 0 ? `<span class="t-badge t-badge-off">-${p.descuento_pct}%</span>` : '');
 
     const precio = p.descuento_pct > 0
@@ -107,23 +118,106 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
          <span class="t-price">$${precioFinal.toLocaleString('es-AR')}</span>`
       : `<span class="t-price">$${precioFinal.toLocaleString('es-AR')}</span>`;
 
+    const item = JSON.stringify({
+      id: p.producto_id,
+      name: visible,
+      price: precioFinal,
+      image: img,
+      stock: Number(p.stock_actual ?? 0),
+    }).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+
     return `
-      <article class="t-card">
+      <article class="t-card" data-id="${p.producto_id}">
         <div class="t-media">
-          <img src="${img}" alt="${nombre}" loading="lazy" onerror="this.src='${fallbackImg}'" />
+          <a class="t-media-link" href="${href}" aria-label="Ver ${visible}">
+            <img src="${img}" alt="${visible}" loading="lazy" onerror="this.src='${fallbackImg}'" />
+          </a>
+          <button class="t-add-icon" type="button" data-item="${item}"
+            data-label-alta="Agregar ${visible} al carrito"
+            data-label-carrito="Ya en el carrito: ${visible}"
+            ${sinStock ? 'disabled' : ''}
+            aria-label="${sinStock ? `${visible}: sin stock` : `Agregar ${visible} al carrito`}">
+            ${sinStock ? '' : SVG_CARRITO}
+          </button>
           ${badges}
         </div>
         <div class="t-body">
           <p class="t-cat">${p.categoria || 'General'}</p>
-          <h3>${nombre}</h3>
+          <h3><a class="t-title" href="${href}">${visible}</a></h3>
           ${precio}
-          <button class="btn t-add" ${sinStock ? 'disabled' : ''}
-            onclick="CartManager.addItem({id: '${p.producto_id}', name: '${nombre.replace(/'/g, "\\'")}', price: ${precioFinal}, image: '${img}', stock: ${(p.stock_actual ?? 0)}})">
-            ${sinStock ? 'Sin stock' : 'Agregar'}
-          </button>
         </div>
       </article>`;
   }
+
+  // Agregar rápido desde la tarjeta: animación + tilde de confirmación
+  type CarritoGlobal = {
+    getCount?: () => number;
+    addItem?: (item: { id: string; name: string; price: number; image?: string; stock?: number; quantity?: number }) => void;
+  };
+
+  function idsEnCarrito(): Set<string> {
+    const ids = new Set<string>();
+    try {
+      const cart = JSON.parse(localStorage.getItem('domus_cart') || '[]');
+      if (Array.isArray(cart)) {
+        for (const item of cart) if (item?.id) ids.add(String(item.id));
+      }
+    } catch { /* noop */ }
+    return ids;
+  }
+
+  // Estado persistente "ya está en el carrito": borde + tilde oliva
+  function pintarEstadoCarrito() {
+    const ids = idsEnCarrito();
+    document.querySelectorAll<HTMLElement>('.t-card[data-id]').forEach((card) => {
+      const en = ids.has(card.dataset.id || '');
+      card.classList.toggle('is-in-cart', en);
+      const btn = card.querySelector<HTMLButtonElement>('.t-add-icon');
+      if (!btn) return;
+      btn.classList.toggle('is-in-cart', en);
+      if (btn.classList.contains('is-added')) return;
+      if (btn.disabled && !en) {
+        btn.innerHTML = '';
+        return;
+      }
+      btn.innerHTML = en ? SVG_TILDE : SVG_CARRITO;
+      btn.setAttribute(
+        'aria-label',
+        en ? (btn.dataset.labelCarrito || 'Ya en el carrito') : (btn.dataset.labelAlta || 'Agregar al carrito')
+      );
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest('.t-add-icon') as HTMLButtonElement | null;
+    if (!btn || btn.disabled) return;
+    e.stopPropagation();
+    const carrito = (window as unknown as { CartManager?: CarritoGlobal }).CartManager;
+    if (!carrito) return;
+    let item: { id: string; name: string; price: number; image?: string; stock?: number };
+    try { item = JSON.parse(btn.dataset.item || ''); } catch { return; }
+    const antes = carrito.getCount?.() ?? 0;
+    carrito.addItem?.(item);
+    if ((carrito.getCount?.() ?? antes) <= antes) return;
+    btn.classList.add('is-added');
+    btn.innerHTML = SVG_TILDE;
+    btn.setAttribute('aria-label', btn.dataset.labelCarrito || 'Ya en el carrito');
+    btn.closest('.t-card')?.classList.add('is-added');
+    window.setTimeout(() => {
+      btn.classList.remove('is-added');
+      btn.closest('.t-card')?.classList.remove('is-added');
+      pintarEstadoCarrito();
+    }, 1600);
+  });
+
+  // Toda la tarjeta lleva a la página del producto (estilo MercadoLibre)
+  document.addEventListener('click', (e) => {
+    const el = e.target as HTMLElement;
+    if (el.closest('a') || el.closest('button')) return;
+    const card = el.closest('.t-card');
+    const href = card?.querySelector('.t-title')?.getAttribute('href');
+    if (href) window.location.href = href;
+  });
 
   async function cargarTira(url, gridId, sectionId) {
     try {
@@ -136,6 +230,7 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
       if (!grid || !section) return;
       grid.innerHTML = items.map(cardHTML).join('');
       section.hidden = false;
+      pintarEstadoCarrito();
     } catch {
       // Sin datos (Supabase sin configurar o sin ventas): la sección queda oculta
     }
@@ -143,6 +238,12 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
 
   cargarTira('/api/tienda/mas-vendidos?limit=8', 'bests-grid', 'mas-vendidos');
   cargarTira('/api/tienda/ofertas?limit=8', 'offers-grid', 'ofertas');
+
+  // Mantener el estado del carrito sincronizado (alta/baja desde cualquier lado)
+  window.addEventListener('domus:cart-updated', pintarEstadoCarrito);
+  window.addEventListener('domus:cart-cleared', pintarEstadoCarrito);
+  window.addEventListener('storage', pintarEstadoCarrito);
+  pintarEstadoCarrito();
 
   // Flechas del carrusel
   document.addEventListener('click', (e) => {
@@ -295,6 +396,7 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
     display: flex;
     flex-direction: column;
     height: 100%;
+    cursor: pointer;
   }
 
   /* Tarjetas compactas del carrusel */
@@ -335,11 +437,6 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
     font-size: 0.8125rem;
   }
 
-  .tienda-strip .t-add {
-    padding: 0.625rem 1rem;
-    font-size: 0.75rem;
-  }
-
   .t-media {
     position: relative;
     aspect-ratio: 4/3;
@@ -352,6 +449,107 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
     height: 100%;
     object-fit: cover;
     display: block;
+    transition: transform 0.35s ease;
+  }
+
+  .t-media-link {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .t-card:hover .t-media img {
+    transform: scale(1.04);
+  }
+
+  /* Agregar rápido desde la tarjeta (estilo MercadoLibre) */
+  .t-add-icon {
+    position: absolute;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    z-index: 2;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(61, 43, 31, 0.16);
+    background: white;
+    color: var(--color-olive);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 6px 14px rgba(61, 43, 31, 0.22);
+    transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .t-add-icon svg {
+    width: 19px;
+    height: 19px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .t-add-icon:hover:not(:disabled) {
+    background: var(--color-olive);
+    color: white;
+    transform: scale(1.08);
+    box-shadow: 0 8px 18px rgba(152, 140, 45, 0.35);
+  }
+
+  .t-add-icon:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .t-add-icon.is-added {
+    background: var(--color-olive);
+    border-color: var(--color-olive);
+    color: white;
+    animation: domus-pop-t 0.35s ease;
+  }
+
+  .t-card.is-added {
+    box-shadow: 0 0 0 2px var(--color-olive), 0 10px 24px rgba(61, 43, 31, 0.14);
+  }
+
+  /* Ya está en el carrito: borde oliva persistente */
+  .t-card.is-in-cart {
+    box-shadow: 0 0 0 2px var(--color-olive), 0 8px 20px rgba(152, 140, 45, 0.18);
+  }
+
+  .t-card.is-in-cart .t-media::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(152, 140, 45, 0.08);
+    pointer-events: none;
+  }
+
+  .t-add-icon.is-in-cart {
+    background: var(--color-olive);
+    color: white;
+    border-color: var(--color-olive);
+    box-shadow: 0 6px 16px rgba(152, 140, 45, 0.4);
+  }
+
+  .t-add-icon.is-in-cart:hover:not(:disabled) {
+    filter: brightness(1.06);
+  }
+
+  @keyframes domus-pop-t {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .t-add-icon.is-added,
+    .t-media img {
+      animation: none;
+      transition: none;
+    }
   }
 
   .t-badge {
@@ -373,6 +571,11 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
   .t-badge-off {
     right: 0.625rem;
     background: #e53e3e;
+  }
+
+  .t-badge-out {
+    left: 0.625rem;
+    background: var(--color-brown);
   }
 
   .t-body {
@@ -417,14 +620,26 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
     margin-right: 0.5rem;
   }
 
-  .t-add {
-    margin-top: auto;
-    width: 100%;
+  .t-title {
+    color: inherit;
+    text-decoration: none;
   }
 
-  .t-add:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  .t-title:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .t-title:focus-visible,
+  .t-media-link:focus-visible {
+    outline: 2px solid var(--color-olive);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  .t-add-icon:focus-visible {
+    outline: 2px solid var(--color-olive);
+    outline-offset: 2px;
   }
 
   @media (max-width: 768px) {

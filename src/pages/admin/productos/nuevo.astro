@@ -6,8 +6,11 @@ import ProductForm from '@/components/admin/ProductForm.vue';
 ---
 
 <AdminLayout title="Nuevo Producto">
+  <div class="admin-card-header">
+    <h1 style="margin: 0; font-size: 1.5rem;">Nuevo Producto</h1>
+  </div>
+
   <div class="admin-card">
-    <h1 style="margin: 0 0 1.5rem; font-size: 1.5rem;">Nuevo Producto</h1>
-    <ProductForm client:visible />
+    <ProductForm client:visible volverA="/admin/productos" />
   </div>
 </AdminLayout>

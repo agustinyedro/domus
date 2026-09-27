@@ -172,6 +172,7 @@ const CartManager = {
     localStorage.setItem(this.key, JSON.stringify(cart));
     this.updateCartCount();
     this.updateCartDisplay();
+    window.dispatchEvent(new CustomEvent('domus:cart-updated', { detail: { ids: cart.map(i => i.id) } }));
   },
   
   addItem(product) {
@@ -202,7 +203,7 @@ const CartManager = {
     }
 
     this.saveCart(cart);
-    this.showNotification(`${product.name} agregado al carrito`);
+    this.showNotification(`${product.name} agregado al carrito`, { label: 'Ir al carrito', href: '/carrito' });
   },
 
   removeItem(productId) {
@@ -270,7 +271,7 @@ const CartManager = {
         </div>`;
       if (cartTotal) cartTotal.textContent = '$0';
       if (cartCountLabel) cartCountLabel.textContent = '';
-      if (checkoutBtn) checkoutBtn.setAttribute('disabled', 'true');
+      if (checkoutBtn) checkoutBtn.setAttribute('hidden', '');
       if (clearBtn) clearBtn.style.display = 'none';
       return;
     }
@@ -309,21 +310,63 @@ const CartManager = {
     const count = this.getCount();
     if (cartTotal) cartTotal.textContent = `$${this.getTotal().toLocaleString('es-AR')}`;
     if (cartCountLabel) cartCountLabel.textContent = `${count} ${count === 1 ? 'producto' : 'productos'}`;
-    if (checkoutBtn) checkoutBtn.removeAttribute('disabled');
+    if (checkoutBtn) checkoutBtn.removeAttribute('hidden');
     if (clearBtn) clearBtn.style.display = '';
   },
   
-  showNotification(message) {
+  // action opcional: { label, href? , onClick? } agrega un botón al toast
+  showNotification(message, action) {
     const notification = document.createElement('div');
     notification.className = 'cart-notification';
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => notification.classList.add('show'), 10);
-    setTimeout(() => {
+    notification.setAttribute('role', 'status');
+    notification.setAttribute('aria-live', 'polite');
+
+    const texto = document.createElement('span');
+    texto.className = 'cart-notification-text';
+    texto.textContent = message;
+    notification.appendChild(texto);
+
+    let temporizador;
+    const ocultar = () => {
+      clearTimeout(temporizador);
       notification.classList.remove('show');
       setTimeout(() => notification.remove(), 300);
-    }, 2000);
+    };
+
+    if (action && action.label) {
+      const control = document.createElement(action.href ? 'a' : 'button');
+      control.className = 'cart-notification-action';
+      if (action.href) control.setAttribute('href', action.href);
+      else control.setAttribute('type', 'button');
+      control.textContent = action.label;
+      control.addEventListener('click', (e) => {
+        if (!action.href) {
+          e.preventDefault();
+          action.onClick?.();
+        }
+        ocultar();
+      });
+      notification.appendChild(control);
+    }
+
+    document.body.appendChild(notification);
+    setTimeout(() => notification.classList.add('show'), 10);
+
+    const espera = action && action.label ? 4500 : 2000;
+    temporizador = setTimeout(ocultar, espera);
+
+    // Con botón: pausar al pasar el mouse o al enfocarlo
+    if (action && action.label) {
+      const pausar = () => clearTimeout(temporizador);
+      const reanudar = () => {
+        clearTimeout(temporizador);
+        temporizador = setTimeout(ocultar, 2500);
+      };
+      notification.addEventListener('mouseenter', pausar);
+      notification.addEventListener('focusin', pausar);
+      notification.addEventListener('mouseleave', reanudar);
+      notification.addEventListener('focusout', reanudar);
+    }
   },
   
   toggleCart() {

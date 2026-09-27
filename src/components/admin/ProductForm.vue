@@ -1,6 +1,17 @@
 <!-- src/components/admin/ProductForm.vue -->
 <template>
   <form @submit.prevent="handleSubmit" class="admin-form">
+    <div v-if="volverA" class="pf-bar">
+      <div class="pf-bar-row">
+        <a href="/admin/productos" class="admin-btn admin-btn-ghost">Volver</a>
+        <button type="submit" class="admin-btn admin-btn-primary" :disabled="loading">
+          {{ loading ? 'Guardando...' : producto ? 'Actualizar' : 'Crear Producto' }}
+        </button>
+      </div>
+      <p v-if="error" class="admin-alert admin-alert-error pf-bar-alert">{{ error }}</p>
+      <p v-if="success" class="admin-alert admin-alert-success pf-bar-alert">{{ success }}</p>
+    </div>
+
     <div class="admin-form-group">
       <label class="admin-form-label">SKU</label>
       <input
@@ -46,7 +57,7 @@
       </div>
       <div class="admin-form-group" style="margin: 0.75rem 0 0;">
         <label class="admin-form-label">Valor de la opción</label>
-        <input v-model="form.variante" type="text" class="admin-input" maxlength="120" placeholder="Ej: Bambú" required />
+        <input v-model="form.variante" ref="varianteInput" type="text" class="admin-input" maxlength="120" placeholder="Ej: Bambú" required />
       </div>
     </div>
 
@@ -93,7 +104,7 @@
       ></textarea>
     </div>
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem;">
       <div class="admin-form-group">
         <label class="admin-form-label">Costo ($)</label>
         <input
@@ -209,10 +220,10 @@
       <p v-if="errorImg" class="admin-alert admin-alert-error" style="margin: 0.5rem 0 0;">{{ errorImg }}</p>
     </div>
 
-    <div v-if="error" class="admin-alert admin-alert-error">{{ error }}</div>
-    <div v-if="success" class="admin-alert admin-alert-success">{{ success }}</div>
+    <div v-if="!volverA && error" class="admin-alert admin-alert-error">{{ error }}</div>
+    <div v-if="!volverA && success" class="admin-alert admin-alert-success">{{ success }}</div>
 
-    <button type="submit" class="admin-btn admin-btn-primary" :disabled="loading">
+    <button v-if="!volverA" type="submit" class="admin-btn admin-btn-primary" :disabled="loading">
       {{ loading ? 'Guardando...' : producto ? 'Actualizar' : 'Crear Producto' }}
     </button>
   </form>
@@ -247,8 +258,10 @@ interface Producto {
   stock_minimo: number;
 }
 
-const props = defineProps<{ producto?: Producto | null }>();
-const emit = defineEmits<{ saved: [] }>();
+type VentanaAdmin = Window & { adminToast?: (mensaje: string) => void };
+
+const props = defineProps<{ producto?: Producto | null; volverA?: string }>();
+const emit = defineEmits<{ saved: [producto: Producto & { costo: number }] }>();
 
 const form = ref({
   grupo_id: props.producto?.grupo_id || '',
@@ -272,6 +285,7 @@ const form = ref({
 const loading = ref(false);
 const error = ref('');
 const success = ref('');
+const varianteInput = ref<HTMLInputElement | null>(null);
 const catalogo = ref<Array<Producto & { producto_id?: string }>>([]);
 
 const gruposDisponibles = computed(() => {
@@ -479,15 +493,38 @@ const handleSubmit = async () => {
       body: JSON.stringify(payload),
     });
 
-    const data = await res.json();
+    const data = (await res.json()) as Producto & { error?: unknown };
 
     if (!res.ok) {
       error.value = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
       return;
     }
 
-    success.value = props.producto ? 'Producto actualizado' : 'Producto creado';
-    emit('saved');
+    const esVariante = !props.producto && Boolean(form.value.grupo_id);
+    const mensaje = props.producto
+      ? 'Cambios guardados'
+      : esVariante
+        ? `Variante «${data.variante}» creada`
+        : `«${data.nombre}» creado`;
+
+    success.value = mensaje;
+    emit('saved', { ...data, costo: Number(data.costo ?? payload.costo ?? 0) });
+
+    if (!props.volverA) return;
+
+    if (esVariante) {
+      form.value.sku = '';
+      form.value.variante = '';
+      cargarCatalogo();
+      (window as VentanaAdmin).adminToast?.(mensaje);
+      varianteInput.value?.focus();
+      return;
+    }
+
+    try {
+      sessionStorage.setItem('domus:admin-flash', mensaje);
+    } catch { /* sin sessionStorage */ }
+    window.location.assign(props.volverA);
   } catch {
     error.value = 'Error de conexión';
   } finally {
@@ -495,3 +532,30 @@ const handleSubmit = async () => {
   }
 };
 </script>
+
+<style scoped>
+.pf-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  padding: 0.75rem 0 0.5rem;
+  background: var(--admin-card-bg);
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.pf-bar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.pf-bar-alert {
+  margin: 0.625rem 0 0;
+}
+
+.admin-input {
+  width: 100%;
+  min-width: 0;
+}
+</style>

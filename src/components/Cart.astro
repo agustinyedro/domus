@@ -28,41 +28,15 @@
       <span>Total <span class="cart-count-label"></span></span>
       <span class="cart-total-amount">$0</span>
     </div>
-    <button class="btn cart-checkout-btn" id="checkout-btn" disabled>
+    <a class="btn cart-checkout-btn" id="checkout-btn" href="/carrito" hidden>
       Finalizar compra
-    </button>
+    </a>
     <button class="cart-clear" id="clear-cart-btn" style="display: none;" onclick="CartManager.clearCart()">
       Vaciar carrito
     </button>
+    <a class="cart-full-link" href="/carrito">Ver carrito completo →</a>
     <p class="cart-note">Te contactaremos por WhatsApp para confirmar tu pedido.</p>
     <button class="cart-alt" id="consultar-btn">o consultanos por WhatsApp</button>
-  </div>
-
-  <!-- Paso 2: datos + método de pago -->
-  <div class="checkout-panel" id="checkout-panel" hidden>
-    <button class="checkout-back" id="checkout-back" aria-label="Volver al carrito">← Volver</button>
-    <h3>Finalizar compra</h3>
-    <p class="checkout-total">Total: <strong id="checkout-total">$0</strong></p>
-
-    <label class="checkout-label" for="co-nombre">Tu nombre</label>
-    <input id="co-nombre" type="text" class="checkout-input" autocomplete="name" placeholder="Ej: María" maxlength="255" />
-
-    <label class="checkout-label" for="co-tel">Teléfono / WhatsApp</label>
-    <input id="co-tel" type="tel" class="checkout-input" autocomplete="tel" placeholder="Ej: 11 1234 5678" maxlength="50" />
-
-    <p class="checkout-label">Método de pago</p>
-    <label class="checkout-radio">
-      <input type="radio" name="co-metodo" value="EFECTIVO" checked />
-      <span><strong>Efectivo · 15% OFF</strong><small>Se descuenta solo, coordinamos por WhatsApp</small></span>
-    </label>
-    <label class="checkout-radio">
-      <input type="radio" name="co-metodo" value="MP" />
-      <span><strong>Mercado Pago</strong><small>Tarjeta, débito o dinero en cuenta</small></span>
-    </label>
-
-    <div id="checkout-error" class="cart-error" hidden></div>
-
-    <button class="btn cart-checkout-btn" id="confirmar-btn">Confirmar pedido</button>
   </div>
 </aside>
 
@@ -326,21 +300,18 @@
     box-shadow: 0 6px 16px rgba(152, 140, 45, 0.35);
   }
 
-  .cart-checkout-btn:hover:not(:disabled) {
+  .cart-checkout-btn:hover {
     box-shadow: 0 8px 22px rgba(152, 140, 45, 0.45);
     filter: brightness(1.05);
   }
 
-  .cart-checkout-btn:active:not(:disabled) {
+  .cart-checkout-btn:active {
     transform: translateY(1px) scale(0.99);
     box-shadow: 0 3px 10px rgba(152, 140, 45, 0.3);
   }
 
-  .cart-checkout-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
+  .cart-checkout-btn[hidden] {
+    display: none;
   }
 
   .cart-count-label {
@@ -409,11 +380,49 @@
     z-index: 2000;
     opacity: 0;
     transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    max-width: min(92vw, 560px);
+    box-shadow: 0 10px 30px rgba(61, 43, 31, 0.35);
   }
   
   .cart-notification.show {
     transform: translateX(-50%) translateY(0);
     opacity: 1;
+  }
+
+  .cart-notification-text {
+    line-height: 1.35;
+  }
+
+  .cart-notification-action {
+    flex-shrink: 0;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 0.55rem 1rem;
+    min-height: 38px;
+    border-radius: 999px;
+    border: 1.5px solid var(--color-olive);
+    background: var(--color-olive);
+    color: white;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+  }
+
+  .cart-notification-action:hover {
+    background: white;
+    color: var(--color-olive);
+    transform: translateY(-1px);
+  }
+
+  .cart-notification-action:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
   }
   
   @media (max-width: 480px) {
@@ -440,158 +449,33 @@
     color: var(--color-olive);
   }
 
-  /* Panel checkout paso 2 */
-  .checkout-panel {
-    padding: 1.5rem;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 0.625rem;
-  }
-
-  .checkout-panel[hidden] {
-    display: none;
-  }
-
-  .checkout-back {
-    align-self: flex-start;
-    background: none;
-    border: none;
-    color: var(--color-brown-light);
+  /* Link al carrito completo (checkout vive en /carrito) */
+  .cart-full-link {
+    display: block;
+    text-align: center;
+    min-height: 44px;
+    line-height: 44px;
     font-family: inherit;
     font-size: 0.875rem;
-    cursor: pointer;
-    padding: 0.25rem 0;
-  }
-
-  .checkout-back:hover {
-    color: var(--color-olive);
-  }
-
-  .checkout-panel h3 {
-    margin: 0;
-    color: var(--color-brown);
-    font-size: 1.25rem;
-  }
-
-  .checkout-total {
-    margin: 0;
-    color: var(--color-brown);
-  }
-
-  .checkout-total .co-tachado {
-    color: var(--color-brown-light);
-    font-weight: 400;
-    margin-right: 0.5rem;
-  }
-
-  .checkout-total .co-disc {
-    display: inline-block;
-    font-family: var(--font-heading, 'Montserrat', sans-serif);
-    font-size: 0.6875rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    color: #fff;
-    background: var(--color-olive);
-    border-radius: 999px;
-    padding: 0.2rem 0.6rem;
-    vertical-align: middle;
-  }
-
-  .checkout-total strong {
-    font-size: 1.375rem;
-  }
-
-  .checkout-label {
-    font-size: 0.8125rem;
     font-weight: 600;
-    color: var(--color-brown);
-    margin: 0.25rem 0 0;
-  }
-
-  .checkout-input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1.5px solid rgba(61, 43, 31, 0.2);
-    border-radius: 10px;
-    font-family: inherit;
-    font-size: 1rem;
-    color: var(--color-brown);
-    background: white;
-  }
-
-  .checkout-input:focus {
-    outline: 2px solid var(--color-olive);
-    outline-offset: 1px;
-    border-color: var(--color-olive);
-  }
-
-  .checkout-radio {
-    display: flex;
-    gap: 0.75rem;
-    align-items: flex-start;
-    padding: 0.875rem;
-    border: 1.5px solid rgba(61, 43, 31, 0.15);
+    color: var(--color-olive);
+    text-decoration: none;
     border-radius: 12px;
-    cursor: pointer;
-    transition: border-color 0.2s ease, background 0.2s ease;
+    margin-bottom: 0.5rem;
   }
 
-  .checkout-radio:has(input:checked) {
-    border-color: var(--color-olive);
-    background: rgba(152, 140, 45, 0.06);
+  .cart-full-link:hover {
+    background: rgba(152, 140, 45, 0.08);
   }
 
-  .checkout-radio input {
-    accent-color: var(--color-olive);
-    width: 18px;
-    height: 18px;
-    margin-top: 0.125rem;
-  }
-
-  .checkout-radio span {
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-  }
-
-  .checkout-radio small {
-    color: var(--color-brown-light);
-    font-size: 0.8125rem;
-  }
-
-  .cart-error {
-    background: #fff5f5;
-    border: 1px solid #fed7d7;
-    color: #742a2a;
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
-  }
-
-  .cart-error[hidden] {
-    display: none;
+  .cart-full-link:focus-visible {
+    outline: 2px solid var(--color-olive);
+    outline-offset: 2px;
   }
 </style>
 
 <script>
-  import { config } from '../config';
-
-  interface CartItem {
-    id: string;
-    name: string;
-    price: number;
-    quantity: number;
-    image?: string;
-  }
-
-  function leerCarrito(): CartItem[] {
-    try {
-      return JSON.parse(localStorage.getItem('domus_cart') || '[]');
-    } catch {
-      return [];
-    }
-  }
+  import { abrirUrl, leerCarrito, mensajeWhatsAppConsultar, urlWhatsApp } from '../js/checkout';
 
   function cerrarCarrito() {
     const cartSidebar = document.querySelector('.cart-sidebar');
@@ -601,143 +485,11 @@
     document.body.style.overflow = '';
   }
 
-  function abrirUrl(url: string) {
-    const w = window.open(url, '_blank');
-    if (!w) window.location.href = url;
-  }
-
-  const itemsBox = document.querySelector('.cart-items')!;
-  const footerBox = document.querySelector('.cart-footer') as HTMLElement;
-  const panel = document.getElementById('checkout-panel')!;
-  const checkoutBtn = document.getElementById('checkout-btn');
-  const backBtn = document.getElementById('checkout-back');
-  const confirmarBtn = document.getElementById('confirmar-btn') as HTMLButtonElement;
-  const errorBox = document.getElementById('checkout-error')!;
-
-  // Precio publicado = tarjeta/MP. En efectivo: 15% menos (igual que el servidor).
-  const DESC_EFECTIVO = 0.15;
-
-  function metodoElegido(): 'MP' | 'EFECTIVO' {
-    return ((document.querySelector('input[name="co-metodo"]:checked') as HTMLInputElement)?.value || 'EFECTIVO') as 'MP' | 'EFECTIVO';
-  }
-
-  function totalConDescuento(cart: CartItem[]): { base: number; final: number } {
-    const base = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-    if (metodoElegido() !== 'EFECTIVO') return { base, final: base };
-    const final = cart.reduce((s, i) => s + Math.round(i.price * (1 - DESC_EFECTIVO)) * i.quantity, 0);
-    return { base, final };
-  }
-
-  function pintarTotalCheckout() {
-    const el = document.getElementById('checkout-total')!;
-    const { base, final } = totalConDescuento(leerCarrito());
-    if (metodoElegido() === 'EFECTIVO' && final < base) {
-      el.innerHTML = `<s class="co-tachado">$${base.toLocaleString('es-AR')}</s>
-        <span class="co-disc">−15% EFECTIVO</span><br/>
-        <strong>$${final.toLocaleString('es-AR')}</strong>`;
-    } else {
-      el.textContent = `$${base.toLocaleString('es-AR')}`;
-    }
-  }
-
-  // Paso 1 -> Paso 2 (datos y pago)
-  checkoutBtn?.addEventListener('click', () => {
-    const cart = leerCarrito();
-    if (!cart.length) return;
-    pintarTotalCheckout();
-    errorBox.hidden = true;
-    itemsBox.setAttribute('hidden', '');
-    footerBox.style.display = 'none';
-    panel.hidden = false;
-  });
-
-  document.querySelectorAll('input[name="co-metodo"]').forEach((r) => {
-    r.addEventListener('change', pintarTotalCheckout);
-  });
-
-  backBtn?.addEventListener('click', () => {
-    panel.hidden = true;
-    itemsBox.removeAttribute('hidden');
-    footerBox.style.display = '';
-  });
-
   // Alternativa: solo consultar por WhatsApp (sin crear pedido)
   document.getElementById('consultar-btn')?.addEventListener('click', () => {
     const cart = leerCarrito();
     if (!cart.length) return;
-
-    let message = 'Hola! Me gustaría consultar por estos productos:\n\n';
-    cart.forEach((item) => {
-      message += `- ${item.name} (x${item.quantity}) - $${item.price * item.quantity}\n`;
-    });
-    const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-    message += `\nTotal estimado: $${total}\n\n¿Están disponibles?`;
-
-    abrirUrl(`https://wa.me/${config.whatsapp.phoneNumber}?text=${encodeURIComponent(message)}`);
+    abrirUrl(urlWhatsApp(mensajeWhatsAppConsultar(cart)));
     cerrarCarrito();
-  });
-
-  // Confirmar pedido: crea venta + redirige según método
-  confirmarBtn?.addEventListener('click', async () => {
-    const nombre = (document.getElementById('co-nombre') as HTMLInputElement).value.trim();
-    const telefono = (document.getElementById('co-tel') as HTMLInputElement).value.trim();
-    const metodo = (document.querySelector('input[name="co-metodo"]:checked') as HTMLInputElement)?.value as 'MP' | 'EFECTIVO';
-
-    errorBox.hidden = true;
-    if (nombre.length < 2 || telefono.length < 6) {
-      errorBox.textContent = 'Contanos tu nombre y un teléfono válido para coordinar.';
-      errorBox.hidden = false;
-      return;
-    }
-
-    const cart = leerCarrito();
-    if (!cart.length) return;
-
-    confirmarBtn.setAttribute('disabled', 'true');
-    confirmarBtn.textContent = 'Procesando…';
-
-    try {
-      const res = await fetch('/api/checkout/crear', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: cart.map((i) => ({ producto_id: i.id, cantidad: i.quantity })),
-          cliente: { nombre, telefono },
-          metodo,
-        }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        errorBox.textContent = typeof data.error === 'string' ? data.error : 'No se pudo crear el pedido.';
-        errorBox.hidden = false;
-        return;
-      }
-
-      if (metodo === 'EFECTIVO' && data.whatsapp_url) {
-        localStorage.setItem('domus_cart', '[]');
-        window.dispatchEvent(new Event('domus:cart-cleared'));
-        CartManager.updateCartCount();
-        CartManager.updateCartDisplay();
-        cerrarCarrito();
-        abrirUrl(data.whatsapp_url as string);
-        return;
-      }
-
-      if (metodo === 'MP' && data.init_point) {
-        localStorage.setItem('domus_cart', '[]');
-        window.location.href = data.init_point as string;
-        return;
-      }
-
-      errorBox.textContent = 'Respuesta inesperada del servidor.';
-      errorBox.hidden = false;
-    } catch {
-      errorBox.textContent = 'Error de conexión. Probá de nuevo.';
-      errorBox.hidden = false;
-    } finally {
-      confirmarBtn.removeAttribute('disabled');
-      confirmarBtn.textContent = 'Confirmar pedido';
-    }
   });
 </script>

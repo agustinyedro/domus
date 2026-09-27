@@ -15,7 +15,7 @@ export const GET: APIRoute = async ({ request, cookies, url }) => {
   const supabase = createSupabaseServer(request, cookies);
   const { data, error } = await supabase
     .from('historial_compras')
-    .select('id, fecha, cantidad, costo_unitario, costo_total, observaciones, producto_id, productos ( nombre )')
+    .select('id, fecha, cantidad, costo_unitario, costo_total, observaciones, producto_id, productos ( nombre, variante )')
     .eq('usuario_id', user.id)
     .order('fecha', { ascending: false })
     .limit(100);

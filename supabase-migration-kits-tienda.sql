@@ -27,6 +27,8 @@ ALTER TABLE ventas_items
 -- 3. Recrear v_stock_actual con kit_id y stock derivado
 --    DROP obligatorio: CREATE OR REPLACE VIEW no permite
 --    agregar columnas (error 42P16). La vista es solo una consulta.
+--    IMPORTANTE: conserva grupo_id / variante / nombre_opcion
+--    (supabase-migration-variantes.sql). Correr DESPUÉS de esa migración.
 -- ============================================
 DROP VIEW IF EXISTS v_stock_actual;
 
@@ -34,6 +36,9 @@ CREATE OR REPLACE VIEW v_stock_actual AS
 SELECT
   p.id AS producto_id,
   p.usuario_id,
+  p.grupo_id,
+  p.variante,
+  p.nombre_opcion,
   p.sku,
   p.nombre,
   p.descripcion,
@@ -56,6 +61,7 @@ SELECT
   END AS precio_final,
   CASE
     WHEN p.es_oferta AND p.precio_oferta IS NOT NULL AND p.precio_oferta < p.precio_venta
+         AND p.precio_venta > 0
       THEN ROUND(((p.precio_venta - p.precio_oferta) / p.precio_venta * 100)::NUMERIC, 0)
     ELSE 0
   END AS descuento_pct,
@@ -88,20 +94,20 @@ SELECT
       END
     ), 0)::INTEGER
   END AS stock_actual,
-  COALESCE(
-    (SELECT SUM(vi.cantidad)
-     FROM ventas_items vi
-     JOIN ventas v ON v.id = vi.venta_id
-     WHERE vi.producto_id = p.id
-       AND v.estado = 'COMPLETADA'
-       AND v.fecha >= NOW() - INTERVAL '90 days'
-    ), 0
-  )::INTEGER AS vendidos_90d
+  COALESCE((
+    SELECT SUM(vi.cantidad)
+    FROM ventas_items vi
+    JOIN ventas v ON v.id = vi.venta_id
+    WHERE vi.producto_id = p.id
+      AND v.estado IN ('COMPLETADA', 'PAGADA')
+      AND v.fecha >= NOW() - INTERVAL '90 days'
+  ), 0)::INTEGER AS vendidos_90d
 FROM productos p
 LEFT JOIN movimientos_stock m ON m.producto_id = p.id
-GROUP BY p.id, p.usuario_id, p.sku, p.nombre, p.descripcion, p.categoria,
-         p.imagen_url, p.costo, p.precio_venta, p.precio_oferta, p.es_oferta,
-         p.destacado, p.rating_promedio, p.rating_cantidad, p.stock_minimo, p.activo, p.kit_id;
+GROUP BY p.id, p.usuario_id, p.grupo_id, p.variante, p.nombre_opcion, p.sku, p.nombre,
+         p.descripcion, p.categoria, p.imagen_url, p.costo, p.precio_venta, p.precio_oferta,
+         p.es_oferta, p.destacado, p.rating_promedio, p.rating_cantidad, p.stock_minimo,
+         p.activo, p.kit_id;
 
 -- ============================================
 -- 4. Índices de apoyo

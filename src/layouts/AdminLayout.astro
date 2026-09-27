@@ -18,6 +18,9 @@ const isLoginPage = Astro.url.pathname === '/admin/login';
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{title} | DOMUS Admin</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" sizes="32x32" href="/favicon-32.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -51,6 +54,10 @@ const isLoginPage = Astro.url.pathname === '/admin/login';
     <slot />
   </main>
 
+  {!isLoginPage && (
+    <div id="admin-toast" class="admin-toast" role="status" aria-live="polite"></div>
+  )}
+
   <style is:global>
     :root {
       --admin-bg: #f8f9fa;
@@ -67,6 +74,7 @@ const isLoginPage = Astro.url.pathname === '/admin/login';
       --admin-danger: #f56565;
       --admin-warning: #ed8936;
       --admin-info: #4299e1;
+      --admin-toast-bg: #604811;
     }
 
     .admin-body {
@@ -403,6 +411,41 @@ const isLoginPage = Astro.url.pathname === '/admin/login';
       border: 1px solid #fefcbf;
     }
 
+    /* Toast global: feedback tras guardar (arriba al centro) */
+    .admin-toast {
+      position: fixed;
+      top: 1.25rem;
+      left: 50%;
+      transform: translate(-50%, -0.75rem);
+      z-index: 4000;
+      max-width: min(92vw, 30rem);
+      padding: 0.875rem 1.25rem;
+      border-radius: 8px;
+      background: var(--admin-toast-bg);
+      color: #ffffff;
+      box-shadow: 0 10px 30px rgb(0 0 0 / 0.3);
+      font-size: 0.9375rem;
+      font-weight: 500;
+      line-height: 1.4;
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .admin-toast.is-visible {
+      opacity: 1;
+      transform: translate(-50%, 0);
+      pointer-events: auto;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .admin-toast {
+        transition: none;
+        transform: translate(-50%, 0);
+      }
+    }
+
     /* Empty state */
     .admin-empty {
       text-align: center;
@@ -482,6 +525,10 @@ const isLoginPage = Astro.url.pathname === '/admin/login';
         margin-left: 0;
         padding: 1rem;
       }
+
+      .admin-toast {
+        top: 4.5rem;
+      }
     }
 
     /* Impresión: solo el contenido, sin sidebar ni botones */
@@ -508,6 +555,34 @@ const isLoginPage = Astro.url.pathname === '/admin/login';
         await fetch('/api/auth/logout', { method: 'POST' });
         window.location.href = '/admin/login';
       });
+
+      const toast = document.getElementById('admin-toast');
+      if (toast) {
+        let timer = 0;
+        const ocultar = () => {
+          toast.classList.remove('is-visible');
+          window.clearTimeout(timer);
+          timer = window.setTimeout(() => {
+            toast.textContent = '';
+          }, 300);
+        };
+        const mostrar = (mensaje: string) => {
+          if (!mensaje) return;
+          toast.textContent = mensaje;
+          window.clearTimeout(timer);
+          toast.classList.add('is-visible');
+          timer = window.setTimeout(ocultar, 4000);
+        };
+        toast.addEventListener('click', ocultar);
+        (window as Window & { adminToast?: (mensaje: string) => void }).adminToast = mostrar;
+        try {
+          const flash = sessionStorage.getItem('domus:admin-flash');
+          if (flash) {
+            sessionStorage.removeItem('domus:admin-flash');
+            mostrar(flash);
+          }
+        } catch { /* sin sessionStorage */ }
+      }
     </script>
   )}
 </body>
