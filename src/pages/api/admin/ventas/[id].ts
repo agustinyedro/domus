@@ -46,7 +46,7 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
   }
   const { error } = await supabase.rpc('editar_venta_manual', {
     p_venta_id: params.id,
-    p_metodo_pago: parsed.data.metodo_pago ?? 'EFECTIVO',
+    p_metodo_pago: parsed.data.metodo_pago,
     p_items: parsed.data.items,
   });
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 400 });

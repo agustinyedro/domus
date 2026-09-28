@@ -37,7 +37,7 @@ export const VentaSchema = z.object({
   cantidad: z.number().int().min(1, 'Cantidad mínima es 1'),
   precio_unitario: z.number().min(0),
   costo_unitario: z.number().min(0),
-  metodo_pago: z.enum(METODOS_PAGO_VENTA).optional(),
+  metodo_pago: z.enum(METODOS_PAGO_VENTA, { message: 'Elegí un medio de pago' }),
 });
 
 export const GastoSchema = z.object({
@@ -100,7 +100,7 @@ export const VentaBatchSchema = z.object({
     producto_id: z.string().uuid('ID de producto inválido'),
     cantidad: z.number().int().min(1, 'Cantidad mínima es 1'),
   })).min(1, 'Agregá al menos un producto').max(50, 'Máximo 50 productos por venta'),
-  metodo_pago: z.enum(METODOS_PAGO_VENTA).optional(),
+  metodo_pago: z.enum(METODOS_PAGO_VENTA, { message: 'Elegí un medio de pago' }),
 });
 
 export const CategoriaSchema = z.object({

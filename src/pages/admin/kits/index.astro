@@ -36,10 +36,13 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
   </div>
 
   <script>
+    import { setupProductPicker, type ProductPicker } from '../../../lib/admin-product-picker';
+
     const fmt$ = (n: number) => `$${Math.round(n).toLocaleString('es-AR')}`;
     const num = (n: unknown) => Number(n) || 0;
     let productos: Array<any> = [];
     let kitsCache: Array<any> = [];
+    const kitPickers = new Map<string, ProductPicker>();
 
     function precioVigente(p: any): number {
       if (p?.es_oferta && p?.precio_oferta != null && num(p.precio_oferta) < num(p.precio_venta)) {
@@ -62,21 +65,16 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
       return { color: '#2f855a', label: 'Saludable', clase: 'semaforo-verde' };
     }
 
-    function opcionesProductos(filtro = ''): string {
-      const normalizar = (value: unknown) => String(value ?? '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase();
-      const f = normalizar(filtro).trim();
-      const lista = f
-        ? productos.filter((p: any) => normalizar(`${p.nombre || ''} ${p.variante || ''} ${p.nombre_opcion || ''} ${p.sku || ''}`).includes(f))
-        : productos;
-      const opts = lista.map((p: any) => {
-        const id = p.producto_id || p.id;
+    function opcionesPicker() {
+      return productos.map((p: any) => {
         const opcion = p.variante && p.variante !== 'Única' ? ` · ${p.variante}` : '';
-        return `<option value="${id}">${p.nombre}${opcion} — ${fmt$(precioVigente(p))} · stock ${p.stock_actual ?? 0}</option>`;
-      }).join('');
-      return '<option value="">— Producto —</option>' + (opts || '<option value="" disabled>Sin coincidencias</option>');
+        return {
+          id: String(p.producto_id || p.id),
+          label: `${p.nombre}${opcion}`,
+          search: `${p.nombre || ''} ${p.variante || ''} ${p.nombre_opcion || ''} ${p.sku || ''}`,
+          meta: `${p.sku ? `${p.sku} · ` : ''}${fmt$(precioVigente(p))} · stock ${p.stock_actual ?? 0}`,
+        };
+      });
     }
 
     async function cargarProductos() {
@@ -240,8 +238,11 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
         <div id="ke-items"></div>
 
         <div class="kit-add-row">
-          <input data-kit-filter="${kit.id}" type="search" class="admin-input" placeholder="Buscar producto…" style="flex: 1; min-width: 140px;" />
-          <select data-kit-sel="${kit.id}" class="admin-input" style="flex: 2; min-width: 180px;">${opcionesProductos()}</select>
+          <div class="product-picker kit-product-picker" data-kit-picker="${kit.id}">
+            <input type="search" class="admin-input" data-product-search placeholder="Buscar por nombre, variante o SKU…" aria-label="Buscar y seleccionar producto" role="combobox" aria-autocomplete="list" aria-expanded="false" autocomplete="off" />
+            <div class="product-picker-results" data-product-results role="listbox" hidden></div>
+            <select data-product-value tabindex="-1" aria-hidden="true" hidden></select>
+          </div>
           <input data-kit-cant="${kit.id}" type="number" class="admin-input" min="1" value="1" style="flex: 0 0 80px;" />
           <button type="button" data-kit-add="${kit.id}" class="admin-btn admin-btn-primary">Agregar</button>
         </div>
@@ -255,6 +256,9 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
           <button type="button" class="admin-btn admin-btn-success" id="ke-save">Guardar cambios</button>
         </div>
       `);
+
+      const pickerRoot = root.querySelector(`[data-kit-picker="${kit.id}"]`) as HTMLElement;
+      kitPickers.set(kit.id, setupProductPicker(pickerRoot, { items: opcionesPicker() }));
 
       root.querySelector('#ke-cancel')!.addEventListener('click', cerrarModal);
       root.querySelector('#ke-save')!.addEventListener('click', async () => {
@@ -402,12 +406,6 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     // Eventos dentro del modal (delegación global)
     document.addEventListener('input', (e) => {
       const el = e.target as HTMLElement;
-      const filter = el.closest('[data-kit-filter]') as HTMLInputElement | null;
-      if (filter) {
-        const sel = document.querySelector(`[data-kit-sel="${filter.dataset.kitFilter}"]`) as HTMLSelectElement;
-        if (sel) sel.innerHTML = opcionesProductos(filter.value);
-        return;
-      }
       const price = el.closest('[data-kit-price]') as HTMLInputElement | null;
       if (price) recalcularPanel(price.dataset.kitPrice!, num(price.value));
     });
@@ -429,13 +427,20 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
       const add = t.closest('[data-kit-add]') as HTMLElement | null;
       if (add) {
         const kitId = add.dataset.kitAdd!;
-        const sel = document.querySelector(`[data-kit-sel="${kitId}"]`) as HTMLSelectElement;
+        const productoId = kitPickers.get(kitId)?.getValue();
         const cant = document.querySelector(`[data-kit-cant="${kitId}"]`) as HTMLInputElement;
-        if (!sel.value) return;
+        if (!productoId) {
+          const err = document.getElementById('km-error2');
+          if (err) {
+            err.textContent = 'Elegí un producto para agregar al kit.';
+            err.style.display = 'block';
+          }
+          return;
+        }
         await fetch(`/api/admin/kits/${kitId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ producto_id: sel.value, cantidad: num(cant.value) || 1 }),
+          body: JSON.stringify({ producto_id: productoId, cantidad: num(cant.value) || 1 }),
         });
         await cargarKits();
         actualizarEditor(kitId);
@@ -522,6 +527,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     .kit-empty { color: var(--admin-text-muted); font-size: 0.875rem; padding: 0.75rem 0.5rem !important; }
 
     .kit-add-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+    .kit-product-picker { flex: 2; min-width: 180px; }
     .kit-panel { background: var(--admin-bg, #f7fafc); border: 1px solid var(--admin-border); border-radius: 10px; padding: 1rem; }
     .kit-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
     .kit-metrics > div { display: flex; flex-direction: column; }

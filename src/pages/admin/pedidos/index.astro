@@ -380,7 +380,7 @@ import '@/styles/remito.css';
         button.disabled = true;
         button.textContent = 'Generando…';
         try {
-          await descargarComprobantePdf({
+          descargarComprobantePdf({
             id: p.id,
             fecha: p.fecha,
             total: Number(p.total ?? 0),

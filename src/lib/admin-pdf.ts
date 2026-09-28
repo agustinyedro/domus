@@ -1,3 +1,6 @@
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
 type PdfItem = {
   cantidad: number;
   nombre: string;
@@ -36,16 +39,20 @@ const HUESO: [number, number, number] = [219, 209, 144];
 const dinero = (value: number) => `$${Math.round(Number(value) || 0).toLocaleString('es-AR')}`;
 const archivoSeguro = (value: string) => value.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/-+/g, '-');
 
-async function dependenciasPdf() {
-  const [{ jsPDF }, { default: autoTable }] = await Promise.all([
-    import('jspdf'),
-    import('jspdf-autotable'),
-  ]);
-  return { jsPDF, autoTable };
+function guardarPdf(doc: jsPDF, nombre: string) {
+  const blob = doc.output('blob');
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = nombre;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
 
-export async function descargarComprobantePdf(comprobante: PdfComprobante) {
-  const { jsPDF, autoTable } = await dependenciasPdf();
+export function descargarComprobantePdf(comprobante: PdfComprobante) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const corto = String(comprobante.id).slice(0, 8);
 
@@ -113,13 +120,14 @@ export async function descargarComprobantePdf(comprobante: PdfComprobante) {
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(8);
   doc.setTextColor(110, 95, 66);
-  doc.text('Gracias por tu compra · todo lo que hace de un lugar, hogar.', 105, finalY + 22, { align: 'center' });
+  doc.text('Gracias por tu compra · todo lo que hace de un lugar, hogar.', 105, finalY + 22, {
+    align: 'center',
+  });
 
-  doc.save(`${archivoSeguro(comprobante.titulo.toLowerCase())}-${corto}.pdf`);
+  guardarPdf(doc, `${archivoSeguro(comprobante.titulo.toLowerCase())}-${corto}.pdf`);
 }
 
-export async function descargarStockPdf(producto: ProductoPdf, movimientos: Array<any>) {
-  const { jsPDF } = await dependenciasPdf();
+export function descargarStockPdf(producto: ProductoPdf, movimientos: Array<any>) {
   const alto = Math.max(120, 86 + movimientos.length * 9);
   const doc = new jsPDF({ unit: 'mm', format: [80, alto] });
   const centro = 40;
@@ -159,11 +167,10 @@ export async function descargarStockPdf(producto: ProductoPdf, movimientos: Arra
   });
   doc.setFont('helvetica', 'italic');
   doc.text('domus.com.ar', centro, alto - 8, { align: 'center' });
-  doc.save(`stock-${archivoSeguro(String(producto.nombre || 'producto'))}.pdf`);
+  guardarPdf(doc, `stock-${archivoSeguro(String(producto.nombre || 'producto'))}.pdf`);
 }
 
-export async function descargarListaPreciosPdf(productos: ProductoPdf[], fecha: string) {
-  const { jsPDF, autoTable } = await dependenciasPdf();
+export function descargarListaPreciosPdf(productos: ProductoPdf[], fecha: string) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   doc.setTextColor(...TIERRA);
   doc.setFont('helvetica', 'bold');
@@ -190,5 +197,5 @@ export async function descargarListaPreciosPdf(productos: ProductoPdf[], fecha: 
     columnStyles: { 3: { halign: 'right', cellWidth: 18 }, 4: { halign: 'right', cellWidth: 28 } },
     margin: { left: 15, right: 15 },
   });
-  doc.save(`domus-lista-precios-${new Date().toISOString().slice(0, 10)}.pdf`);
+  guardarPdf(doc, `domus-lista-precios-${new Date().toISOString().slice(0, 10)}.pdf`);
 }

@@ -106,7 +106,7 @@ const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'lon
       button.disabled = true;
       button.textContent = 'Generando…';
       try {
-        await descargarListaPreciosPdf(productosLista, fechaLista);
+        descargarListaPreciosPdf(productosLista, fechaLista);
       } catch {
         window.alert('No pudimos generar el PDF. Volvé a intentarlo.');
       } finally {

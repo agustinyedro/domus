@@ -21,11 +21,12 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     </p>
     <form id="mov-form" class="admin-form">
       <div class="admin-form-group">
-        <label class="admin-form-label" for="mov-producto">Producto</label>
-        <input id="mov-producto-search" type="search" class="admin-input product-search" placeholder="Buscar por nombre, opción o SKU…" aria-label="Buscar producto" autocomplete="off" />
-        <select id="mov-producto" class="admin-input" required>
-          <option value="">Cargando productos…</option>
-        </select>
+        <label class="admin-form-label" for="mov-producto-search">Producto</label>
+        <div id="mov-producto-picker" class="product-picker">
+          <input id="mov-producto-search" type="search" class="admin-input" data-product-search placeholder="Escribí nombre, aroma o SKU…" aria-label="Buscar y seleccionar producto" role="combobox" aria-autocomplete="list" aria-expanded="false" autocomplete="off" />
+          <div class="product-picker-results" data-product-results role="listbox" hidden></div>
+          <select id="mov-producto" data-product-value tabindex="-1" aria-hidden="true" hidden></select>
+        </div>
         <p id="mov-stock-actual" style="margin: 0.25rem 0 0; font-size: 0.8125rem; color: var(--admin-text-muted);"></p>
       </div>
 
@@ -118,6 +119,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
   <script>
     import { precioEfectivo, RECARGO_TARJETA_DEFAULT } from '../../../lib/precios';
     import { descargarStockPdf } from '../../../lib/admin-pdf';
+    import { setupProductPicker } from '../../../lib/admin-product-picker';
 
     let productos: Array<any> = [];
 
@@ -133,41 +135,30 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     }
 
     const sel = document.getElementById('mov-producto') as HTMLSelectElement;
-    const searchProducto = document.getElementById('mov-producto-search') as HTMLInputElement;
     const stockInfo = document.getElementById('mov-stock-actual')!;
     const errDiv = document.getElementById('mov-error')!;
     const okDiv = document.getElementById('mov-ok')!;
     const btn = document.getElementById('mov-btn') as HTMLButtonElement;
-    const normalizarBusqueda = (value: unknown) => String(value ?? '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .trim();
-
-    function renderSelectorMovimiento() {
-      const actual = sel.value;
-      const query = normalizarBusqueda(searchProducto.value);
-      const filtrados = productos.filter((p: any) => {
-        const id = p.producto_id || p.id;
-        return id === actual || !query || normalizarBusqueda(`${p.nombre} ${p.variante || ''} ${p.nombre_opcion || ''} ${p.sku || ''}`).includes(query);
-      });
-      const vacio = query && filtrados.length === 0 ? '<option value="">Sin coincidencias</option>' : '<option value="">— Elegí un producto —</option>';
-      sel.innerHTML = vacio + filtrados
-        .map((p: any) => `<option value="${p.producto_id || p.id}" ${(p.producto_id || p.id) === actual ? 'selected' : ''}>${p.nombre} · ${p.variante || 'Única'} · ${p.sku || 'sin SKU'} (stock: ${p.stock_actual ?? 0})</option>`)
-        .join('');
-    }
-
     function actualizarStockInfo() {
       const p = productos.find((x) => x.producto_id === sel.value || x.id === sel.value);
       stockInfo.textContent = p ? `Stock actual: ${p.stock_actual ?? 0} u.` : '';
     }
+
+    const productoPicker = setupProductPicker(document.getElementById('mov-producto-picker')!, {
+      onSelect: actualizarStockInfo,
+    });
 
     async function cargarProductos() {
       try {
         const res = await fetch('/api/admin/productos');
         if (!res.ok) return;
         productos = await res.json();
-        renderSelectorMovimiento();
+        productoPicker.setItems(productos.map((p: any) => ({
+          id: p.producto_id || p.id,
+          label: `${p.nombre}${p.variante && p.variante !== 'Única' ? ` · ${p.variante}` : ''}${p.sku ? ` · ${p.sku}` : ''}`,
+          search: `${p.nombre} ${p.variante || ''} ${p.nombre_opcion || ''} ${p.sku || ''}`,
+          meta: `Stock ${p.stock_actual ?? 0} · ${efectivoDe(p).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 })}`,
+        })));
         const cats = [...new Set(productos.map((p: any) => p.categoria).filter(Boolean))].sort();
         const selCat = document.getElementById('stock-cat') as HTMLSelectElement;
         const actual = selCat.value;
@@ -388,7 +379,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
         button.disabled = true;
         button.textContent = 'Generando…';
         try {
-          await descargarStockPdf(p, movimientosTicket);
+          descargarStockPdf(p, movimientosTicket);
         } catch {
           window.alert('No pudimos generar el PDF. Volvé a intentarlo.');
         } finally {
@@ -398,7 +389,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
       });
       root.querySelector('#ticket-ajustar')!.addEventListener('click', () => {
         cerrar();
-        sel.value = id;
+        productoPicker.setValue(id);
         actualizarStockInfo();
         document.getElementById('mov-form')!.scrollIntoView({ behavior: 'smooth', block: 'center' });
       });
@@ -447,13 +438,18 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
       document.removeEventListener('keydown', escCerrar);
     }
 
-    searchProducto.addEventListener('input', renderSelectorMovimiento);
     sel.addEventListener('change', actualizarStockInfo);
 
     document.getElementById('mov-form')!.addEventListener('submit', async (e) => {
       e.preventDefault();
       errDiv.style.display = 'none';
       okDiv.style.display = 'none';
+      if (!sel.value) {
+        errDiv.textContent = 'Elegí un producto para registrar el movimiento.';
+        errDiv.style.display = 'block';
+        (document.getElementById('mov-producto-search') as HTMLInputElement).focus();
+        return;
+      }
       btn.setAttribute('disabled', 'true');
 
       const tipo = (document.querySelector('input[name="mov-tipo"]:checked') as HTMLInputElement).value;

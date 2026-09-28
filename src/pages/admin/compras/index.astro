@@ -73,6 +73,7 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
   </div>
 
   <script>
+    import { setupProductPicker, type ProductPicker } from '../../../lib/admin-product-picker';
     import { readCompraFile, prepareCompraImport, MAX_COMPRA_ROWS } from '@/lib/compra-import';
 
     interface ProductoNuevo {
@@ -90,55 +91,13 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
     const btn = document.getElementById('c-btn') as HTMLButtonElement;
     const fmt$ = (n: number) => n.toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 });
     const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!));
-    const normalizarBusqueda = (value: unknown) => String(value ?? '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .trim();
     let productos: Array<any> = [];
+    const pickers = new WeakMap<Element, ProductPicker>();
 
     function productoConVariante(p: any): string {
       const variante = String(p?.variante ?? '').trim();
       const base = String(p?.nombre ?? '');
       return variante && !/^ú?nica$/i.test(variante) ? `${base} · ${variante}` : base;
-    }
-
-    function etiquetaOpcion(p: any, enGrupo = false): string {
-      const variante = String(p.variante ?? '').trim();
-      const nombre = String(p.nombre ?? '');
-      const base = enGrupo
-        ? (variante || nombre)
-        : (variante && !/^ú?nica$/i.test(variante) ? `${nombre} · ${variante}` : nombre);
-      return `${escapeHtml(base)} · ${escapeHtml(p.sku || '')}`;
-    }
-
-    function opcionesProductos(selValue = '', filtro = ''): string {
-      const query = normalizarBusqueda(filtro);
-      const filtrados = productos.filter((p: any) => {
-        const id = p.producto_id || p.id;
-        return id === selValue || !query || normalizarBusqueda(`${p.nombre} ${p.variante || ''} ${p.nombre_opcion || ''} ${p.sku || ''}`).includes(query);
-      });
-      const grupos = new Map<string, Array<any>>();
-      for (const p of filtrados) {
-        const key = String(p.grupo_id || p.nombre || p.id);
-        if (!grupos.has(key)) grupos.set(key, []);
-        grupos.get(key)!.push(p);
-      }
-      const orden = new Intl.Collator('es');
-      const optsDe = (items: Array<any>, enGrupo: boolean) => items
-        .slice()
-        .sort((a, b) => orden.compare(String(a.variante || ''), String(b.variante || '')))
-        .map(p => {
-          const id = p.producto_id || p.id;
-          return `<option value="${escapeHtml(id)}" data-costo="${escapeHtml(p.costo)}" ${id === selValue ? 'selected' : ''}>${etiquetaOpcion(p, enGrupo)}</option>`;
-        })
-        .join('');
-      const vacio = query && filtrados.length === 0 ? '<option value="">Sin coincidencias</option>' : '<option value="">— Elegí —</option>';
-      return vacio + [...grupos.values()]
-        .map(items => items.length > 1
-          ? `<optgroup label="${escapeHtml(String(items[0]?.nombre || ''))}">${optsDe(items, true)}</optgroup>`
-          : optsDe(items, false))
-        .join('');
     }
 
     function agregarFila(selValue = '', cantidad = 1, costo?: number) {
@@ -148,8 +107,11 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
       row.innerHTML = `
         <div class="admin-form-group">
           <label class="admin-form-label">Producto</label>
-          <input type="search" class="admin-input product-search c-prod-search" placeholder="Buscar por nombre, opción o SKU…" aria-label="Buscar producto" autocomplete="off" />
-          <select class="admin-input c-prod" required>${opcionesProductos(selValue)}</select>
+          <div class="product-picker c-product-picker">
+            <input type="search" class="admin-input c-prod-search" data-product-search placeholder="Escribí nombre, aroma o SKU…" aria-label="Buscar y seleccionar producto" role="combobox" aria-autocomplete="list" aria-expanded="false" autocomplete="off" />
+            <div class="product-picker-results" data-product-results role="listbox" hidden></div>
+            <select class="c-prod" data-product-value tabindex="-1" aria-hidden="true" hidden></select>
+          </div>
         </div>
         <div class="admin-form-group">
           <label class="admin-form-label">Cantidad</label>
@@ -170,6 +132,17 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
           </button>
         </div>`;
       rowsBox.appendChild(row);
+      const pickerRoot = row.querySelector('.c-product-picker')!;
+      pickers.set(pickerRoot, setupProductPicker(pickerRoot as HTMLElement, {
+        items: productos.map((p: any) => ({
+          id: p.producto_id || p.id,
+          label: productoConVariante(p),
+          search: `${p.nombre} ${p.variante || ''} ${p.nombre_opcion || ''} ${p.sku || ''}`,
+          meta: `${p.sku || 'Sin SKU'} · costo ${fmt$(Number(p.costo || 0))}`,
+          data: { costo: String(p.costo ?? '') },
+        })),
+        value: selValue,
+      }));
       (row.querySelector('.c-cant') as HTMLInputElement).value = String(cantidad);
       if (costo !== undefined) (row.querySelector('.c-costo') as HTMLInputElement).value = String(costo);
       actualizarTotal();
@@ -189,12 +162,11 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
 
     rowsBox.addEventListener('input', (e) => {
       const t = e.target as HTMLElement;
-      if (t.classList.contains('c-prod-search')) {
-        const row = t.closest('.c-row')!;
-        const select = row.querySelector('.c-prod') as HTMLSelectElement;
-        select.innerHTML = opcionesProductos(select.value, (t as HTMLInputElement).value);
-      }
       if (t.classList.contains('c-cant') || t.classList.contains('c-costo')) actualizarTotal();
+    });
+
+    rowsBox.addEventListener('change', (e) => {
+      const t = e.target as HTMLElement;
       if (t.classList.contains('c-prod')) {
         const row = (t as HTMLElement).closest('.c-row')!;
         const opt = (t as HTMLSelectElement).selectedOptions[0] as HTMLOptionElement | undefined;
@@ -307,10 +279,14 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
         const res = await fetch('/api/admin/productos');
         if (!res.ok) return;
         productos = await res.json();
-        rowsBox.querySelectorAll('.c-prod').forEach((s) => {
-          const row = (s as HTMLElement).closest('.c-row')!;
-          const filtro = (row.querySelector('.c-prod-search') as HTMLInputElement)?.value || '';
-          (s as HTMLSelectElement).innerHTML = opcionesProductos((s as HTMLSelectElement).value, filtro);
+        rowsBox.querySelectorAll('.c-product-picker').forEach((root) => {
+          pickers.get(root)?.setItems(productos.map((p: any) => ({
+            id: p.producto_id || p.id,
+            label: productoConVariante(p),
+            search: `${p.nombre} ${p.variante || ''} ${p.nombre_opcion || ''} ${p.sku || ''}`,
+            meta: `${p.sku || 'Sin SKU'} · costo ${fmt$(Number(p.costo || 0))}`,
+            data: { costo: String(p.costo ?? '') },
+          })));
         });
       } catch { /* noop */ }
     }
