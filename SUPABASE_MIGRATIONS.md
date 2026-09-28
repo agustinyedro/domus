@@ -51,6 +51,8 @@ Correr en este orden en una base nueva:
 
 11. `supabase-migration-recargo-tarjeta.sql` — columna `productos.recargo_tarjeta` (default 15) + `precio_efectivo` en `v_stock_actual`. El admin carga precio en efectivo; tarjeta = efectivo + recargo.
 
+12. `supabase-migration-ventas-editables.sql` — edición transaccional de ventas manuales en estado `PAGADA` y cierre definitivo en `COMPLETADA`.
+
 Semillas opcionales: `supabase-seed-productos.sql`.
 
 ## Template

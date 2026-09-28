@@ -10,7 +10,7 @@ import '@/styles/remito.css';
   <h1 style="margin: 0 0 1.5rem; font-size: 1.5rem;">Ventas</h1>
 
   <div class="admin-card" style="margin-bottom: 1rem;">
-    <h2 class="admin-card-title" style="margin-bottom: 1rem;">Registrar venta</h2>
+    <h2 id="v-form-title" class="admin-card-title" style="margin-bottom: 1rem;">Registrar venta</h2>
     <form id="venta-form" class="admin-form" style="max-width: none;">
       <div class="admin-form-group" style="max-width: 22rem;">
         <label class="admin-form-label" for="v-metodo">Medio de pago</label>
@@ -36,25 +36,28 @@ import '@/styles/remito.css';
       </div>
       <div id="v-error" class="admin-alert admin-alert-error" style="display:none; margin-top: 1rem;"></div>
       <div id="v-ok" class="admin-alert admin-alert-success" style="display:none; margin-top: 1rem;"></div>
-      <button type="submit" id="v-btn" class="admin-btn admin-btn-primary" style="margin-top: 1rem;">Registrar venta</button>
+      <div class="v-form-actions">
+        <button type="submit" id="v-btn" class="admin-btn admin-btn-primary">Registrar venta</button>
+        <button type="button" id="v-cancel-edit" class="admin-btn admin-btn-ghost" hidden>Cancelar edición</button>
+      </div>
     </form>
     <p style="margin: 1rem 0 0; font-size: 0.8125rem; color: var(--admin-text-muted);">
       Descuenta stock de cada producto, usa el precio vigente (oferta si aplica) y calcula la ganancia sola.
       Con <strong>Efectivo</strong> o <strong>Transferencia</strong> se cobra el precio en efectivo; con los demás medios, el precio de tarjeta (recargo por producto). Se calcula en el servidor.
-      Si algún producto no tiene stock, no se registra nada.
+      La venta queda pagada y editable hasta que uses <strong>Completar</strong>. Si algún producto no tiene stock, no se registra nada.
     </p>
   </div>
 
   <div class="admin-card">
     <h2 class="admin-card-title" style="margin-bottom: 1rem;">Historial</h2>
     <p style="margin: 0 0 1rem; font-size: 0.8125rem; color: var(--admin-text-muted);">
-      Ventas manuales y pedidos de tienda completados o pagados.
+      Las ventas manuales pagadas se pueden corregir. Al completarlas quedan cerradas definitivamente.
       Los pendientes se gestionan en <a href="/admin/pedidos">Pedidos</a>.
     </p>
     <div class="admin-table-wrapper">
       <table class="admin-table">
         <thead>
-          <tr><th>Fecha</th><th>Detalle</th><th class="text-right">Total</th><th class="text-right">Ganancia</th><th>Estado</th><th>Nota</th></tr>
+          <tr><th>Fecha</th><th>Detalle</th><th class="text-right">Total</th><th class="text-right">Ganancia</th><th>Estado</th><th>Acciones</th></tr>
         </thead>
         <tbody id="v-historial">
           <tr><td colspan="6" class="text-center">Cargando…</td></tr>
@@ -77,6 +80,7 @@ import '@/styles/remito.css';
     let ventasCache: Array<any> = [];
     let ultimaVenta: any = null;
     let focoPrevio: HTMLElement | null = null;
+    let ventaEditandoId: string | null = null;
 
     const esSinRecargo = () => esPagoSinRecargo(metodoSel.value);
     const labelTotal = () => (metodoSel.value === 'TRANSFERENCIA' ? 'Total transferencia' : 'Total efectivo');
@@ -120,7 +124,7 @@ import '@/styles/remito.css';
     return esSinRecargo() ? precioEfectivo(vigente, recargoDe(p)) : vigente;
   }
 
-    function agregarFila() {
+    function agregarFila(selValue = '', cantidad = 1) {
       const row = document.createElement('div');
       row.className = 'v-row';
       row.style.cssText = 'display: grid; grid-template-columns: 2fr 1fr auto auto; gap: 0.5rem; align-items: end;';
@@ -128,7 +132,7 @@ import '@/styles/remito.css';
         <div class="admin-form-group">
           <label class="admin-form-label">Producto</label>
           <input type="search" class="admin-input product-search v-prod-search" placeholder="Buscar por nombre, opción o SKU…" aria-label="Buscar producto" autocomplete="off" />
-          <select class="admin-input v-prod" required>${opcionesProductos()}</select>
+          <select class="admin-input v-prod" required>${opcionesProductos(selValue)}</select>
         </div>
         <div class="admin-form-group">
           <label class="admin-form-label">Cantidad</label>
@@ -145,6 +149,7 @@ import '@/styles/remito.css';
           </button>
         </div>`;
       rowsBox.appendChild(row);
+      (row.querySelector('.v-cant') as HTMLInputElement).value = String(cantidad);
       actualizarResumen();
     }
 
@@ -210,7 +215,7 @@ import '@/styles/remito.css';
       actualizarResumen();
     });
 
-    document.getElementById('v-add-row')!.addEventListener('click', agregarFila);
+    document.getElementById('v-add-row')!.addEventListener('click', () => agregarFila());
 
     async function cargarProductos() {
       try {
@@ -243,20 +248,25 @@ import '@/styles/remito.css';
               const detalle = (v.ventas_items || [])
                 .map((i: any) => `${i.productos?.nombre || ''}${varianteDe(i.productos?.variante)} ×${i.cantidad}`)
                 .join(', ');
+              const editable = (v.source || 'MANUAL') === 'MANUAL' && v.estado === 'PAGADA';
+              const acciones = `${editable ? `
+                <button type="button" class="admin-btn admin-btn-ghost" data-v-editar="${v.id}">Editar</button>
+                <button type="button" class="admin-btn admin-btn-success" data-v-completar="${v.id}">Completar</button>` : ''}
+                <button type="button" class="admin-btn admin-btn-ghost" data-v-nota="${v.id}" title="Ver nota de venta">Nota</button>`;
               return `<tr>
                 <td>${new Date(v.fecha).toLocaleString('es-AR')}</td>
                 <td>${detalle}</td>
                 <td class="text-right">${fmt$(Number(v.total))}</td>
                 <td class="text-right">${fmt$(Number(v.ganancia))}</td>
-                <td>${badgeEstado(v.estado, v.metodo_pago)}</td>
-                <td><button type="button" class="admin-btn admin-btn-ghost v-nota-btn" data-v-nota="${v.id}" title="Imprimir nota de venta" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem; min-height: 44px;">Imprimir</button></td>
+                <td>${badgeEstado(v.estado, v.metodo_pago, v.source)}</td>
+                <td><div class="v-row-actions">${acciones}</div></td>
               </tr>`;
             }).join('')
           : '<tr><td colspan="6" class="text-center">Sin ventas registradas.</td></tr>';
       } catch { /* noop */ }
     }
 
-    function badgeEstado(estado: string, metodo: string): string {
+    function badgeEstado(estado: string, metodo: string, source?: string): string {
       const map: Record<string, string> = {
         'PENDIENTE_EFECTIVO': 'background: #fffbeb; color: #744210;',
         'PENDIENTE_PAGO': 'background: #ebf8ff; color: #2a4365;',
@@ -266,7 +276,8 @@ import '@/styles/remito.css';
         'CANCELADA': 'background: #f7fafc; color: #4a5568;',
         'PENDIENTE': 'background: #fffbeb; color: #744210;',
       };
-      return `<span class="stock-badge" style="${map[estado] || ''}">${estado || '—'}</span>`
+      const etiqueta = estado === 'PAGADA' && (source || 'MANUAL') === 'MANUAL' ? 'PAGADA · EDITABLE' : estado;
+      return `<span class="stock-badge" style="${map[estado] || ''}">${etiqueta || '—'}</span>`
         + (metodo ? `<br/><span style="font-size: 0.75rem; color: var(--admin-text-muted);">${ETIQUETAS_METODO_PAGO[metodo] || metodo}</span>` : '');
     }
 
@@ -385,13 +396,68 @@ import '@/styles/remito.css';
       }));
     }
 
+    function salirEdicion() {
+      ventaEditandoId = null;
+      document.getElementById('v-form-title')!.textContent = 'Registrar venta';
+      btn.textContent = 'Registrar venta';
+      (document.getElementById('v-cancel-edit') as HTMLButtonElement).hidden = true;
+      metodoSel.value = '';
+      rowsBox.innerHTML = '';
+      agregarFila();
+    }
+
+    function editarVenta(v: any) {
+      if ((v.source || 'MANUAL') !== 'MANUAL' || v.estado !== 'PAGADA') return;
+      ventaEditandoId = v.id;
+      document.getElementById('v-form-title')!.textContent = `Editar venta #${String(v.id).slice(0, 8)}`;
+      btn.textContent = 'Guardar cambios';
+      (document.getElementById('v-cancel-edit') as HTMLButtonElement).hidden = false;
+      metodoSel.value = v.metodo_pago || '';
+      rowsBox.innerHTML = '';
+      (v.ventas_items || []).forEach((item: any) => agregarFila(item.producto_id, Number(item.cantidad) || 1));
+      if (!v.ventas_items?.length) agregarFila();
+      document.getElementById('venta-form')!.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    async function completarVenta(v: any, button: HTMLButtonElement) {
+      if (!window.confirm(`Completar la venta #${String(v.id).slice(0, 8)}? Después no se podrá editar.`)) return;
+      errDiv.style.display = 'none';
+      button.disabled = true;
+      const texto = button.textContent;
+      button.textContent = 'Completando…';
+      try {
+        const res = await fetch(`/api/admin/ventas/${v.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accion: 'completar' }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo completar la venta.');
+        if (ventaEditandoId === v.id) salirEdicion();
+        okDiv.textContent = `Venta #${String(v.id).slice(0, 8)} completada. Ya no se puede editar.`;
+        okDiv.style.display = 'block';
+        await cargarHistorial();
+      } catch (error) {
+        errDiv.textContent = error instanceof Error ? error.message : 'Error de conexión.';
+        errDiv.style.display = 'block';
+      } finally {
+        button.disabled = false;
+        button.textContent = texto;
+      }
+    }
+
     document.getElementById('v-historial')!.addEventListener('click', (e) => {
-      const btn = (e.target as HTMLElement).closest('[data-v-nota]') as HTMLElement | null;
-      if (!btn) return;
-      const v = ventasCache.find((x) => x.id === btn.getAttribute('data-v-nota'));
+      const action = (e.target as HTMLElement).closest('[data-v-nota], [data-v-editar], [data-v-completar]') as HTMLElement | null;
+      if (!action) return;
+      const id = action.getAttribute('data-v-nota') || action.getAttribute('data-v-editar') || action.getAttribute('data-v-completar');
+      const v = ventasCache.find((x) => x.id === id);
       if (!v) return;
-      abrirNota({ id: v.id, fecha: v.fecha, total: Number(v.total), metodo: v.metodo_pago, estado: v.estado, items: itemsDeHistorial(v) });
+      if (action.hasAttribute('data-v-editar')) editarVenta(v);
+      else if (action.hasAttribute('data-v-completar')) void completarVenta(v, action as HTMLButtonElement);
+      else abrirNota({ id: v.id, fecha: v.fecha, total: Number(v.total), metodo: v.metodo_pago, estado: v.estado, items: itemsDeHistorial(v) });
     });
+
+    document.getElementById('v-cancel-edit')!.addEventListener('click', salirEdicion);
 
     okDiv.addEventListener('click', (e) => {
       if (!(e.target as HTMLElement).closest('#v-print-nota') || !ultimaVenta) return;
@@ -412,10 +478,11 @@ import '@/styles/remito.css';
 
       btn.setAttribute('disabled', 'true');
       try {
-        const res = await fetch('/api/admin/ventas', {
-          method: 'POST',
+        const editando = ventaEditandoId;
+        const res = await fetch(editando ? `/api/admin/ventas/${editando}` : '/api/admin/ventas', {
+          method: editando ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items, metodo_pago: metodoSel.value }),
+          body: JSON.stringify({ ...(editando ? { accion: 'editar' } : {}), items, metodo_pago: metodoSel.value }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -423,14 +490,12 @@ import '@/styles/remito.css';
           errDiv.style.display = 'block';
           return;
         }
-        ultimaVenta = {
-          id: data.id, fecha: data.fecha, total: Number(data.total),
-          metodo: data.metodo_pago, estado: data.estado, items: itemsDeAlta(data),
-        };
-        okDiv.innerHTML = `<span>Venta registrada: ${fmt$(Number(data.total))} (ganancia ${fmt$(Number(data.ganancia))})</span> <button type="button" class="admin-btn admin-btn-ghost" id="v-print-nota" style="min-height: 44px; margin-left: 0.5rem;">Imprimir nota</button>`;
+        ultimaVenta = editando
+          ? { id: data.id, fecha: data.fecha, total: Number(data.total), metodo: data.metodo_pago, estado: data.estado, items: itemsDeHistorial(data) }
+          : { id: data.id, fecha: data.fecha, total: Number(data.total), metodo: data.metodo_pago, estado: data.estado, items: itemsDeAlta(data) };
+        okDiv.innerHTML = `<span>${editando ? 'Venta actualizada' : 'Venta registrada'}: ${fmt$(Number(data.total))} (ganancia ${fmt$(Number(data.ganancia))})</span> <button type="button" class="admin-btn admin-btn-ghost" id="v-print-nota" style="min-height: 44px; margin-left: 0.5rem;">Ver nota</button>`;
         okDiv.style.display = 'block';
-        rowsBox.innerHTML = '';
-        agregarFila();
+        salirEdicion();
         cargarHistorial();
         cargarProductos();
       } catch {
@@ -447,6 +512,16 @@ import '@/styles/remito.css';
   </script>
 
   <style>
+    .v-form-actions, .v-row-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .v-form-actions { margin-top: 1rem; }
+    .v-row-actions .admin-btn { min-height: 44px; padding: 0.375rem 0.7rem; font-size: 0.78rem; }
+
     @media (max-width: 700px) {
       .v-row {
         grid-template-columns: 1fr 1fr !important;
@@ -454,6 +529,8 @@ import '@/styles/remito.css';
       .v-row .admin-form-group:first-child {
         grid-column: 1 / -1;
       }
+      .v-form-actions .admin-btn { flex: 1 1 10rem; }
+      .v-row-actions { min-width: 12rem; }
     }
     @media (max-width: 480px) {
       .v-row { grid-template-columns: 1fr !important; }

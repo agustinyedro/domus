@@ -3,10 +3,10 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { getUsuarioActual, createSupabaseServer } from '@/lib/supabase';
-import { VentaSchema, VentaBatchSchema } from '@/lib/validations';
-import { esPagoSinRecargo, precioEfectivo, RECARGO_TARJETA_DEFAULT } from '@/lib/precios';
 import { resolverKit } from '@/lib/kits';
+import { esPagoSinRecargo, precioEfectivo, RECARGO_TARJETA_DEFAULT } from '@/lib/precios';
+import { createSupabaseServer, getUsuarioActual } from '@/lib/supabase';
+import { VentaBatchSchema, VentaSchema } from '@/lib/validations';
 
 export const GET: APIRoute = async ({ request, cookies }) => {
   const user = await getUsuarioActual(request, cookies);
@@ -27,7 +27,7 @@ export const GET: APIRoute = async ({ request, cookies }) => {
   }
 
   return new Response(JSON.stringify(data || []), {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
   });
 };
 
@@ -131,7 +131,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   // Fase 2: escribir todo (1 venta + N items + N movimientos)
   const { data: venta, error: ventaError } = await supabase
     .from('ventas')
-    .insert([{ usuario_id: user.id, total, ganancia, estado: 'COMPLETADA', source: 'MANUAL', metodo_pago: metodoPago }])
+    .insert([{ usuario_id: user.id, total, ganancia, estado: 'PAGADA', source: 'MANUAL', metodo_pago: metodoPago }])
     .select()
     .single();
 
