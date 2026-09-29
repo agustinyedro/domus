@@ -7,7 +7,11 @@ import { METODOS_PAGO_VENTA } from './precios';
 export const ProductoSchema = z.object({
   grupo_id: z.string().uuid('Grupo de producto inválido').nullable().optional(),
   variante: z.string().min(1, 'El valor de la opción es requerido').max(120).default('Única'),
-  nombre_opcion: z.string().min(1, 'El nombre de la opción es requerido').max(80).default('Aroma o presentación'),
+  nombre_opcion: z
+    .string()
+    .min(1, 'El nombre de la opción es requerido')
+    .max(80)
+    .default('Aroma o presentación'),
   sku: z.string().min(1, 'SKU es requerido').max(100),
   nombre: z.string().min(1, 'Nombre es requerido').max(255),
   descripcion: z.string().max(1000).nullable().optional(),
@@ -87,19 +91,29 @@ export const SuscriptorSchema = z.object({
 });
 
 export const CompraBatchSchema = z.object({
-  items: z.array(z.object({
-    producto_id: z.string().uuid('ID de producto inválido'),
-    cantidad: z.number().int().min(1, 'Cantidad mínima es 1'),
-    costo_unitario: z.number().min(0, 'Costo unitario debe ser >= 0'),
-  })).min(1, 'Agregá al menos un producto').max(50, 'Máximo 50 productos por compra'),
+  items: z
+    .array(
+      z.object({
+        producto_id: z.string().uuid('ID de producto inválido'),
+        cantidad: z.number().int().min(1, 'Cantidad mínima es 1'),
+        costo_unitario: z.number().min(0, 'Costo unitario debe ser >= 0'),
+      }),
+    )
+    .min(1, 'Agregá al menos un producto')
+    .max(50, 'Máximo 50 productos por compra'),
   observaciones: z.string().max(500).optional(),
 });
 
 export const VentaBatchSchema = z.object({
-  items: z.array(z.object({
-    producto_id: z.string().uuid('ID de producto inválido'),
-    cantidad: z.number().int().min(1, 'Cantidad mínima es 1'),
-  })).min(1, 'Agregá al menos un producto').max(50, 'Máximo 50 productos por venta'),
+  items: z
+    .array(
+      z.object({
+        producto_id: z.string().uuid('ID de producto inválido'),
+        cantidad: z.number().int().min(1, 'Cantidad mínima es 1'),
+      }),
+    )
+    .min(1, 'Agregá al menos un producto')
+    .max(50, 'Máximo 50 productos por venta'),
   metodo_pago: z.enum(METODOS_PAGO_VENTA, { message: 'Elegí un medio de pago' }),
 });
 
@@ -107,11 +121,49 @@ export const CategoriaSchema = z.object({
   nombre: z.string().min(1, 'Nombre es requerido').max(100),
 });
 
+export const BANNER_POSICIONES = ['izquierda', 'derecha'] as const;
+export const BANNER_ESTILOS = ['oliva', 'tierra', 'hueso', 'oscuro'] as const;
+
+const linkSchema = z
+  .string()
+  .max(500)
+  .refine((v) => /^(https?:\/\/|\/)/.test(v), 'Link inválido');
+
+export const BannerBaseSchema = z.object({
+  titulo: z.string().trim().min(1, 'Título es requerido').max(160),
+  descripcion: z.string().max(400).nullable().optional(),
+  producto_id: z.string().uuid('Producto inválido').nullable().optional(),
+  mostrar_precio: z.boolean().default(true),
+  mostrar_descripcion: z.boolean().default(true),
+  texto_cta: z.string().max(60).nullable().optional(),
+  link_url: linkSchema.nullable().optional(),
+  imagen_url: z.string().url('Imagen inválida').max(500).nullable().optional(),
+  posicion_imagen: z.enum(BANNER_POSICIONES).default('derecha'),
+  estilo: z.enum(BANNER_ESTILOS).default('oliva'),
+  orden: z.number().int().default(0),
+  activo: z.boolean().default(true),
+  fecha_desde: z.string().nullable().optional(),
+  fecha_hasta: z.string().nullable().optional(),
+});
+
+export const BannerSchema = BannerBaseSchema.refine(
+  (d) =>
+    !d.fecha_desde ||
+    !d.fecha_hasta ||
+    new Date(d.fecha_hasta).getTime() >= new Date(d.fecha_desde).getTime(),
+  { message: 'La fecha de fin no puede ser anterior a la de inicio', path: ['fecha_hasta'] },
+);
+
 export const CheckoutSchema = z.object({
-  items: z.array(z.object({
-    producto_id: z.string().uuid('ID de producto inválido'),
-    cantidad: z.number().int().min(1, 'Cantidad mínima es 1'),
-  })).min(1, 'El carrito está vacío').max(50, 'Máximo 50 productos por pedido'),
+  items: z
+    .array(
+      z.object({
+        producto_id: z.string().uuid('ID de producto inválido'),
+        cantidad: z.number().int().min(1, 'Cantidad mínima es 1'),
+      }),
+    )
+    .min(1, 'El carrito está vacío')
+    .max(50, 'Máximo 50 productos por pedido'),
   cliente: z.object({
     nombre: z.string().min(2, 'Contanos tu nombre').max(255),
     telefono: z.string().min(6, 'Teléfono inválido').max(50),
@@ -137,6 +189,7 @@ export type CompraBatchInput = z.infer<typeof CompraBatchSchema>;
 export type VentaBatchInput = z.infer<typeof VentaBatchSchema>;
 export type CheckoutInput = z.infer<typeof CheckoutSchema>;
 export type CategoriaInput = z.infer<typeof CategoriaSchema>;
+export type BannerInput = z.infer<typeof BannerSchema>;
 export type GastoInput = z.infer<typeof GastoSchema>;
 export type MovimientoInput = z.infer<typeof MovimientoSchema>;
 export type KitInput = z.infer<typeof KitSchema>;
