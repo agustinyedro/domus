@@ -94,6 +94,8 @@ onMounted(async () => {
     if (res.ok) {
       const data = (await res.json()) as Banner[];
       banners.value = Array.isArray(data) ? data : [];
+      document.querySelector('.tienda-page')?.classList.toggle('has-banners', banners.value.length > 0);
+      document.body.classList.toggle('has-shop-banners', banners.value.length > 0);
     }
   } catch {
     // Sin banners: no se renderiza nada
@@ -107,6 +109,8 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   parar();
   document.removeEventListener('visibilitychange', onVisibility);
+  document.querySelector('.tienda-page')?.classList.remove('has-banners');
+  document.body.classList.remove('has-shop-banners');
 });
 </script>
 
@@ -114,6 +118,7 @@ onBeforeUnmount(() => {
   <section
     v-if="listo && banners.length"
     class="domus-banners"
+    :class="`db-current-${banners[index]?.estilo || 'hueso'}`"
     role="region"
     aria-roledescription="carrusel"
     aria-label="Promociones DOMUS"
@@ -183,11 +188,37 @@ onBeforeUnmount(() => {
 <style scoped>
 .domus-banners {
   position: relative;
-  overflow: hidden;
+  display: block;
+  margin: 0;
+  border: 0;
+  overflow: visible;
   isolation: isolate;
-  box-shadow: inset 0 -1px 0 rgba(96, 72, 17, 0.08);
+  background: #fff;
   outline: none;
 }
+
+.domus-banners::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: -120px;
+  left: 0;
+  height: clamp(170px, 18vw, 240px);
+  background: linear-gradient(
+    to bottom,
+    var(--db-current-bg) 0%,
+    color-mix(in srgb, var(--db-current-bg) 72%, white) 40%,
+    rgba(255, 255, 255, 0.82) 76%,
+    #fff 100%
+  );
+  pointer-events: none;
+}
+
+.db-current-oliva { --db-current-bg: var(--color-oliva); }
+.db-current-tierra { --db-current-bg: var(--color-tierra); }
+.db-current-oscuro { --db-current-bg: var(--color-tierra-dark); }
+.db-current-hueso { --db-current-bg: var(--color-hueso); }
 
 .domus-banners:focus-visible {
   outline: 2px solid var(--color-oliva);
@@ -242,12 +273,12 @@ onBeforeUnmount(() => {
   z-index: 1;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 2.25rem clamp(3.5rem, 8vw, 8.5rem) 4rem;
+  padding: 1.5rem clamp(3.5rem, 8vw, 8.5rem) 3.25rem;
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1.1fr);
   align-items: center;
   gap: clamp(2rem, 5vw, 5rem);
-  min-height: 380px;
+  min-height: 330px;
 }
 
 .db-text {
@@ -342,7 +373,7 @@ onBeforeUnmount(() => {
 .db-media {
   position: relative;
   min-width: 0;
-  min-height: 300px;
+  min-height: 260px;
   display: grid;
   place-items: center;
 }
@@ -360,7 +391,7 @@ onBeforeUnmount(() => {
   position: relative;
   z-index: 1;
   width: 100%;
-  height: 320px;
+  height: 280px;
   max-width: 620px;
   object-fit: contain;
   filter: drop-shadow(0 22px 25px rgba(41, 30, 10, 0.2));
@@ -429,7 +460,7 @@ onBeforeUnmount(() => {
 
 .db-arrow {
   position: absolute;
-  z-index: 3;
+  z-index: 4;
   top: 50%;
   width: 48px;
   height: 64px;
@@ -462,6 +493,7 @@ onBeforeUnmount(() => {
 /* Dots */
 .db-dots {
   position: absolute;
+  z-index: 4;
   bottom: 1.5rem;
   left: 50%;
   transform: translateX(-50%);
