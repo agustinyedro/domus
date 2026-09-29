@@ -1,0 +1,558 @@
+---
+// src/pages/admin/banners/index.astro
+// Banners promocionales del carrusel de la tienda: tabla + alta/edición en modal.
+export const prerender = false;
+import AdminLayout from '@/layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Banners">
+  <div class="admin-card-header">
+    <h1 style="margin: 0; font-size: 1.5rem;">Banners</h1>
+    <button type="button" id="bn-new" class="admin-btn admin-btn-success">+ Crear banner</button>
+  </div>
+
+  <p class="bn-help">
+    Se muestran en <strong>/tienda</strong>, arriba del hero. Si hay más de uno, se navegan como carrusel.
+    Las fechas son opcionales: si las cargás, el banner aparece y se apaga solo.
+  </p>
+
+  <div id="bn-msg" class="admin-alert" style="display: none; margin-bottom: 1rem;"></div>
+
+  <div class="admin-card">
+    <div class="admin-table-wrapper" style="overflow-x: auto;">
+      <table class="admin-table bn-table">
+        <thead>
+          <tr>
+            <th>Banner</th>
+            <th>Producto / kit</th>
+            <th class="text-center">Diseño</th>
+            <th class="text-center">Vigencia</th>
+            <th class="text-center">Estado</th>
+            <th class="text-center">Orden</th>
+            <th class="text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="bn-body">
+          <tr><td colspan="7" class="text-center">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    import { setupProductPicker, type ProductPicker } from '../../../lib/admin-product-picker';
+
+    const fmt$ = (n: number) => `$${Math.round(n).toLocaleString('es-AR')}`;
+    const esc = (s: unknown) =>
+      String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+    let bannersCache: Array<any> = [];
+    let productos: Array<any> = [];
+    let picker: ProductPicker | null = null;
+
+    const ESTILOS: Record<string, string> = {
+      oliva: 'Oliva', tierra: 'Tierra', hueso: 'Hueso', oscuro: 'Oscuro',
+    };
+
+    function aLocalInput(iso: string | null): string {
+      if (!iso) return '';
+      const d = new Date(iso);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function vigencia(b: any): { texto: string; clase: string } {
+      const ahora = Date.now();
+      const desde = b.fecha_desde ? new Date(b.fecha_desde).getTime() : null;
+      const hasta = b.fecha_hasta ? new Date(b.fecha_hasta).getTime() : null;
+      if (!desde && !hasta) return { texto: 'Sin límite', clase: '' };
+      if (hasta && hasta < ahora) return { texto: 'Vencido', clase: 'bn-badge-off' };
+      if (desde && desde > ahora) return { texto: 'Programado', clase: 'bn-badge-soon' };
+      if (hasta) {
+        const d = new Date(b.fecha_hasta).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+        return { texto: `Hasta ${d}`, clase: 'bn-badge-on' };
+      }
+      return { texto: 'Activo', clase: 'bn-badge-on' };
+    }
+
+    function opcionesPicker() {
+      return productos.map((p: any) => {
+        const opcion = p.variante && p.variante !== 'Única' ? ` · ${p.variante}` : '';
+        return {
+          id: String(p.producto_id || p.id),
+          label: `${p.nombre}${opcion}`,
+          search: `${p.nombre || ''} ${p.variante || ''} ${p.nombre_opcion || ''} ${p.sku || ''}`,
+          meta: `${p.sku ? `${p.sku} · ` : ''}${fmt$(Number(p.precio_efectivo) || 0)}`,
+        };
+      });
+    }
+
+    async function cargarProductos() {
+      try {
+        const res = await fetch('/api/admin/productos', { cache: 'no-store' });
+        if (res.ok) productos = await res.json();
+      } catch { /* noop */ }
+    }
+
+    async function cargarBanners() {
+      try {
+        const res = await fetch('/api/admin/banners', { cache: 'no-store' });
+        if (!res.ok) return;
+        bannersCache = await res.json();
+        pintarTabla();
+      } catch { /* noop */ }
+    }
+
+    function aviso(texto: string, tipo: 'ok' | 'error') {
+      const msg = document.getElementById('bn-msg')!;
+      msg.textContent = texto;
+      msg.className = `admin-alert admin-alert-${tipo === 'ok' ? 'success' : 'error'}`;
+      msg.style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function pintarTabla() {
+      const body = document.getElementById('bn-body')!;
+      if (!bannersCache.length) {
+        body.innerHTML = '<tr><td colspan="7" class="text-center">Todavía no hay banners. Creá el primero.</td></tr>';
+        return;
+      }
+      body.innerHTML = bannersCache.map((b, i) => {
+        const vig = vigencia(b);
+        const activo = Boolean(b.activo);
+        const producto = b.producto
+          ? `${esc(b.producto.nombre)}${b.producto.activo ? '' : ' <span class="bn-muted">(inactivo)</span>'}`
+          : '<span class="bn-muted">Sin producto</span>';
+        const precio = b.mostrar_precio && b.producto?.precio_efectivo != null
+          ? `<br/><span class="bn-muted">${fmt$(Number(b.producto.precio_efectivo))}</span>`
+          : '';
+        return `<tr>
+          <td>
+            <strong>${esc(b.titulo)}</strong>
+            ${b.descripcion ? `<br/><span class="bn-muted">${esc(b.descripcion)}</span>` : ''}
+            ${b.imagen_url ? '' : '<br/><span class="bn-muted">Sin imagen</span>'}
+          </td>
+          <td>${producto}${precio}</td>
+          <td class="text-center">${ESTILOS[b.estilo] || b.estilo}${b.imagen_url ? `<br/><span class="bn-muted">img ${b.posicion_imagen === 'izquierda' ? 'izq.' : 'der.'}</span>` : ''}</td>
+          <td class="text-center"><span class="bn-badge ${vig.clase}">${vig.texto}</span></td>
+          <td class="text-center">
+            <button data-bn-toggle="${b.id}" data-estado="${activo ? 'on' : 'off'}" class="admin-btn ${activo ? 'admin-btn-ghost' : 'admin-btn-success'}" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">${activo ? 'Activo' : 'Inactivo'}</button>
+          </td>
+          <td class="text-center" style="white-space: nowrap;">
+            <button data-bn-up="${b.id}" class="bn-mini" ${i === 0 ? 'disabled' : ''} aria-label="Subir" title="Subir">↑</button>
+            <button data-bn-down="${b.id}" class="bn-mini" ${i === bannersCache.length - 1 ? 'disabled' : ''} aria-label="Bajar" title="Bajar">↓</button>
+          </td>
+          <td class="text-center" style="white-space: nowrap;">
+            <button data-bn-edit="${b.id}" class="admin-btn admin-btn-primary" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">Editar</button>
+            <button data-bn-del="${b.id}" class="admin-btn admin-btn-ghost" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">Eliminar</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    // ---------- Modal ----------
+    function cerrarModal() {
+      document.getElementById('bn-modal-root')?.remove();
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', escModal);
+      picker = null;
+    }
+
+    function escModal(e: KeyboardEvent) {
+      if (e.key === 'Escape') cerrarModal();
+    }
+
+    function montarModal(html: string) {
+      cerrarModal();
+      const root = document.createElement('div');
+      root.id = 'bn-modal-root';
+      root.innerHTML = `<div class="bn-modal-overlay"><div class="bn-modal-card">${html}</div></div>`;
+      document.body.appendChild(root);
+      document.body.style.overflow = 'hidden';
+      root.querySelector('.bn-modal-overlay')!.addEventListener('click', (ev) => {
+        if ((ev.target as HTMLElement).classList.contains('bn-modal-overlay')) cerrarModal();
+      });
+      document.addEventListener('keydown', escModal);
+      root.querySelector('.bn-modal-x')?.addEventListener('click', cerrarModal);
+      return root;
+    }
+
+    function formHTML(b: any) {
+      const img = b?.imagen_url || '';
+      return `
+        <div class="bn-modal-head">
+          <h2>${b ? 'Editar banner' : 'Nuevo banner'}</h2>
+          <button type="button" class="bn-modal-x" aria-label="Cerrar">×</button>
+        </div>
+        <div class="bn-grid">
+          <div class="admin-form-group bn-full">
+            <label class="admin-form-label" for="bn-titulo">Título</label>
+            <input id="bn-titulo" type="text" class="admin-input" maxlength="160" placeholder="Ej: Día de la Madre" value="${esc(b?.titulo)}" />
+          </div>
+          <div class="admin-form-group bn-full">
+            <label class="admin-form-label" for="bn-desc">Descripción</label>
+            <textarea id="bn-desc" class="admin-input" maxlength="400" rows="2" placeholder="Opcional">${esc(b?.descripcion)}</textarea>
+            <label class="bn-check"><input type="checkbox" id="bn-mostrar-desc" ${!b || b.mostrar_descripcion ? 'checked' : ''} /> Mostrar descripción</label>
+          </div>
+          <div class="admin-form-group bn-full">
+            <label class="admin-form-label">Producto o kit vinculado</label>
+            <div class="product-picker" id="bn-picker">
+              <input type="search" class="admin-input" data-product-search placeholder="Buscar por nombre, variante o SKU…" aria-label="Buscar y seleccionar producto" role="combobox" aria-autocomplete="list" aria-expanded="false" autocomplete="off" />
+              <div class="product-picker-results" data-product-results role="listbox" hidden></div>
+              <select data-product-value tabindex="-1" aria-hidden="true" hidden></select>
+            </div>
+            <label class="bn-check"><input type="checkbox" id="bn-mostrar-precio" ${!b || b.mostrar_precio ? 'checked' : ''} /> Mostrar precio del producto</label>
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-form-label" for="bn-cta">Texto del botón</label>
+            <input id="bn-cta" type="text" class="admin-input" maxlength="60" placeholder="Ver más" value="${esc(b?.texto_cta)}" />
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-form-label" for="bn-link">Link (opcional)</label>
+            <input id="bn-link" type="text" class="admin-input" maxlength="500" placeholder="Por defecto: la ficha del producto" value="${esc(b?.link_url)}" />
+          </div>
+          <div class="admin-form-group bn-full">
+            <label class="admin-form-label">Imagen</label>
+            <div class="bn-img-row">
+              <img id="bn-img-preview" class="bn-img-preview" alt="Vista previa" ${img ? `src="${esc(img)}"` : 'hidden'} />
+              <div class="bn-img-actions">
+                <input type="file" id="bn-file" accept="image/jpeg,image/png,image/webp" hidden />
+                <div class="bn-img-buttons">
+                  <button type="button" class="admin-btn admin-btn-ghost" id="bn-file-btn">Subir imagen</button>
+                  <button type="button" class="admin-btn admin-btn-ghost" id="bn-img-clear">Quitar</button>
+                </div>
+                <input id="bn-imagen-url" type="text" class="admin-input" placeholder="…o pegá una URL" value="${esc(img)}" />
+              </div>
+            </div>
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-form-label" for="bn-pos">Posición de la imagen</label>
+            <select id="bn-pos" class="admin-input">
+              <option value="derecha" ${b?.posicion_imagen !== 'izquierda' ? 'selected' : ''}>Derecha</option>
+              <option value="izquierda" ${b?.posicion_imagen === 'izquierda' ? 'selected' : ''}>Izquierda</option>
+            </select>
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-form-label" for="bn-estilo">Estilo de fondo</label>
+            <select id="bn-estilo" class="admin-input">
+              ${Object.entries(ESTILOS).map(([k, v]) => `<option value="${k}" ${(b?.estilo || 'oliva') === k ? 'selected' : ''}>${v}</option>`).join('')}
+            </select>
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-form-label" for="bn-desde">Desde (opcional)</label>
+            <input id="bn-desde" type="datetime-local" class="admin-input" value="${aLocalInput(b?.fecha_desde || null)}" />
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-form-label" for="bn-hasta">Hasta (opcional)</label>
+            <input id="bn-hasta" type="datetime-local" class="admin-input" value="${aLocalInput(b?.fecha_hasta || null)}" />
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-form-label" for="bn-orden">Orden</label>
+            <input id="bn-orden" type="number" class="admin-input" value="${b?.orden ?? 0}" />
+          </div>
+          <div class="admin-form-group">
+            <label class="bn-check"><input type="checkbox" id="bn-activo" ${!b || b.activo ? 'checked' : ''} /> Activo</label>
+          </div>
+        </div>
+        <div id="bn-error" class="admin-alert admin-alert-error" style="display:none;"></div>
+        <div class="bn-modal-actions">
+          <button type="button" class="admin-btn admin-btn-ghost" id="bn-cancel">Cancelar</button>
+          <button type="button" class="admin-btn admin-btn-success" id="bn-save">Guardar</button>
+        </div>
+      `;
+    }
+
+    function redimensionar(archivo: File): Promise<Blob> {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const objUrl = URL.createObjectURL(archivo);
+        img.onload = () => {
+          const MAX = 1600;
+          const escala = Math.min(1, MAX / Math.max(img.width, img.height));
+          const w = Math.max(1, Math.round(img.width * escala));
+          const h = Math.max(1, Math.round(img.height * escala));
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+          URL.revokeObjectURL(objUrl);
+          canvas.toBlob(
+            (blob) => (blob ? resolve(blob) : reject(new Error('No se pudo procesar'))),
+            'image/jpeg',
+            0.85,
+          );
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(objUrl);
+          reject(new Error('Archivo inválido'));
+        };
+        img.src = objUrl;
+      });
+    }
+
+    function abrirForm(b: any) {
+      const root = montarModal(formHTML(b));
+
+      const pickerRoot = root.querySelector('#bn-picker') as HTMLElement;
+      picker = setupProductPicker(pickerRoot, {
+        items: opcionesPicker(),
+        value: b?.producto_id || '',
+      });
+
+      const urlInput = root.querySelector('#bn-imagen-url') as HTMLInputElement;
+      const preview = root.querySelector('#bn-img-preview') as HTMLImageElement;
+      const fileInput = root.querySelector('#bn-file') as HTMLInputElement;
+
+      function actualizarPreview() {
+        const val = urlInput.value.trim();
+        if (val) {
+          preview.src = val;
+          preview.hidden = false;
+        } else {
+          preview.hidden = true;
+          preview.removeAttribute('src');
+        }
+      }
+
+      urlInput.addEventListener('input', actualizarPreview);
+      root.querySelector('#bn-img-clear')!.addEventListener('click', () => {
+        urlInput.value = '';
+        actualizarPreview();
+      });
+
+      root.querySelector('#bn-file-btn')!.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', async () => {
+        const archivo = fileInput.files?.[0];
+        fileInput.value = '';
+        if (!archivo) return;
+        const err = root.querySelector('#bn-error') as HTMLElement;
+        err.style.display = 'none';
+        const btn = root.querySelector('#bn-file-btn') as HTMLButtonElement;
+        btn.disabled = true;
+        btn.textContent = 'Subiendo…';
+        try {
+          const blob = await redimensionar(archivo);
+          const fd = new FormData();
+          fd.append('archivo', blob, 'banner.jpg');
+          fd.append('carpeta', 'banners');
+          fd.append('nombre', (root.querySelector('#bn-titulo') as HTMLInputElement).value.trim());
+          const res = await fetch('/api/admin/upload', { method: 'POST', body: fd });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            err.textContent = typeof data.error === 'string' ? data.error : 'No se pudo subir la imagen.';
+            err.style.display = 'block';
+            return;
+          }
+          urlInput.value = data.url;
+          actualizarPreview();
+        } catch {
+          err.textContent = 'No se pudo procesar la imagen.';
+          err.style.display = 'block';
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Subir imagen';
+        }
+      });
+
+      root.querySelector('#bn-cancel')!.addEventListener('click', cerrarModal);
+      root.querySelector('#bn-save')!.addEventListener('click', async () => {
+        const err = root.querySelector('#bn-error') as HTMLElement;
+        err.style.display = 'none';
+        const val = (sel: string) => (root.querySelector(sel) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value.trim();
+        const checked = (sel: string) => (root.querySelector(sel) as HTMLInputElement).checked;
+
+        const titulo = val('#bn-titulo');
+        if (!titulo) {
+          err.textContent = 'Poné un título.';
+          err.style.display = 'block';
+          return;
+        }
+
+        const desde = val('#bn-desde');
+        const hasta = val('#bn-hasta');
+        if (desde && hasta && new Date(hasta).getTime() < new Date(desde).getTime()) {
+          err.textContent = 'La fecha de fin no puede ser anterior a la de inicio.';
+          err.style.display = 'block';
+          return;
+        }
+
+        const payload = {
+          titulo,
+          descripcion: val('#bn-desc') || null,
+          mostrar_descripcion: checked('#bn-mostrar-desc'),
+          producto_id: picker?.getValue() || null,
+          mostrar_precio: checked('#bn-mostrar-precio'),
+          texto_cta: val('#bn-cta') || null,
+          link_url: val('#bn-link') || null,
+          imagen_url: val('#bn-imagen-url') || null,
+          posicion_imagen: val('#bn-pos'),
+          estilo: val('#bn-estilo'),
+          orden: Number(val('#bn-orden')) || 0,
+          activo: checked('#bn-activo'),
+          fecha_desde: desde ? new Date(desde).toISOString() : null,
+          fecha_hasta: hasta ? new Date(hasta).toISOString() : null,
+        };
+
+        const btn = root.querySelector('#bn-save') as HTMLButtonElement;
+        btn.disabled = true;
+        const url = b ? `/api/admin/banners/${b.id}` : '/api/admin/banners';
+        const res = await fetch(url, {
+          method: b ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        btn.disabled = false;
+        if (!res.ok) {
+          err.textContent = typeof data.error === 'string' ? data.error : 'No se pudo guardar.';
+          err.style.display = 'block';
+          return;
+        }
+        await cargarBanners();
+        cerrarModal();
+        aviso(b ? 'Banner actualizado.' : 'Banner creado.', 'ok');
+      });
+    }
+
+    async function guardarOrden(list: Array<any>) {
+      await Promise.all(
+        list.map((b, i) =>
+          b.orden === i
+            ? null
+            : fetch(`/api/admin/banners/${b.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orden: i }),
+              }),
+        ),
+      );
+    }
+
+    async function mover(id: string, dir: number) {
+      const list = [...bannersCache];
+      const i = list.findIndex((b) => b.id === id);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= list.length) return;
+      [list[i], list[j]] = [list[j], list[i]];
+      await guardarOrden(list);
+      await cargarBanners();
+    }
+
+    // Eventos de la tabla
+    document.getElementById('bn-new')!.addEventListener('click', () => abrirForm(null));
+
+    document.getElementById('bn-body')!.addEventListener('click', async (e) => {
+      const t = e.target as HTMLElement;
+
+      const edit = t.closest('[data-bn-edit]') as HTMLElement | null;
+      if (edit) {
+        await cargarBanners();
+        const b = bannersCache.find((x) => x.id === edit.dataset.bnEdit);
+        if (b) abrirForm(b);
+        return;
+      }
+
+      const del = t.closest('[data-bn-del]') as HTMLElement | null;
+      if (del) {
+        const b = bannersCache.find((x) => x.id === del.dataset.bnDel);
+        if (!confirm(`¿Eliminar el banner "${b?.titulo || ''}"?`)) return;
+        const res = await fetch(`/api/admin/banners/${del.dataset.bnDel}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          aviso(typeof data.error === 'string' ? data.error : 'No se pudo eliminar.', 'error');
+          return;
+        }
+        await cargarBanners();
+        aviso('Banner eliminado.', 'ok');
+        return;
+      }
+
+      const toggle = t.closest('[data-bn-toggle]') as HTMLElement | null;
+      if (toggle) {
+        const nuevo = toggle.dataset.estado !== 'on';
+        const res = await fetch(`/api/admin/banners/${toggle.dataset.bnToggle}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ activo: nuevo }),
+        });
+        if (!res.ok) {
+          aviso('No se pudo cambiar el estado.', 'error');
+          return;
+        }
+        await cargarBanners();
+        aviso(nuevo ? 'Banner activado.' : 'Banner desactivado.', 'ok');
+        return;
+      }
+
+      const up = t.closest('[data-bn-up]') as HTMLElement | null;
+      if (up) {
+        await mover(up.dataset.bnUp!, -1);
+        return;
+      }
+      const down = t.closest('[data-bn-down]') as HTMLElement | null;
+      if (down) {
+        await mover(down.dataset.bnDown!, 1);
+      }
+    });
+
+    await cargarProductos();
+    await cargarBanners();
+  </script>
+
+  <style is:global>
+    .bn-help { margin: 0 0 1rem; color: var(--admin-text-muted); font-size: 0.875rem; }
+    .bn-muted { color: var(--admin-text-muted); font-size: 0.8125rem; }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+
+    .bn-table td { vertical-align: middle; }
+
+    .bn-badge { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 999px; background: #f7fafc; color: #4a5568; white-space: nowrap; }
+    .bn-badge-on { background: #f0fff4; color: #22543d; }
+    .bn-badge-off { background: #fff5f5; color: #742a2a; }
+    .bn-badge-soon { background: #fffbeb; color: #744210; }
+
+    .bn-mini { width: 30px; height: 30px; border: 1px solid var(--admin-border); border-radius: 6px; background: #fff; cursor: pointer; font-size: 0.9rem; line-height: 1; }
+    .bn-mini:hover:not(:disabled) { border-color: var(--admin-primary); color: var(--admin-primary); }
+    .bn-mini:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Modal */
+    #bn-modal-root { position: fixed; inset: 0; z-index: 2000; }
+    .bn-modal-overlay {
+      position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5);
+      display: flex; align-items: flex-start; justify-content: center;
+      overflow-y: auto; padding: 2rem 1rem;
+    }
+    .bn-modal-card {
+      background: #fff; border-radius: 14px; width: 100%; max-width: 720px;
+      padding: 1.5rem; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      border-top: 4px solid #988C2D;
+    }
+    .bn-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .bn-modal-head h2 { margin: 0; font-size: 1.25rem; }
+    .bn-modal-x { background: none; border: none; cursor: pointer; font-size: 1.5rem; line-height: 1; padding: 0.25rem 0.5rem; color: #4a5568; }
+    .bn-modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem; }
+
+    .bn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .bn-full { grid-column: 1 / -1; }
+    .bn-check { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: var(--admin-text); margin-top: 0.4rem; cursor: pointer; }
+    .bn-check input { width: 16px; height: 16px; }
+
+    .bn-img-row { display: flex; gap: 1rem; align-items: flex-start; }
+    .bn-img-preview { width: 160px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid var(--admin-border); flex-shrink: 0; }
+    .bn-img-actions { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+    .bn-img-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+    @media (max-width: 640px) {
+      .bn-modal-overlay { padding: 0; }
+      .bn-modal-card { min-height: 100dvh; max-width: none; padding: 1rem; border-radius: 0; }
+      .bn-modal-head { position: sticky; top: 0; z-index: 2; padding: 0.5rem 0; background: #fff; }
+      .bn-modal-x { width: 44px; height: 44px; }
+      .bn-modal-actions { position: sticky; bottom: 0; padding: 0.75rem 0; background: #fff; flex-direction: column; }
+      .bn-modal-actions .admin-btn { width: 100%; }
+      .bn-grid { grid-template-columns: 1fr; }
+      .bn-img-row { flex-direction: column; }
+      .bn-img-preview { width: 100%; height: auto; aspect-ratio: 16 / 9; }
+    }
+  </style>
+</AdminLayout>

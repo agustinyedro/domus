@@ -6,6 +6,7 @@ import Navbar from '../../components/Navbar.astro';
 import Cart from '../../components/Cart.astro';
 import Footer from '../../components/Footer.astro';
 import ShopExplorer from '../../components/ShopExplorer.vue';
+import BannerCarousel from '../../components/BannerCarousel.vue';
 
 const sectorInicial = Astro.url.searchParams.get('sector') || '';
 ---
@@ -15,7 +16,7 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
   <Cart />
 
   <main class="tienda-page">
-    <!-- Hero / Banner -->
+    <!-- Hero -->
     <section class="tienda-hero">
       <div class="container">
         <p class="tienda-eyebrow">Tienda DOMUS</p>
@@ -23,6 +24,11 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
         <p class="tienda-tagline">Aromas, comida, ropa y experiencias en un solo lugar.</p>
       </div>
     </section>
+
+    <!-- Banners promocionales (se completa por JS; se oculta si no hay) -->
+    <div class="tienda-banner-shell">
+      <BannerCarousel client:load />
+    </div>
 
     <!-- Más vendidos (se completa por JS; se oculta si no hay datos) -->
     <section id="mas-vendidos" class="tienda-section tienda-bests" hidden>
@@ -284,9 +290,53 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
 
   .tienda-hero {
     background: var(--color-hueso);
-    border-bottom: 1px solid rgba(96, 72, 17, 0.22);
     color: var(--color-tierra);
     padding: 2.25rem 0;
+  }
+
+  /* Cuando hay promociones, el carrusel cumple la función de portada. */
+  .tienda-page.has-banners .tienda-hero {
+    display: none;
+  }
+
+  .tienda-page.has-banners {
+    margin-top: 0;
+    padding-top: 0;
+  }
+
+  .tienda-banner-shell,
+  .tienda-banner-shell > astro-island {
+    display: block;
+    margin: 0;
+    padding: 0;
+  }
+
+  .tienda-page.has-banners .tienda-banner-shell {
+    margin-top: -22px;
+  }
+
+  .tienda-page.has-banners .db-inner {
+    padding-top: calc(1.5rem + 80px);
+  }
+
+  body.has-shop-banners .navbar {
+    border-bottom: 0;
+    box-shadow: none;
+  }
+
+  body.has-shop-banners .domus-banners {
+    margin-top: -1px;
+  }
+
+  /* Sin banner: el hero se difumina hacia abajo para fundirse con el catálogo */
+  .tienda-page:not(:has(.domus-banners)) .tienda-hero {
+    background: linear-gradient(
+      180deg,
+      var(--color-hueso) 0%,
+      var(--color-hueso) 55%,
+      var(--color-beige-light) 100%
+    );
+    padding-bottom: 3rem;
   }
 
   .tienda-eyebrow {
@@ -318,12 +368,21 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
     padding: 2.5rem 0;
   }
 
-  .tienda-section:nth-of-type(3) {
-    background: var(--color-beige-light);
-  }
-
   .tienda-bests {
     background: white;
+  }
+
+  /* Con banner: "más vendidos" se superpone al pie del banner */
+  .tienda-page.has-banners .tienda-bests {
+    position: relative;
+    z-index: 3;
+    width: min(1280px, calc(100% - 2rem));
+    margin: 0 auto -7.5rem;
+    padding: 2rem 0 0;
+    border-radius: 18px 18px 0 0;
+    background: transparent;
+    box-shadow: none;
+    transform: translateY(-7.5rem);
   }
 
   .tienda-offers {
@@ -692,6 +751,16 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
 
     .tienda-section {
       padding: 2rem 0;
+    }
+
+    .tienda-page.has-banners .tienda-bests {
+      margin: 0 auto -4.5rem;
+      padding-top: 2rem;
+      transform: translateY(-4.5rem);
+    }
+
+    .tienda-page.has-banners .db-inner {
+      padding-top: calc(1.6rem + 72px);
     }
 
     .tienda-strip .t-card {
