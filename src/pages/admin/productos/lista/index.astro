@@ -20,14 +20,16 @@ const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'lon
       </div>
     </div>
 
-    <table class="admin-table lista-tabla">
-      <thead>
-        <tr><th>Producto / opción</th><th>Categoría</th><th class="text-right">Stock</th><th class="text-right">Precio</th></tr>
-      </thead>
-      <tbody id="lista-body">
-        <tr><td colspan="4" class="text-center">Cargando…</td></tr>
-      </tbody>
-    </table>
+    <div class="admin-table-wrapper">
+      <table class="admin-table lista-tabla">
+        <thead>
+          <tr><th>Producto / opción</th><th>Categoría</th><th class="text-right">Stock</th><th class="text-right">Precio</th></tr>
+        </thead>
+        <tbody id="lista-body">
+          <tr><td colspan="4" class="text-center">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
 
     <p class="lista-nota">Precios en pesos argentinos. Consultar stock y disponibilidad por WhatsApp.</p>
   </div>

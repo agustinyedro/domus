@@ -17,7 +17,9 @@ export const GET: APIRoute = async ({ request, cookies }) => {
   const supabase = createSupabaseServer(request, cookies);
   const { data, error } = await supabase
     .from('ventas')
-    .select('id, fecha, total, ganancia, estado, metodo_pago, source, ventas_items ( cantidad, precio_unitario, producto_id, productos ( nombre, variante ) )')
+    .select(
+      'id, fecha, total, ganancia, estado, metodo_pago, source, cliente_nombre, cliente_telefono, ventas_items ( cantidad, precio_unitario, producto_id, productos ( nombre, variante ) )',
+    )
     .eq('usuario_id', user.id)
     .order('fecha', { ascending: false })
     .limit(100);
@@ -49,8 +51,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
   const items = esBatch
     ? (parsed.data as { items: Array<{ producto_id: string; cantidad: number }> }).items
-    : [{ producto_id: (parsed.data as { producto_id: string }).producto_id, cantidad: (parsed.data as { cantidad: number }).cantidad }];
+    : [
+        {
+          producto_id: (parsed.data as { producto_id: string }).producto_id,
+          cantidad: (parsed.data as { cantidad: number }).cantidad,
+        },
+      ];
   const metodoPago = (parsed.data as { metodo_pago?: string }).metodo_pago ?? null;
+  const clienteNombre = (parsed.data as { cliente_nombre?: string | null }).cliente_nombre?.trim() || null;
+  const clienteTelefono =
+    (parsed.data as { cliente_telefono?: string | null }).cliente_telefono?.trim() || null;
   const supabase = createSupabaseServer(request, cookies);
 
   // Fase 1: resolver precio/costo/stock de TODOS los items antes de escribir nada
@@ -64,31 +74,47 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       .single();
 
     if (prodError || !prod) {
-      return new Response(JSON.stringify({ error: `Producto no encontrado: ${item.producto_id}` }), { status: 404 });
+      return new Response(JSON.stringify({ error: `Producto no encontrado: ${item.producto_id}` }), {
+        status: 404,
+      });
     }
 
-    const precioLista = (prod.es_oferta && prod.precio_oferta && prod.precio_oferta < prod.precio_venta)
-      ? Number(prod.precio_oferta)
-      : Number(prod.precio_venta);
+    const precioLista =
+      prod.es_oferta && prod.precio_oferta && prod.precio_oferta < prod.precio_venta
+        ? Number(prod.precio_oferta)
+        : Number(prod.precio_venta);
     // Efectivo / Transferencia: el precio con recargo se calcula SIEMPRE en el servidor
-    const recargo = Number.isFinite(Number(prod.recargo_tarjeta)) ? Number(prod.recargo_tarjeta) : RECARGO_TARJETA_DEFAULT;
+    const recargo = Number.isFinite(Number(prod.recargo_tarjeta))
+      ? Number(prod.recargo_tarjeta)
+      : RECARGO_TARJETA_DEFAULT;
     const precio = esPagoSinRecargo(metodoPago) ? precioEfectivo(precioLista, recargo) : precioLista;
 
     // Kit: stock y costo derivados de componentes
     if (prod.kit_id) {
       const kit = await resolverKit(supabase, prod.kit_id);
       if (!kit) {
-        return new Response(JSON.stringify({ error: `El kit "${prod.nombre}" no tiene productos cargados.` }), { status: 400 });
+        return new Response(
+          JSON.stringify({ error: `El kit "${prod.nombre}" no tiene productos cargados.` }),
+          { status: 400 },
+        );
       }
       if (item.cantidad > kit.stock) {
         return new Response(
-          JSON.stringify({ error: `Stock insuficiente: quedan ${kit.stock} kit(s) de "${prod.nombre}". No se registró nada.` }),
-          { status: 400 }
+          JSON.stringify({
+            error: `Stock insuficiente: quedan ${kit.stock} kit(s) de "${prod.nombre}". No se registró nada.`,
+          }),
+          { status: 400 },
         );
       }
       resueltos.push({
-        producto_id: item.producto_id, kit_id: prod.kit_id, componentes: kit.componentes,
-        nombre: prod.nombre, variante: prod.variante, cantidad: item.cantidad, precio, costo: kit.costo,
+        producto_id: item.producto_id,
+        kit_id: prod.kit_id,
+        componentes: kit.componentes,
+        nombre: prod.nombre,
+        variante: prod.variante,
+        cantidad: item.cantidad,
+        precio,
+        costo: kit.costo,
       });
       continue;
     }
@@ -117,12 +143,23 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     if (item.cantidad > stock) {
       return new Response(
-        JSON.stringify({ error: `Stock insuficiente: hay ${stock} u. de "${prod.nombre}" y pedís ${item.cantidad}. No se registró nada.` }),
-        { status: 400 }
+        JSON.stringify({
+          error: `Stock insuficiente: hay ${stock} u. de "${prod.nombre}" y pedís ${item.cantidad}. No se registró nada.`,
+        }),
+        { status: 400 },
       );
     }
 
-    resueltos.push({ producto_id: item.producto_id, kit_id: null, componentes: null, nombre: prod.nombre, variante: prod.variante, cantidad: item.cantidad, precio, costo });
+    resueltos.push({
+      producto_id: item.producto_id,
+      kit_id: null,
+      componentes: null,
+      nombre: prod.nombre,
+      variante: prod.variante,
+      cantidad: item.cantidad,
+      precio,
+      costo,
+    });
   }
 
   const total = resueltos.reduce((s, r) => s + r.precio * r.cantidad, 0);
@@ -131,7 +168,18 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   // Fase 2: escribir todo (1 venta + N items + N movimientos)
   const { data: venta, error: ventaError } = await supabase
     .from('ventas')
-    .insert([{ usuario_id: user.id, total, ganancia, estado: 'PAGADA', source: 'MANUAL', metodo_pago: metodoPago }])
+    .insert([
+      {
+        usuario_id: user.id,
+        total,
+        ganancia,
+        estado: 'PAGADA',
+        source: 'MANUAL',
+        metodo_pago: metodoPago,
+        cliente_nombre: clienteNombre,
+        cliente_telefono: clienteTelefono,
+      },
+    ])
     .select()
     .single();
 
@@ -154,27 +202,35 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     await supabase.from('ventas_items').insert([itemRow]);
 
     if (r.kit_id && Array.isArray(r.componentes)) {
-      for (const c of r.componentes as Array<{ producto_id: string; cantidad: number; costo_unitario: number }>) {
-        await supabase.from('movimientos_stock').insert([{
-          usuario_id: user.id,
-          producto_id: c.producto_id,
-          tipo: 'VENTA',
-          cantidad: c.cantidad * r.cantidad,
-          costo_unitario: c.costo_unitario,
-          motivo: `Venta manual · kit ${r.nombre}`,
-          referencia_id: venta.id,
-        }]);
+      for (const c of r.componentes as Array<{
+        producto_id: string;
+        cantidad: number;
+        costo_unitario: number;
+      }>) {
+        await supabase.from('movimientos_stock').insert([
+          {
+            usuario_id: user.id,
+            producto_id: c.producto_id,
+            tipo: 'VENTA',
+            cantidad: c.cantidad * r.cantidad,
+            costo_unitario: c.costo_unitario,
+            motivo: `Venta manual · kit ${r.nombre}`,
+            referencia_id: venta.id,
+          },
+        ]);
       }
     } else {
-      await supabase.from('movimientos_stock').insert([{
-        usuario_id: user.id,
-        producto_id: r.producto_id,
-        tipo: 'VENTA',
-        cantidad: r.cantidad,
-        costo_unitario: r.costo,
-        motivo: `Venta manual`,
-        referencia_id: venta.id,
-      }]);
+      await supabase.from('movimientos_stock').insert([
+        {
+          usuario_id: user.id,
+          producto_id: r.producto_id,
+          tipo: 'VENTA',
+          cantidad: r.cantidad,
+          costo_unitario: r.costo,
+          motivo: `Venta manual`,
+          referencia_id: venta.id,
+        },
+      ]);
     }
   }
 

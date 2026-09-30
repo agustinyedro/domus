@@ -1,0 +1,112 @@
+---
+// src/components/admin/PeriodoFiltro.astro
+// Selector de período para Estadísticas. Lee/escribe la URL y emite 'domus:periodo'.
+---
+
+<div class="periodo" id="periodo">
+  <label class="periodo-label" for="periodo-preset">Período</label>
+  <select id="periodo-preset" class="admin-input periodo-select">
+    <option value="hoy">Hoy</option>
+    <option value="7">Últimos 7 días</option>
+    <option value="30">Últimos 30 días</option>
+    <option value="mes">Este mes</option>
+    <option value="personalizado">Personalizado</option>
+  </select>
+  <div class="periodo-fechas">
+    <input id="periodo-desde" type="date" class="admin-input" aria-label="Desde" />
+    <span aria-hidden="true">→</span>
+    <input id="periodo-hasta" type="date" class="admin-input" aria-label="Hasta" />
+    <button type="button" id="periodo-aplicar" class="admin-btn admin-btn-ghost">Aplicar</button>
+  </div>
+</div>
+
+<script>
+  import { rangoPreset } from '@/lib/admin-estadisticas';
+
+  const presetEl = document.getElementById('periodo-preset') as HTMLSelectElement | null;
+  const desdeEl = document.getElementById('periodo-desde') as HTMLInputElement | null;
+  const hastaEl = document.getElementById('periodo-hasta') as HTMLInputElement | null;
+  const aplicar = document.getElementById('periodo-aplicar');
+
+  if (presetEl && desdeEl && hastaEl && aplicar) {
+    const params = new URLSearchParams(window.location.search);
+    const desdeUrl = params.get('desde');
+    const hastaUrl = params.get('hasta');
+    let preset = params.get('rango') || '30';
+    if (desdeUrl || hastaUrl) preset = 'personalizado';
+    presetEl.value = preset;
+
+    const init =
+      preset === 'personalizado' && desdeUrl && hastaUrl
+        ? { desde: desdeUrl, hasta: hastaUrl }
+        : rangoPreset(preset);
+    desdeEl.value = init.desde;
+    hastaEl.value = init.hasta;
+
+    const emitir = (desde: string, hasta: string) => {
+      const url = new URL(window.location.href);
+      url.searchParams.set('rango', presetEl.value);
+      url.searchParams.set('desde', desde);
+      url.searchParams.set('hasta', hasta);
+      history.replaceState({}, '', url);
+      window.dispatchEvent(new CustomEvent('domus:periodo', { detail: { desde, hasta } }));
+    };
+
+    presetEl.addEventListener('change', () => {
+      if (presetEl.value === 'personalizado') return;
+      const { desde, hasta } = rangoPreset(presetEl.value);
+      desdeEl.value = desde;
+      hastaEl.value = hasta;
+      emitir(desde, hasta);
+    });
+
+    aplicar.addEventListener('click', () => {
+      if (!desdeEl.value || !hastaEl.value) return;
+      emitir(desdeEl.value, hastaEl.value);
+    });
+  }
+</script>
+
+<style is:global>
+  .periodo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+
+  .periodo-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--admin-text);
+  }
+
+  .periodo-select {
+    width: auto;
+    min-width: 180px;
+  }
+
+  .periodo-fechas {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .periodo-fechas .admin-input {
+    width: auto;
+  }
+
+  @media (max-width: 640px) {
+    .periodo,
+    .periodo-fechas {
+      width: 100%;
+    }
+
+    .periodo-select,
+    .periodo-fechas .admin-input {
+      width: 100%;
+    }
+  }
+</style>

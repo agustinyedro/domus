@@ -1,0 +1,12 @@
+---
+// src/pages/admin/pos/index.astro
+// Punto de venta (POS): venta presencial con carrito, pago y ticket.
+export const prerender = false;
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import PosTerminal from '@/components/admin/PosTerminal.vue';
+import '@/styles/remito.css';
+---
+
+<AdminLayout title="Punto de venta" immersive>
+  <PosTerminal client:load />
+</AdminLayout>

@@ -1,0 +1,159 @@
+---
+// src/pages/admin/estadisticas/ventas-clientes.astro
+export const prerender = false;
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import PeriodoFiltro from '@/components/admin/PeriodoFiltro.astro';
+import '@/styles/estadisticas.css';
+---
+
+<AdminLayout title="Estadísticas · Ventas y clientes">
+  <div class="admin-card-header">
+    <h1 style="margin: 0; font-size: 1.5rem;">Estadísticas · Ventas y clientes</h1>
+  </div>
+
+  <PeriodoFiltro />
+
+  <div class="admin-metrics">
+    <div class="admin-metric">
+      <p class="admin-metric-label">Ventas</p>
+      <p class="admin-metric-value info" id="k-ventas">–</p>
+    </div>
+    <div class="admin-metric">
+      <p class="admin-metric-label">Facturación</p>
+      <p class="admin-metric-value success" id="k-fact">–</p>
+    </div>
+    <div class="admin-metric">
+      <p class="admin-metric-label">Ticket promedio</p>
+      <p class="admin-metric-value" id="k-ticket">–</p>
+    </div>
+    <div class="admin-metric">
+      <p class="admin-metric-label">Clientes</p>
+      <p class="admin-metric-value" id="k-clientes">–</p>
+    </div>
+    <div class="admin-metric">
+      <p class="admin-metric-label">Clientes recurrentes</p>
+      <p class="admin-metric-value" id="k-recurrentes">–</p>
+    </div>
+  </div>
+
+  <div class="est-grid-2">
+    <div class="admin-card">
+      <h2 class="admin-card-title" style="margin-bottom: 1rem;">Órdenes por día</h2>
+      <div class="est-chart"><canvas id="chart-ordenes"></canvas></div>
+      <p class="est-empty" id="ordenes-vacio" style="display:none;">Sin ventas en el período.</p>
+    </div>
+    <div class="admin-card">
+      <h2 class="admin-card-title" style="margin-bottom: 1rem;">Facturación por medio de pago</h2>
+      <div class="est-chart"><canvas id="chart-medio"></canvas></div>
+      <p class="est-empty" id="medio-vacio" style="display:none;">Sin datos.</p>
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <h2 class="admin-card-title" style="margin-bottom: 1rem;">Top clientes</h2>
+    <p class="est-hint">Solo se cuentan ventas con nombre de cliente cargado (POS o checkout).</p>
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Cliente</th><th class="text-right">Compras</th><th class="text-right">Total</th><th class="text-right">Ticket promedio</th></tr>
+        </thead>
+        <tbody id="tabla-clientes">
+          <tr><td colspan="4" class="text-center">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    import Chart from 'chart.js/auto';
+    import { cargarEstadisticas, esc, fmt$, fmtNum, rangoPreset } from '@/lib/admin-estadisticas';
+
+    const params = new URLSearchParams(window.location.search);
+    const preset = params.get('rango') || '30';
+    const d0 = params.get('desde');
+    const h0 = params.get('hasta');
+    const init = d0 && h0 ? { desde: d0, hasta: h0 } : rangoPreset(preset);
+
+    let chartOrdenes: Chart | null = null;
+    let chartMedio: Chart | null = null;
+
+    const texto = (id: string, valor: string) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = valor;
+    };
+    const mostrar = (id: string, visible: boolean) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = visible ? 'block' : 'none';
+    };
+
+    async function cargar(desde: string, hasta: string) {
+      let data;
+      try {
+        data = await cargarEstadisticas(desde, hasta);
+      } catch {
+        return;
+      }
+
+      texto('k-ventas', fmtNum(data.kpis.ventas));
+      texto('k-fact', fmt$(data.kpis.facturacion));
+      texto('k-ticket', fmt$(data.kpis.ticket));
+      texto('k-clientes', fmtNum(data.clientes.total));
+      texto('k-recurrentes', fmtNum(data.clientes.recurrentes));
+
+      const serie = data.serie || [];
+      mostrar('ordenes-vacio', !serie.some((s) => s.ventas > 0));
+      chartOrdenes?.destroy();
+      chartOrdenes = new Chart(document.getElementById('chart-ordenes') as HTMLCanvasElement, {
+        type: 'bar',
+        data: {
+          labels: serie.map((s) => s.dia.slice(5).split('-').reverse().join('/')),
+          datasets: [{ label: 'Órdenes', data: serie.map((s) => s.ventas), backgroundColor: '#B8AB4A', borderRadius: 4 }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+        },
+      });
+
+      const medios = data.por_medio || [];
+      mostrar('medio-vacio', !medios.length);
+      chartMedio?.destroy();
+      chartMedio = new Chart(document.getElementById('chart-medio') as HTMLCanvasElement, {
+        type: 'bar',
+        data: {
+          labels: medios.map((m) => m.metodo),
+          datasets: [{ label: 'Facturación', data: medios.map((m) => m.total), backgroundColor: '#604811', borderRadius: 4 }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: { legend: { display: false } },
+          scales: { x: { beginAtZero: true, ticks: { callback: (v) => '$' + Number(v).toLocaleString('es-AR') } } },
+        },
+      });
+
+      const top = data.clientes.top || [];
+      const tabla = document.getElementById('tabla-clientes')!;
+      tabla.innerHTML = top.length
+        ? top.map((c) => {
+            const ticket = c.ventas ? Math.round(c.total / c.ventas) : 0;
+            return `<tr>
+              <td>${esc(c.nombre)}</td>
+              <td class="text-right">${fmtNum(c.ventas)}</td>
+              <td class="text-right">${fmt$(c.total)}</td>
+              <td class="text-right">${fmt$(ticket)}</td>
+            </tr>`;
+          }).join('')
+        : '<tr><td colspan="4" class="text-center">Sin clientes con nombre en el período.</td></tr>';
+    }
+
+    cargar(init.desde, init.hasta);
+    window.addEventListener('domus:periodo', (e) => {
+      const detail = (e as CustomEvent<{ desde: string; hasta: string }>).detail;
+      cargar(detail.desde, detail.hasta);
+    });
+  </script>
+</AdminLayout>

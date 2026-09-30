@@ -53,6 +53,10 @@ Correr en este orden en una base nueva:
 
 12. `supabase-migration-ventas-editables.sql` — edición transaccional de ventas manuales en estado `PAGADA` y cierre definitivo en `COMPLETADA`.
 
+13. `supabase-migration-banners.sql` — tabla `banners` (carrusel promocional de `/tienda`) con RLS completa + bucket público `banners`. Aditivo, no toca tablas existentes.
+
+14. `supabase-migration-rls-views.sql` — `ALTER VIEW v_stock_actual SET (security_invoker = true)` para que la vista respete RLS (corrige el aviso del linter de Supabase). Si una migración futura recrea la vista con `DROP VIEW`, volver a aplicar esta línea.
+
 Semillas opcionales: `supabase-seed-productos.sql`.
 
 ## Template

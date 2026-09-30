@@ -103,7 +103,6 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
     function agregarFila(selValue = '', cantidad = 1, costo?: number) {
       const row = document.createElement('div');
       row.className = 'c-row';
-      row.style.cssText = 'display: grid; grid-template-columns: 2fr 1fr 1fr auto auto; gap: 0.5rem; align-items: end;';
       row.innerHTML = `
         <div class="admin-form-group">
           <label class="admin-form-label">Producto</label>
@@ -371,7 +370,13 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
     cargarHistorial();
   </script>
 
-  <style>
+  <style is:global>
+    .c-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr auto auto;
+      gap: 0.5rem;
+      align-items: end;
+    }
     .compra-import { padding: 1rem; margin-bottom: 1.5rem; border: 1px dashed var(--admin-border); border-radius: 8px; background: var(--admin-bg); }
     .compra-import h3 { font-size: 1rem; margin: 0 0 0.5rem; }
     .compra-import p { font-size: 0.8125rem; line-height: 1.6; margin: 0.5rem 0; }
