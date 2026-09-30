@@ -264,7 +264,8 @@ async function eliminar(p: ProductoConStock) {
 .product-group-row small { margin-left: 0.6rem; color: var(--admin-text-muted); }
 .product-category { margin-left: 0.65rem; padding: 0.18rem 0.5rem; border-radius: 999px; background: white; color: var(--admin-text-muted); font-size: 0.7rem; }
 .product-option-row td:first-child { padding-left: 1.35rem; }
-.option-cell { display: flex; align-items: center; gap: 0.75rem; }
+.option-cell { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+.option-cell > div { min-width: 0; }
 .option-thumb { width: 44px; height: 44px; flex-shrink: 0; border-radius: 8px; object-fit: cover; border: 1px solid rgba(96, 72, 17, 0.18); background: #fffdf8; }
 .option-label { display: block; margin-bottom: 0.25rem; color: var(--admin-text-muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; }
 .option-badge { display: inline-flex; padding: 0.25rem 0.65rem; border: 1px solid rgba(96, 72, 17, 0.25); border-radius: 999px; background: #fffdf8; color: #604811; font-size: 0.8rem; font-weight: 700; }

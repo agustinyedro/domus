@@ -1,20 +1,114 @@
 ---
 // src/layouts/AdminLayout.astro
-// Layout para el panel de administración
+// Layout del panel de administración (estética TiendaNube: sidebar claro + top bar)
 
 interface Props {
   title: string;
+  immersive?: boolean;
 }
 
-const { title } = Astro.props;
+const { title, immersive = false } = Astro.props;
 
-// Si el usuario no está logueado y esta página no es login, redirigir
 const isLoginPage = Astro.url.pathname === '/admin/login';
 const currentPath = Astro.url.pathname.replace(/\/$/, '') || '/';
+
+const activo = (href: string) =>
+  href === '/admin' ? currentPath === '/admin' : currentPath.startsWith(href);
 const navClass = (path: string) => ({
   'sidebar-link': true,
-  'is-active': path === '/admin' ? currentPath === path : currentPath.startsWith(path),
+  'is-active': activo(path),
 });
+
+const ICONOS: Record<string, string> = {
+  home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+  bag: '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+  package:
+    '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+  wallet:
+    '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+  users:
+    '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  chart:
+    '<path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="6" rx="1"/><rect x="12" y="7" width="3" height="10" rx="1"/><rect x="17" y="4" width="3" height="13" rx="1"/>',
+  inbox:
+    '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  receipt:
+    '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/>',
+  store:
+    '<path d="m2 7 2-4h16l2 4"/><path d="M2 7h20v3a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0Z"/><path d="M4 12v8h16v-8"/><path d="M9 20v-4h6v4"/>',
+  archive:
+    '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
+  gift:
+    '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
+  image:
+    '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+  trendingDown: '<polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/>',
+  truck:
+    '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
+  star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+  activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  arrowLeft: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+};
+
+type NavItem = { href: string; label: string; icon: string };
+type NavLink = { tipo: 'link'; href: string; label: string; icon: string };
+type NavGroup = { tipo: 'grupo'; grupo: string; id: string; icon: string; items: NavItem[] };
+
+const nav: Array<NavLink | NavGroup> = [
+  { tipo: 'link', href: '/admin', label: 'Inicio', icon: 'home' },
+  {
+    tipo: 'grupo',
+    grupo: 'Estadísticas',
+    id: 'estadisticas',
+    icon: 'chart',
+    items: [
+      { href: '/admin/estadisticas/vision-general', label: 'Visión general', icon: 'activity' },
+      { href: '/admin/estadisticas/productos', label: 'Productos', icon: 'package' },
+      { href: '/admin/estadisticas/ventas-clientes', label: 'Ventas y clientes', icon: 'users' },
+    ],
+  },
+  {
+    tipo: 'grupo',
+    grupo: 'Ventas',
+    id: 'ventas',
+    icon: 'bag',
+    items: [
+      { href: '/admin/pedidos', label: 'Pedidos', icon: 'inbox' },
+      { href: '/admin/ventas', label: 'Ventas', icon: 'receipt' },
+      { href: '/admin/pos', label: 'Punto de venta', icon: 'store' },
+    ],
+  },
+  {
+    tipo: 'grupo',
+    grupo: 'Catálogo',
+    id: 'catalogo',
+    icon: 'package',
+    items: [
+      { href: '/admin/productos', label: 'Productos', icon: 'package' },
+      { href: '/admin/stock', label: 'Stock', icon: 'archive' },
+      { href: '/admin/kits', label: 'Kits', icon: 'gift' },
+      { href: '/admin/banners', label: 'Banners', icon: 'image' },
+    ],
+  },
+  {
+    tipo: 'grupo',
+    grupo: 'Finanzas',
+    id: 'finanzas',
+    icon: 'wallet',
+    items: [
+      { href: '/admin/gastos', label: 'Gastos', icon: 'trendingDown' },
+      { href: '/admin/compras', label: 'Compras', icon: 'truck' },
+    ],
+  },
+  {
+    tipo: 'grupo',
+    grupo: 'Clientes',
+    id: 'clientes',
+    icon: 'users',
+    items: [{ href: '/admin/club', label: 'Club', icon: 'star' }],
+  },
+];
 ---
 
 <!DOCTYPE html>
@@ -31,16 +125,6 @@ const navClass = (path: string) => ({
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="admin-body">
-  {!isLoginPage && (
-    <header class="admin-mobile-header">
-      <button id="admin-menu-btn" class="admin-menu-btn" type="button" aria-label="Abrir menú" aria-controls="admin-sidebar" aria-expanded="false">
-        <span></span><span></span><span></span>
-      </button>
-      <a href="/admin" class="admin-mobile-logo">DOMUS <small>Admin</small></a>
-      <a href="/" class="admin-mobile-site">Ver sitio</a>
-    </header>
-  )}
-
   {!isLoginPage && <button id="admin-sidebar-overlay" class="admin-sidebar-overlay" type="button" aria-label="Cerrar menú"></button>}
 
   {!isLoginPage && (
@@ -50,16 +134,35 @@ const navClass = (path: string) => ({
         <span class="sidebar-subtitle">Admin</span>
       </div>
       <nav class="sidebar-nav">
-        <a href="/admin" class:list={navClass('/admin')}>Dashboard</a>
-        <a href="/admin/pedidos" class:list={navClass('/admin/pedidos')}>Pedidos</a>
-        <a href="/admin/productos" class:list={navClass('/admin/productos')}>Productos</a>
-        <a href="/admin/stock" class:list={navClass('/admin/stock')}>Stock</a>
-        <a href="/admin/gastos" class:list={navClass('/admin/gastos')}>Gastos</a>
-        <a href="/admin/compras" class:list={navClass('/admin/compras')}>Compras</a>
-        <a href="/admin/ventas" class:list={navClass('/admin/ventas')}>Ventas</a>
-        <a href="/admin/kits" class:list={navClass('/admin/kits')}>Kits</a>
-        <a href="/admin/banners" class:list={navClass('/admin/banners')}>Banners</a>
-        <a href="/admin/club" class:list={navClass('/admin/club')}>Club</a>
+        {nav.map((n) =>
+          n.tipo === 'grupo' ? (
+            <div class:list={['sidebar-group', { 'is-open': n.items.some((i) => activo(i.href)) }]}>
+              <button
+                type="button"
+                class="sidebar-link sidebar-group-toggle"
+                aria-expanded={n.items.some((i) => activo(i.href))}
+                aria-controls={`sidebar-${n.id}`}
+              >
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={ICONOS[n.icon]} />
+                <span class="sidebar-group-label">{n.grupo}</span>
+                <span class="sidebar-caret" aria-hidden="true">▾</span>
+              </button>
+              <div id={`sidebar-${n.id}`} class="sidebar-subnav">
+                {n.items.map((i) => (
+                  <a href={i.href} class:list={[navClass(i.href), 'sidebar-sublink']}>
+                    <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={ICONOS[i.icon]} />
+                    <span>{i.label}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <a href={n.href} class:list={[navClass(n.href), 'sidebar-toplink']}>
+              <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={ICONOS[n.icon]} />
+              <span>{n.label}</span>
+            </a>
+          ),
+        )}
       </nav>
       <div class="sidebar-footer">
         <a href="/" class="sidebar-link">Ver sitio</a>
@@ -68,9 +171,47 @@ const navClass = (path: string) => ({
     </aside>
   )}
 
-  <main class={isLoginPage ? 'admin-main admin-main-full' : 'admin-main'}>
-    <slot />
-  </main>
+  {isLoginPage ? (
+    <main class="admin-main admin-main-full"><slot /></main>
+  ) : (
+    <div class:list={['admin-shell', { 'is-immersive': immersive }]}>
+      <header class="admin-topbar">
+        {immersive && (
+          <a href="/admin/ventas" class="admin-topbar-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={ICONOS.arrowLeft} />
+            <span>Volver</span>
+          </a>
+        )}
+        <button id="admin-menu-btn" class="admin-menu-btn" type="button" aria-label="Abrir menú" aria-controls="admin-sidebar" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+        <a href="/admin" class="admin-topbar-logo">DOMUS <small>Admin</small></a>
+        <h1 class="admin-topbar-title">{title}</h1>
+        <div class="admin-search" id="admin-search">
+          <svg class="admin-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={ICONOS.search} />
+          <input
+            id="admin-search-input"
+            class="admin-search-input"
+            type="search"
+            placeholder="Buscar productos u órdenes…"
+            aria-label="Buscar en el panel"
+            autocomplete="off"
+            role="combobox"
+            aria-expanded="false"
+            aria-controls="admin-search-results"
+          />
+          <div id="admin-search-results" class="admin-search-results" role="listbox" hidden></div>
+        </div>
+        <button id="admin-search-toggle" class="admin-search-toggle" type="button" aria-label="Buscar" aria-controls="admin-search" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={ICONOS.search} />
+        </button>
+        <div class="admin-topbar-actions">
+          <a href="/" class="admin-topbar-link">Ver sitio</a>
+        </div>
+      </header>
+      <main class="admin-main"><slot /></main>
+    </div>
+  )}
 
   {!isLoginPage && (
     <div id="admin-toast" class="admin-toast" role="status" aria-live="polite"></div>
@@ -78,12 +219,15 @@ const navClass = (path: string) => ({
 
   <style is:global>
     :root {
-      --admin-bg: #f8f9fa;
-      --admin-sidebar-bg: #1a1a2e;
-      --admin-sidebar-text: #e0e0e0;
-      --admin-sidebar-active: #988C2D;
+      --admin-bg: #f6f7f9;
+      --admin-sidebar-bg: #ffffff;
+      --admin-sidebar-text: #3d4451;
+      --admin-sidebar-muted: #8a93a3;
+      --admin-sidebar-active: #7e7525;
+      --admin-sidebar-hover: rgba(152, 140, 45, 0.08);
+      --admin-sidebar-active-bg: rgba(152, 140, 45, 0.14);
       --admin-card-bg: #ffffff;
-      --admin-border: #e2e8f0;
+      --admin-border: #e6e8ee;
       --admin-text: #1a202c;
       --admin-text-muted: #718096;
       --admin-primary: #988C2D;
@@ -93,6 +237,8 @@ const navClass = (path: string) => ({
       --admin-warning: #ed8936;
       --admin-info: #4299e1;
       --admin-toast-bg: #604811;
+      --admin-topbar-h: 60px;
+      --admin-sticky-top: calc(var(--admin-topbar-h) + 1rem);
     }
 
     .admin-body {
@@ -101,7 +247,6 @@ const navClass = (path: string) => ({
       color: var(--admin-text);
       margin: 0;
       min-height: 100vh;
-      display: flex;
     }
 
     /* Sidebar */
@@ -118,16 +263,12 @@ const navClass = (path: string) => ({
       left: 0;
       bottom: 0;
       z-index: 50;
-    }
-
-    .admin-mobile-header,
-    .admin-sidebar-overlay {
-      display: none;
+      border-right: 1px solid var(--admin-border);
     }
 
     .sidebar-header {
-      padding: 1.5rem;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--admin-border);
     }
 
     .sidebar-logo {
@@ -141,7 +282,7 @@ const navClass = (path: string) => ({
     .sidebar-subtitle {
       display: block;
       font-size: 0.75rem;
-      color: var(--admin-text-muted);
+      color: var(--admin-sidebar-muted);
       text-transform: uppercase;
       letter-spacing: 0.1em;
       margin-top: 0.25rem;
@@ -149,15 +290,20 @@ const navClass = (path: string) => ({
 
     .sidebar-nav {
       flex: 1;
-      padding: 1rem 0;
+      padding: 0.75rem;
       display: flex;
       flex-direction: column;
+      gap: 0.125rem;
+      overflow-y: auto;
     }
 
     .sidebar-link {
-      display: block;
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
       box-sizing: border-box;
-      padding: 0.75rem 1.5rem;
+      padding: 0.6rem 0.75rem;
+      min-height: 44px;
       color: var(--admin-sidebar-text);
       text-decoration: none;
       font-size: 0.875rem;
@@ -168,43 +314,331 @@ const navClass = (path: string) => ({
       max-width: 100%;
       text-align: left;
       cursor: pointer;
-      transition: background 0.2s, color 0.2s;
+      border-radius: 8px;
+      transition: background 0.15s, color 0.15s;
     }
 
     .sidebar-link:hover {
-      background: rgba(255,255,255,0.05);
+      background: var(--admin-sidebar-hover);
       color: var(--admin-sidebar-active);
     }
 
+    .sidebar-icon {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-link.is-active {
+      background: var(--admin-sidebar-active-bg);
+      color: var(--admin-sidebar-active);
+      font-weight: 600;
+    }
+
+    .sidebar-group-label {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .sidebar-caret {
+      font-size: 0.7rem;
+      color: var(--admin-sidebar-muted);
+      transition: transform 0.2s;
+    }
+
+    .sidebar-group.is-open .sidebar-caret {
+      transform: rotate(180deg);
+    }
+
+    .sidebar-subnav {
+      display: none;
+      flex-direction: column;
+      gap: 0.125rem;
+      padding: 0.125rem 0 0.25rem;
+    }
+
+    .sidebar-group.is-open .sidebar-subnav {
+      display: flex;
+    }
+
+    .sidebar-sublink {
+      padding-left: 1.6rem;
+      font-size: 0.8125rem;
+    }
+
+    .sidebar-sublink .sidebar-icon {
+      width: 16px;
+      height: 16px;
+    }
+
     .sidebar-footer {
-      padding: 1rem 0;
-      border-top: 1px solid rgba(255,255,255,0.1);
+      padding: 0.75rem;
+      border-top: 1px solid var(--admin-border);
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
     }
 
     .sidebar-logout {
       color: var(--admin-danger);
     }
 
+    /* Shell + topbar */
+    .admin-shell {
+      margin-left: 240px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Modo inmersivo (POS): sin sidebar, usa todo el ancho */
+    .admin-shell.is-immersive {
+      margin-left: 0;
+    }
+
+    @media (min-width: 769px) {
+      .admin-shell.is-immersive .admin-sidebar {
+        display: none;
+      }
+    }
+
+    .admin-topbar-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      min-height: 40px;
+      padding: 0.4rem 0.75rem;
+      border: 1px solid var(--admin-border);
+      border-radius: 8px;
+      background: var(--admin-card-bg);
+      color: var(--admin-text);
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .admin-topbar-back:hover {
+      background: var(--admin-bg);
+      color: var(--admin-primary);
+    }
+
+    .admin-topbar-back svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .admin-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      min-height: var(--admin-topbar-h);
+      padding: 0.5rem 2rem;
+      box-sizing: border-box;
+      background: var(--admin-card-bg);
+      border-bottom: 1px solid var(--admin-border);
+    }
+
+    .admin-topbar-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin: 0;
+      white-space: nowrap;
+    }
+
+    .admin-topbar-logo {
+      display: none;
+      color: var(--admin-sidebar-active);
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-decoration: none;
+      line-height: 1;
+    }
+
+    .admin-topbar-logo small {
+      display: block;
+      color: var(--admin-sidebar-muted);
+      font-size: 0.6rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+    }
+
+    .admin-menu-btn {
+      display: none;
+      place-content: center;
+      gap: 4px;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border: 1px solid var(--admin-border);
+      border-radius: 8px;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .admin-menu-btn span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      border-radius: 2px;
+      background: var(--admin-sidebar-text);
+    }
+
+    .admin-search-toggle {
+      display: none;
+      place-content: center;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border: 1px solid var(--admin-border);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--admin-sidebar-text);
+      cursor: pointer;
+    }
+
+    .admin-search-toggle svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .admin-search {
+      position: relative;
+      flex: 1 1 auto;
+      max-width: 520px;
+    }
+
+    .admin-search-icon {
+      position: absolute;
+      left: 0.8rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: var(--admin-text-muted);
+      pointer-events: none;
+    }
+
+    .admin-search-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.6rem 0.9rem 0.6rem 2.35rem;
+      border: 1px solid var(--admin-border);
+      border-radius: 999px;
+      font: inherit;
+      font-size: 0.875rem;
+      background: var(--admin-bg);
+      color: var(--admin-text);
+    }
+
+    .admin-search-input:focus {
+      outline: none;
+      border-color: var(--admin-primary);
+      box-shadow: 0 0 0 3px rgba(152, 140, 45, 0.15);
+    }
+
+    .admin-search-results {
+      position: absolute;
+      top: calc(100% + 0.4rem);
+      left: 0;
+      right: 0;
+      max-height: 60vh;
+      overflow-y: auto;
+      padding: 0.35rem;
+      border: 1px solid var(--admin-border);
+      border-radius: 10px;
+      background: var(--admin-card-bg);
+      box-shadow: 0 16px 40px rgb(0 0 0 / 0.14);
+    }
+
+    .admin-search-group {
+      margin: 0.35rem 0.5rem 0.15rem;
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--admin-text-muted);
+      font-weight: 600;
+    }
+
+    .admin-search-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+      width: 100%;
+      min-height: 52px;
+      padding: 0.55rem 0.7rem;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--admin-text);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .admin-search-item:hover,
+    .admin-search-item.is-active {
+      background: var(--admin-sidebar-hover);
+    }
+
+    .admin-search-item small {
+      color: var(--admin-text-muted);
+      font-size: 0.75rem;
+    }
+
+    .admin-search-empty {
+      margin: 0;
+      padding: 0.9rem 0.75rem;
+      color: var(--admin-text-muted);
+      font-size: 0.85rem;
+    }
+
+    .admin-topbar-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .admin-topbar-link {
+      color: var(--admin-text-muted);
+      text-decoration: none;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .admin-topbar-link:hover {
+      color: var(--admin-primary);
+    }
+
     /* Main */
     .admin-main {
-      margin-left: 240px;
       padding: 2rem;
       flex: 1;
-      min-height: 100vh;
+      min-width: 0;
     }
 
     .admin-main-full {
-      margin-left: 0;
       display: flex;
       align-items: center;
       justify-content: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+
+    .admin-sidebar-overlay {
+      display: none;
     }
 
     /* Cards */
     .admin-card {
       background: var(--admin-card-bg);
       border: 1px solid var(--admin-border);
-      border-radius: 8px;
+      border-radius: 12px;
       padding: 1.5rem;
     }
 
@@ -232,7 +666,7 @@ const navClass = (path: string) => ({
     .admin-metric {
       background: var(--admin-card-bg);
       border: 1px solid var(--admin-border);
-      border-radius: 8px;
+      border-radius: 12px;
       padding: 1.25rem;
     }
 
@@ -255,6 +689,30 @@ const navClass = (path: string) => ({
     .admin-metric-value.danger { color: var(--admin-danger); }
     .admin-metric-value.warning { color: var(--admin-warning); }
     .admin-metric-value.info { color: var(--admin-info); }
+
+    /* Grids utilitarios (reemplazan estilos inline y respetan breakpoints) */
+    .admin-grid { display: grid; gap: 1rem; }
+    .admin-grid-auto { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+    .admin-grid-auto-sm { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+    .admin-grid-2 { grid-template-columns: 1fr 1fr; }
+    .admin-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .admin-grid-4 { grid-template-columns: 2fr 1fr 1fr 1fr; }
+
+    @media (max-width: 768px) {
+      .admin-grid-2,
+      .admin-grid-3 {
+        grid-template-columns: 1fr;
+      }
+      .admin-grid-4 {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .admin-grid-4 {
+        grid-template-columns: 1fr;
+      }
+    }
 
     /* Forms */
     .admin-form {
@@ -279,18 +737,13 @@ const navClass = (path: string) => ({
     .admin-input {
       padding: 0.625rem 0.75rem;
       border: 1px solid var(--admin-border);
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 0.875rem;
       font-family: inherit;
       background: var(--admin-card-bg);
       color: var(--admin-text);
       transition: border-color 0.2s;
-    }
-
-    .sidebar-link.is-active {
-      background: rgba(152, 140, 45, 0.18);
-      color: var(--admin-sidebar-active);
-      box-shadow: inset 3px 0 0 var(--admin-sidebar-active);
+      min-width: 0;
     }
 
     select.admin-input {
@@ -316,17 +769,56 @@ const navClass = (path: string) => ({
       gap: 0.5rem;
       padding: 0.625rem 1.25rem;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 0.875rem;
       font-weight: 500;
       font-family: inherit;
       cursor: pointer;
       transition: background 0.2s, transform 0.1s;
       min-height: 44px;
+      text-decoration: none;
     }
 
     .admin-btn:active {
       transform: scale(0.98);
+    }
+
+    /* Botón compacto (reemplaza estilos inline chicos; mantiene tap target 44px) */
+    .admin-btn-sm {
+      min-height: 44px;
+      padding: 0.375rem 0.7rem;
+      font-size: 0.78rem;
+    }
+
+    /* Botón solo-ícono accesible (tap target 44px) */
+    .admin-icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border: 1px solid var(--admin-border);
+      border-radius: 8px;
+      background: var(--admin-card-bg);
+      color: var(--admin-text);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .admin-icon-btn:hover:not(:disabled) {
+      border-color: var(--admin-primary);
+      color: var(--admin-primary);
+    }
+
+    .admin-icon-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .admin-icon-btn svg {
+      width: 18px;
+      height: 18px;
     }
 
     .product-picker { position: relative; }
@@ -368,7 +860,8 @@ const navClass = (path: string) => ({
     .admin-btn:focus-visible,
     .sidebar-link:focus-visible,
     .admin-menu-btn:focus-visible,
-    .admin-mobile-site:focus-visible {
+    .admin-topbar-link:focus-visible,
+    .admin-search-input:focus-visible {
       outline: 3px solid var(--admin-sidebar-active);
       outline-offset: 2px;
     }
@@ -407,8 +900,8 @@ const navClass = (path: string) => ({
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 38px;
-      height: 38px;
+      width: 44px;
+      height: 44px;
       background: none;
       border: 1px solid transparent;
       border-radius: 6px;
@@ -473,7 +966,7 @@ const navClass = (path: string) => ({
     /* Alerts */
     .admin-alert {
       padding: 0.75rem 1rem;
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 0.875rem;
       margin-bottom: 1rem;
     }
@@ -499,7 +992,7 @@ const navClass = (path: string) => ({
     /* Toast global: feedback tras guardar (arriba al centro) */
     .admin-toast {
       position: fixed;
-      top: 1.25rem;
+      top: 4.5rem;
       left: 50%;
       transform: translate(-50%, -0.75rem);
       z-index: 4000;
@@ -536,6 +1029,25 @@ const navClass = (path: string) => ({
       text-align: center;
       padding: 3rem 1rem;
       color: var(--admin-text-muted);
+    }
+
+    /* Badges de movimientos de stock (globales: se inyectan por innerHTML) */
+    .mov-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      margin-right: 0.5rem;
+    }
+
+    .mov-in { background: #f0fff4; color: #22543d; }
+    .mov-out { background: #fff5f5; color: #742a2a; }
+    .mov-sale { background: #ebf8ff; color: #2a4365; }
+
+    /* Columna de acciones de tabla: evita que los botones se partan */
+    .admin-table .col-actions {
+      white-space: nowrap;
     }
 
     /* Stock badge */
@@ -583,81 +1095,13 @@ const navClass = (path: string) => ({
 
     /* Responsive */
     @media (max-width: 768px) {
-      .admin-body {
-        display: block;
-        overflow-x: hidden;
-      }
-
-      .admin-mobile-header {
-        position: fixed;
-        inset: 0 0 auto 0;
-        z-index: 90;
-        display: grid;
-        grid-template-columns: 44px 1fr auto;
-        align-items: center;
-        gap: 0.75rem;
-        min-height: 60px;
-        padding: 0.5rem 0.75rem;
-        background: var(--admin-sidebar-bg);
-        box-shadow: 0 3px 14px rgb(0 0 0 / 0.18);
-      }
-
-      .admin-menu-btn {
-        display: grid;
-        place-content: center;
-        gap: 4px;
-        width: 44px;
-        height: 44px;
-        padding: 0;
-        border: 1px solid rgb(255 255 255 / 0.18);
-        border-radius: 8px;
-        background: transparent;
-        cursor: pointer;
-      }
-
-      .admin-menu-btn span {
-        display: block;
-        width: 20px;
-        height: 2px;
-        border-radius: 2px;
-        background: var(--admin-sidebar-text);
-      }
-
-      .admin-mobile-logo {
-        color: var(--admin-sidebar-active);
-        font-size: 1rem;
-        font-weight: 700;
-        letter-spacing: 0.12em;
-        text-decoration: none;
-      }
-
-      .admin-mobile-logo small {
-        display: block;
-        color: var(--admin-sidebar-text);
-        font-size: 0.62rem;
-        font-weight: 500;
-        letter-spacing: 0.06em;
-      }
-
-      .admin-mobile-site {
-        display: inline-flex;
-        align-items: center;
-        min-height: 44px;
-        color: var(--admin-sidebar-text);
-        font-size: 0.75rem;
-        text-decoration: none;
-      }
-
       .admin-sidebar {
         width: min(82vw, 300px);
         height: 100dvh;
-        position: fixed;
-        flex-direction: column;
-        overflow-y: auto;
         transform: translateX(-105%);
         transition: transform 0.25s ease;
         z-index: 110;
-        box-shadow: 10px 0 30px rgb(0 0 0 / 0.25);
+        box-shadow: 10px 0 30px rgb(0 0 0 / 0.18);
       }
 
       .admin-sidebar.is-open {
@@ -668,6 +1112,7 @@ const navClass = (path: string) => ({
         position: fixed;
         inset: 0;
         z-index: 100;
+        display: block;
         width: 100%;
         height: 100%;
         border: 0;
@@ -678,39 +1123,68 @@ const navClass = (path: string) => ({
       }
 
       .admin-sidebar-overlay.is-open {
-        display: block;
         opacity: 1;
         pointer-events: auto;
       }
 
-      .sidebar-header {
+      .admin-shell {
+        margin-left: 0;
+      }
+
+      .admin-topbar {
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+      }
+
+      .admin-menu-btn {
+        display: grid;
+      }
+
+      .admin-topbar-back {
+        padding: 0.4rem 0.6rem;
+      }
+
+      .admin-topbar-logo {
         display: block;
-        padding: 1.25rem;
+        margin-right: auto;
       }
 
-      .sidebar-footer {
+      .admin-shell.is-immersive .admin-topbar-logo {
+        display: none;
+      }
+
+      .admin-topbar-title {
+        display: none;
+      }
+
+      .admin-topbar-actions {
+        display: none;
+      }
+
+      .admin-search-toggle {
+        display: grid;
+      }
+
+      .admin-search {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-width: none;
+        padding: 0.5rem 0.75rem;
+        background: var(--admin-card-bg);
+        border-bottom: 1px solid var(--admin-border);
+        box-shadow: 0 10px 24px rgb(0 0 0 / 0.1);
+        z-index: 70;
+      }
+
+      .admin-search.is-open {
         display: block;
-      }
-
-      .sidebar-nav {
-        flex-direction: column;
-        padding: 0.5rem 0;
-      }
-
-      .sidebar-link {
-        display: flex;
-        align-items: center;
-        min-height: 48px;
-        padding: 0.75rem 1.25rem;
-        white-space: normal;
       }
 
       .admin-main {
-        margin-left: 0;
-        width: 100%;
-        max-width: 100vw;
-        padding: 5rem 0.75rem 1.5rem;
-        box-sizing: border-box;
+        padding: 1rem 0.75rem 1.5rem;
       }
 
       .admin-main-full {
@@ -719,7 +1193,7 @@ const navClass = (path: string) => ({
       }
 
       .admin-toast {
-        top: 4.5rem;
+        top: 5rem;
       }
 
       .admin-card {
@@ -792,10 +1266,6 @@ const navClass = (path: string) => ({
         padding: 0.65rem;
       }
 
-      .admin-main [style*="grid-template-columns"] {
-        grid-template-columns: minmax(0, 1fr) !important;
-      }
-
       .login-card {
         max-width: calc(100vw - 1.5rem);
         padding: 1.5rem;
@@ -807,21 +1277,21 @@ const navClass = (path: string) => ({
       .admin-metrics {
         grid-template-columns: 1fr;
       }
-
-      .admin-mobile-site {
-        font-size: 0.7rem;
-      }
     }
 
     /* Impresión: solo el contenido, sin sidebar ni botones */
     @media print {
       .admin-sidebar,
+      .admin-topbar,
       .no-print {
         display: none !important;
       }
 
-      .admin-main {
+      .admin-shell {
         margin-left: 0;
+      }
+
+      .admin-main {
         padding: 0;
       }
 
@@ -850,10 +1320,148 @@ const navClass = (path: string) => ({
         if (event.key === 'Escape') setMenu(false);
       });
 
+      document.querySelectorAll('.sidebar-group-toggle').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const group = btn.closest('.sidebar-group');
+          const open = group?.classList.toggle('is-open');
+          btn.setAttribute('aria-expanded', String(Boolean(open)));
+        });
+      });
+
       document.getElementById('logout-btn')?.addEventListener('click', async () => {
         await fetch('/api/auth/logout', { method: 'POST' });
         window.location.href = '/admin/login';
       });
+
+      // Buscador global (productos + órdenes)
+      const searchInput = document.getElementById('admin-search-input') as HTMLInputElement | null;
+      const searchResults = document.getElementById('admin-search-results');
+      const searchBox = document.getElementById('admin-search');
+      if (searchInput && searchResults && searchBox) {
+        type Destino = { href: string };
+        let destinos: Destino[] = [];
+        let activo = -1;
+        let debounce = 0;
+
+        const esc = (s: unknown) =>
+          String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const fmt$ = (n: unknown) => '$' + Math.round(Number(n) || 0).toLocaleString('es-AR');
+
+        const cerrar = () => {
+          searchResults.hidden = true;
+          searchInput.setAttribute('aria-expanded', 'false');
+          activo = -1;
+        };
+
+        const marcarActivo = () => {
+          searchResults.querySelectorAll('.admin-search-item').forEach((el) => {
+            el.classList.toggle('is-active', Number((el as HTMLElement).dataset.idx) === activo);
+          });
+        };
+
+        const pintar = (data: { productos?: Array<Record<string, unknown>>; ordenes?: Array<Record<string, unknown>> }) => {
+          destinos = [];
+          const partes: string[] = [];
+          const productos = data.productos || [];
+          const ordenes = data.ordenes || [];
+
+          if (productos.length) {
+            partes.push('<p class="admin-search-group">Productos</p>');
+            for (const p of productos) {
+              const idx = destinos.length;
+              destinos.push({ href: `/admin/productos/${p.producto_id}` });
+              const variante = p.variante && p.variante !== 'Única' ? ` — ${esc(p.variante)}` : '';
+              partes.push(
+                `<button type="button" class="admin-search-item" data-idx="${idx}" role="option"><span>${esc(p.nombre)}${variante}</span><small>${esc(p.sku || '')} · stock ${esc(p.stock_actual ?? 0)}</small></button>`,
+              );
+            }
+          }
+
+          if (ordenes.length) {
+            partes.push('<p class="admin-search-group">Órdenes</p>');
+            for (const o of ordenes) {
+              const idx = destinos.length;
+              const id = String(o.id);
+              destinos.push({ href: `/admin/ventas?q=${id.slice(0, 8)}` });
+              const origen = o.source === 'TIENDA' ? 'Tienda' : 'POS';
+              const cliente = o.cliente_nombre ? ` · ${esc(o.cliente_nombre)}` : '';
+              partes.push(
+                `<button type="button" class="admin-search-item" data-idx="${idx}" role="option"><span>#${id.slice(0, 8)} · ${origen}${cliente}</span><small>${fmt$(o.total)} · ${esc(o.estado)}</small></button>`,
+              );
+            }
+          }
+
+          searchResults.innerHTML = partes.join('') || '<p class="admin-search-empty">Sin resultados.</p>';
+          searchResults.hidden = false;
+          searchInput.setAttribute('aria-expanded', 'true');
+          activo = -1;
+        };
+
+        const buscar = async () => {
+          const q = searchInput.value.trim();
+          if (q.length < 2) {
+            cerrar();
+            return;
+          }
+          try {
+            const res = await fetch(`/api/admin/buscar?q=${encodeURIComponent(q)}`, { cache: 'no-store' });
+            if (!res.ok) {
+              cerrar();
+              return;
+            }
+            pintar(await res.json());
+          } catch {
+            cerrar();
+          }
+        };
+
+        searchInput.addEventListener('input', () => {
+          window.clearTimeout(debounce);
+          debounce = window.setTimeout(buscar, 220);
+        });
+
+        searchInput.addEventListener('keydown', (e) => {
+          if (searchResults.hidden) return;
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activo = Math.min(activo + 1, destinos.length - 1);
+            marcarActivo();
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activo = Math.max(activo - 1, 0);
+            marcarActivo();
+          } else if (e.key === 'Enter') {
+            const destino = destinos[activo] || destinos[0];
+            if (destino) {
+              e.preventDefault();
+              window.location.href = destino.href;
+            }
+          } else if (e.key === 'Escape') {
+            cerrar();
+          }
+        });
+
+        searchResults.addEventListener('click', (e) => {
+          const item = (e.target as HTMLElement).closest('.admin-search-item') as HTMLElement | null;
+          const destino = item ? destinos[Number(item.dataset.idx)] : null;
+          if (destino) window.location.href = destino.href;
+        });
+
+        document.addEventListener('click', (e) => {
+          if (!searchBox.contains(e.target as Node)) cerrar();
+        });
+      }
+
+      // Toggle de búsqueda en mobile (la topbar queda en una sola fila)
+      const searchToggle = document.getElementById('admin-search-toggle');
+      const searchBoxEl = document.getElementById('admin-search');
+      if (searchToggle && searchBoxEl) {
+        searchToggle.addEventListener('click', () => {
+          const open = searchBoxEl.classList.toggle('is-open');
+          searchToggle.setAttribute('aria-expanded', String(open));
+          if (open) (document.getElementById('admin-search-input') as HTMLInputElement | null)?.focus();
+        });
+      }
 
       const toast = document.getElementById('admin-toast');
       if (toast) {

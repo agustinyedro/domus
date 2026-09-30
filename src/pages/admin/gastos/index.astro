@@ -14,7 +14,7 @@ const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,
 
   <div class="admin-card" style="margin-bottom: 1rem;">
     <form id="gasto-form" class="admin-form" style="max-width: none;">
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem;">
+      <div class="admin-grid admin-grid-auto-sm">
         <div class="admin-form-group">
           <label class="admin-form-label" for="g-fecha">Fecha</label>
           <input id="g-fecha" type="date" class="admin-input" required value={mesActual + '-01'} />

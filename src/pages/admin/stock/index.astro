@@ -30,7 +30,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
         <p id="mov-stock-actual" style="margin: 0.25rem 0 0; font-size: 0.8125rem; color: var(--admin-text-muted);"></p>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div class="admin-grid admin-grid-2">
         <div class="admin-form-group">
           <label class="admin-form-label">Tipo</label>
           <div style="display: flex; gap: 0.5rem;">
@@ -71,7 +71,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
 
   <div class="admin-card" style="margin-bottom: 1rem;">
     <h2 class="admin-card-title" style="margin-bottom: 1rem;">Productos</h2>
-    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+    <div class="admin-grid admin-grid-4" style="gap: 0.75rem; margin-bottom: 1rem;">
       <input id="stock-q" type="search" class="admin-input" placeholder="Buscar producto…" />
       <select id="stock-cat" class="admin-input" aria-label="Filtrar por categoría">
         <option value="">Todas las categorías</option>
@@ -90,7 +90,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
         <option value="precio_desc">Precio ↓</option>
       </select>
     </div>
-    <div class="admin-table-wrapper stock-scroll">
+    <div class="admin-table-wrapper">
       <table class="admin-table">
         <thead>
           <tr><th>Producto</th><th>Categoría</th><th class="text-right">Precio</th><th class="text-right">Mín</th><th class="text-right">Stock</th><th>Estado</th></tr>

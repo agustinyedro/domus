@@ -11,7 +11,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
   <div class="admin-card" style="margin-bottom: 1rem;">
     <h2 class="admin-card-title" style="margin-bottom: 1rem;">Nuevo club</h2>
     <form id="club-form" class="admin-form" style="max-width: none;">
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+      <div class="admin-grid admin-grid-auto">
         <div class="admin-form-group">
           <label class="admin-form-label" for="cl-nombre">Nombre</label>
           <input id="cl-nombre" type="text" class="admin-input" required maxlength="255" placeholder="Ej: Club Relax Mensual" />
@@ -55,7 +55,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     </div>
 
     <form id="sub-form" class="admin-form" style="max-width: none; display: none; margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--admin-border); border-radius: 6px;">
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem;">
+      <div class="admin-grid admin-grid-auto-sm">
         <div class="admin-form-group">
           <label class="admin-form-label" for="s-nombre">Nombre</label>
           <input id="s-nombre" type="text" class="admin-input" required maxlength="255" />

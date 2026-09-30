@@ -42,7 +42,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
   </div>
 
   <!-- Gráficos -->
-  <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 1rem;" class="dash-charts">
+  <div class="dash-charts dash-grid-21">
     <div class="admin-card">
       <h2 class="admin-card-title" style="margin-bottom: 1rem;">Ingresos por día</h2>
       <div style="position: relative; height: 260px;">
@@ -59,7 +59,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
   </div>
 
   <!-- Estrella + top -->
-  <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; margin-bottom: 1rem;" class="dash-charts">
+  <div class="dash-charts dash-grid-12">
     <div class="admin-card" id="estrella-card" style="display:none;">
       <p class="admin-metric-label">Producto estrella</p>
       <h2 id="estrella-nombre" style="margin: 0.25rem 0;"></h2>
@@ -81,7 +81,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
   </div>
 
   <!-- Club + actividad -->
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;" class="dash-charts">
+  <div class="dash-charts dash-grid-11">
     <div class="admin-card">
       <h2 class="admin-card-title" style="margin-bottom: 1rem;">Club</h2>
       <p style="margin: 0 0 0.5rem;"><strong id="club-subs">0</strong> suscriptores activos</p>
@@ -122,12 +122,12 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     .admin-delta.up { color: var(--admin-success); }
     .admin-delta.down { color: var(--admin-danger); }
     .admin-metric-sub { margin: 0.25rem 0 0; font-size: 0.75rem; color: var(--admin-text-muted); }
-    .mov-badge { display: inline-block; padding: 0.125rem 0.5rem; border-radius: 999px; font-size: 0.6875rem; font-weight: 700; margin-right: 0.5rem; }
-    .mov-in { background: #f0fff4; color: #22543d; }
-    .mov-out { background: #fff5f5; color: #742a2a; }
-    .mov-sale { background: #ebf8ff; color: #2a4365; }
+    .dash-charts { display: grid; gap: 1rem; margin-bottom: 1rem; }
+    .dash-grid-21 { grid-template-columns: 2fr 1fr; }
+    .dash-grid-12 { grid-template-columns: 1fr 2fr; }
+    .dash-grid-11 { grid-template-columns: 1fr 1fr; }
     @media (max-width: 900px) {
-      .dash-charts { grid-template-columns: 1fr !important; }
+      .dash-charts { grid-template-columns: 1fr; }
     }
   </style>
 

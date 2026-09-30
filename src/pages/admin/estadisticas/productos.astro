@@ -1,0 +1,170 @@
+---
+// src/pages/admin/estadisticas/productos.astro
+export const prerender = false;
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import PeriodoFiltro from '@/components/admin/PeriodoFiltro.astro';
+import '@/styles/estadisticas.css';
+---
+
+<AdminLayout title="Estadísticas · Productos">
+  <div class="admin-card-header">
+    <h1 style="margin: 0; font-size: 1.5rem;">Estadísticas · Productos</h1>
+  </div>
+
+  <PeriodoFiltro />
+
+  <div class="admin-metrics">
+    <div class="admin-metric">
+      <p class="admin-metric-label">Productos vendidos</p>
+      <p class="admin-metric-value info" id="k-productos">–</p>
+    </div>
+    <div class="admin-metric">
+      <p class="admin-metric-label">Unidades vendidas</p>
+      <p class="admin-metric-value" id="k-unidades">–</p>
+    </div>
+    <div class="admin-metric">
+      <p class="admin-metric-label">Stock total</p>
+      <p class="admin-metric-value" id="k-stock">–</p>
+    </div>
+    <div class="admin-metric">
+      <p class="admin-metric-label">Productos con stock bajo</p>
+      <p class="admin-metric-value warning" id="k-bajo">–</p>
+    </div>
+  </div>
+
+  <div class="est-grid-2">
+    <div class="admin-card">
+      <h2 class="admin-card-title" style="margin-bottom: 1rem;">Top productos por unidades</h2>
+      <div class="est-chart"><canvas id="chart-top"></canvas></div>
+      <p class="est-empty" id="top-vacio" style="display:none;">Sin ventas en el período.</p>
+    </div>
+    <div class="admin-card">
+      <h2 class="admin-card-title" style="margin-bottom: 1rem;">Dispersión ventas vs stock</h2>
+      <p class="est-hint">Cada punto es un producto: stock (eje X) y unidades vendidas (eje Y).</p>
+      <div class="est-chart"><canvas id="chart-disp"></canvas></div>
+      <p class="est-empty" id="disp-vacio" style="display:none;">Sin datos.</p>
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <h2 class="admin-card-title" style="margin-bottom: 1rem;">Detalle de productos vendidos</h2>
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Producto</th><th class="text-right">Unidades</th><th class="text-right">Ingresos</th><th class="text-right">Ganancia</th></tr>
+        </thead>
+        <tbody id="tabla-productos">
+          <tr><td colspan="4" class="text-center">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    import Chart from 'chart.js/auto';
+    import { cargarEstadisticas, esc, fmt$, fmtNum, rangoPreset } from '@/lib/admin-estadisticas';
+
+    const params = new URLSearchParams(window.location.search);
+    const preset = params.get('rango') || '30';
+    const d0 = params.get('desde');
+    const h0 = params.get('hasta');
+    const init = d0 && h0 ? { desde: d0, hasta: h0 } : rangoPreset(preset);
+
+    let chartTop: Chart | null = null;
+    let chartDisp: Chart | null = null;
+
+    const texto = (id: string, valor: string) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = valor;
+    };
+    const mostrar = (id: string, visible: boolean) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = visible ? 'block' : 'none';
+    };
+
+    async function cargar(desde: string, hasta: string) {
+      let data;
+      try {
+        data = await cargarEstadisticas(desde, hasta);
+      } catch {
+        return;
+      }
+
+      const productos = data.productos || [];
+      texto('k-productos', fmtNum(productos.length));
+      texto('k-unidades', fmtNum(data.kpis.unidades));
+      texto('k-stock', fmtNum(data.stock.total));
+      texto('k-bajo', fmtNum(data.stock.bajo));
+
+      const top = productos.slice(0, 10);
+      mostrar('top-vacio', !top.length);
+      chartTop?.destroy();
+      chartTop = new Chart(document.getElementById('chart-top') as HTMLCanvasElement, {
+        type: 'bar',
+        data: {
+          labels: top.map((p) => p.nombre),
+          datasets: [{ label: 'Unidades', data: top.map((p) => p.unidades), backgroundColor: '#988C2D', borderRadius: 4 }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: { legend: { display: false } },
+        },
+      });
+
+      const disp = data.dispersion || [];
+      mostrar('disp-vacio', !disp.length);
+      chartDisp?.destroy();
+      chartDisp = new Chart(document.getElementById('chart-disp') as HTMLCanvasElement, {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            label: 'Productos',
+            data: disp.map((p) => ({ x: p.stock, y: p.unidades })),
+            backgroundColor: 'rgba(152, 140, 45, 0.6)',
+            pointRadius: 5,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const p = disp[ctx.dataIndex];
+                  return `${p.nombre}: ${p.unidades} u. · stock ${p.stock}`;
+                },
+              },
+            },
+          },
+          scales: {
+            x: { title: { display: true, text: 'Stock' }, beginAtZero: true },
+            y: { title: { display: true, text: 'Unidades vendidas' }, beginAtZero: true },
+          },
+        },
+      });
+
+      const tabla = document.getElementById('tabla-productos')!;
+      tabla.innerHTML = productos.length
+        ? productos.map((p) => {
+            const variante = p.variante && p.variante !== 'Única' ? ` — ${esc(p.variante)}` : '';
+            return `<tr>
+              <td>${esc(p.nombre)}${variante}</td>
+              <td class="text-right">${fmtNum(p.unidades)}</td>
+              <td class="text-right">${fmt$(p.ingresos)}</td>
+              <td class="text-right">${fmt$(p.ganancia)}</td>
+            </tr>`;
+          }).join('')
+        : '<tr><td colspan="4" class="text-center">Sin ventas en el período.</td></tr>';
+    }
+
+    cargar(init.desde, init.hasta);
+    window.addEventListener('domus:periodo', (e) => {
+      const detail = (e as CustomEvent<{ desde: string; hasta: string }>).detail;
+      cargar(detail.desde, detail.hasta);
+    });
+  </script>
+</AdminLayout>

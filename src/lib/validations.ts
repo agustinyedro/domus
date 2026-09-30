@@ -115,6 +115,8 @@ export const VentaBatchSchema = z.object({
     .min(1, 'Agregá al menos un producto')
     .max(50, 'Máximo 50 productos por venta'),
   metodo_pago: z.enum(METODOS_PAGO_VENTA, { message: 'Elegí un medio de pago' }),
+  cliente_nombre: z.string().max(255).nullable().optional(),
+  cliente_telefono: z.string().max(50).nullable().optional(),
 });
 
 export const CategoriaSchema = z.object({

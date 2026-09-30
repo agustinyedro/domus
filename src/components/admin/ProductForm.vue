@@ -104,7 +104,7 @@
       ></textarea>
     </div>
 
-    <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); gap: 1rem;">
+    <div class="pf-precios">
       <div class="admin-form-group">
         <label class="admin-form-label">Costo ($)</label>
         <input
@@ -637,7 +637,7 @@ const handleSubmit = async () => {
 <style scoped>
 .pf-bar {
   position: sticky;
-  top: 0;
+  top: var(--admin-sticky-top);
   z-index: 30;
   padding: 0.75rem 0 0.5rem;
   background: var(--admin-card-bg);
@@ -658,5 +658,17 @@ const handleSubmit = async () => {
 .admin-input {
   width: 100%;
   min-width: 0;
+}
+
+.pf-precios {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .pf-precios {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

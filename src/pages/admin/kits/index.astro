@@ -317,7 +317,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
             <td>${p.nombre || ''}</td>
             <td class="text-right">${fmt$(precioVigente(p))}</td>
             <td class="text-right">${fmt$(sub)}</td>
-            <td class="kit-col-del"><button type="button" data-item="${i.id}" data-kit="${kit.id}" class="row-del kit-del-item" style="width: 30px; height: 30px;" aria-label="Quitar" title="Quitar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>
+            <td class="kit-col-del"><button type="button" data-item="${i.id}" data-kit="${kit.id}" class="row-del kit-del-item" aria-label="Quitar" title="Quitar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>
           </tr>`;
         }).join('');
         itemsBox.innerHTML = `<div class="kit-items-table-wrap"><table class="kit-items-table">

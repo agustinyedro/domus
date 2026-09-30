@@ -1,0 +1,171 @@
+---
+// src/pages/admin/estadisticas/vision-general.astro
+export const prerender = false;
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import PeriodoFiltro from '@/components/admin/PeriodoFiltro.astro';
+import '@/styles/estadisticas.css';
+---
+
+<AdminLayout title="Visión general">
+  <div class="admin-card-header">
+    <h1 style="margin: 0; font-size: 1.5rem;">Estadísticas · Visión general</h1>
+  </div>
+
+  <PeriodoFiltro />
+
+  <div class="admin-metrics" id="kpis">
+    <div class="admin-metric">
+      <p class="admin-metric-label">Ventas</p>
+      <p class="admin-metric-value info" id="k-ventas">–</p>
+      <span class="est-delta" id="k-ventas-d"></span>
+    </div>
+    <div class="admin-metric">
+      <p class="admin-metric-label">Facturación</p>
+      <p class="admin-metric-value success" id="k-fact">–</p>
+      <span class="est-delta" id="k-fact-d"></span>
+    </div>
+    <div class="admin-metric">
+      <p class="admin-metric-label">Ticket promedio</p>
+      <p class="admin-metric-value" id="k-ticket">–</p>
+      <span class="est-delta" id="k-ticket-d"></span>
+    </div>
+    <div class="admin-metric">
+      <p class="admin-metric-label">Unidades vendidas</p>
+      <p class="admin-metric-value" id="k-unidades">–</p>
+    </div>
+    <div class="admin-metric">
+      <p class="admin-metric-label">Ganancia</p>
+      <p class="admin-metric-value success" id="k-ganancia">–</p>
+    </div>
+  </div>
+
+  <div class="est-grid-2">
+    <div class="admin-card">
+      <h2 class="admin-card-title" style="margin-bottom: 1rem;">Facturación por día</h2>
+      <div class="est-chart"><canvas id="chart-serie"></canvas></div>
+      <p class="est-empty" id="serie-vacio" style="display:none;">Sin ventas en el período.</p>
+    </div>
+    <div class="admin-card">
+      <h2 class="admin-card-title" style="margin-bottom: 1rem;">Ventas por origen</h2>
+      <div class="est-chart"><canvas id="chart-origen"></canvas></div>
+      <p class="est-empty" id="origen-vacio" style="display:none;">Sin datos.</p>
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <h2 class="admin-card-title" style="margin-bottom: 1rem;">Medios de pago</h2>
+    <div class="est-chart"><canvas id="chart-medio"></canvas></div>
+    <p class="est-empty" id="medio-vacio" style="display:none;">Sin datos.</p>
+  </div>
+
+  <script>
+    import Chart from 'chart.js/auto';
+    import { cargarEstadisticas, deltaHtml, fmt$, fmtNum, rangoPreset } from '@/lib/admin-estadisticas';
+
+    const params = new URLSearchParams(window.location.search);
+    const preset = params.get('rango') || '30';
+    const d0 = params.get('desde');
+    const h0 = params.get('hasta');
+    const init = d0 && h0 ? { desde: d0, hasta: h0 } : rangoPreset(preset);
+
+    let chartSerie: Chart | null = null;
+    let chartOrigen: Chart | null = null;
+    let chartMedio: Chart | null = null;
+
+    const texto = (id: string, valor: string) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = valor;
+    };
+    const html = (id: string, valor: string) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = valor;
+    };
+    const mostrar = (id: string, visible: boolean) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = visible ? 'block' : 'none';
+    };
+
+    async function cargar(desde: string, hasta: string) {
+      let data;
+      try {
+        data = await cargarEstadisticas(desde, hasta);
+      } catch {
+        return;
+      }
+
+      texto('k-ventas', fmtNum(data.kpis.ventas));
+      html('k-ventas-d', deltaHtml(data.kpis.delta.ventas));
+      texto('k-fact', fmt$(data.kpis.facturacion));
+      html('k-fact-d', deltaHtml(data.kpis.delta.facturacion));
+      texto('k-ticket', fmt$(data.kpis.ticket));
+      html('k-ticket-d', deltaHtml(data.kpis.delta.ticket));
+      texto('k-unidades', fmtNum(data.kpis.unidades));
+      texto('k-ganancia', fmt$(data.kpis.ganancia));
+
+      // Serie
+      const serie = data.serie || [];
+      const haySerie = serie.some((s) => s.total > 0);
+      mostrar('serie-vacio', !haySerie);
+      chartSerie?.destroy();
+      chartSerie = new Chart(document.getElementById('chart-serie') as HTMLCanvasElement, {
+        type: 'line',
+        data: {
+          labels: serie.map((s) => s.dia.slice(5).split('-').reverse().join('/')),
+          datasets: [{
+            label: 'Facturación',
+            data: serie.map((s) => s.total),
+            borderColor: '#988C2D',
+            backgroundColor: 'rgba(152, 140, 45, 0.15)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 2,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { callback: (v) => '$' + Number(v).toLocaleString('es-AR') } } },
+        },
+      });
+
+      // Origen
+      const origen = data.por_origen || [];
+      mostrar('origen-vacio', !origen.length);
+      chartOrigen?.destroy();
+      chartOrigen = new Chart(document.getElementById('chart-origen') as HTMLCanvasElement, {
+        type: 'doughnut',
+        data: {
+          labels: origen.map((o) => o.origen),
+          datasets: [{ data: origen.map((o) => o.total), backgroundColor: ['#988C2D', '#604811', '#B8AB4A'] }],
+        },
+        options: { responsive: true, maintainAspectRatio: false },
+      });
+
+      // Medios de pago
+      const medios = data.por_medio || [];
+      mostrar('medio-vacio', !medios.length);
+      chartMedio?.destroy();
+      chartMedio = new Chart(document.getElementById('chart-medio') as HTMLCanvasElement, {
+        type: 'bar',
+        data: {
+          labels: medios.map((m) => m.metodo),
+          datasets: [{ label: 'Facturación', data: medios.map((m) => m.total), backgroundColor: '#988C2D', borderRadius: 4 }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: { legend: { display: false } },
+          scales: { x: { beginAtZero: true, ticks: { callback: (v) => '$' + Number(v).toLocaleString('es-AR') } } },
+        },
+      });
+    }
+
+    cargar(init.desde, init.hasta);
+    window.addEventListener('domus:periodo', (e) => {
+      const detail = (e as CustomEvent<{ desde: string; hasta: string }>).detail;
+      cargar(detail.desde, detail.hasta);
+    });
+  </script>
+</AdminLayout>

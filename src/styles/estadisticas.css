@@ -1,0 +1,60 @@
+/* src/styles/estadisticas.css */
+/* Estilos de la sección Estadísticas del admin */
+
+.est-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.est-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.est-chart {
+  position: relative;
+  height: 260px;
+}
+
+.est-chart-sm {
+  position: relative;
+  height: 220px;
+}
+
+.est-delta {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--admin-text-muted);
+}
+
+.est-delta.up {
+  color: #2f855a;
+}
+
+.est-delta.down {
+  color: #c53030;
+}
+
+.est-empty {
+  padding: 1rem;
+  color: var(--admin-text-muted);
+  font-size: 0.875rem;
+}
+
+.est-hint {
+  margin: 0 0 1rem;
+  font-size: 0.8125rem;
+  color: var(--admin-text-muted);
+}
+
+@media (max-width: 900px) {
+  .est-grid-2,
+  .est-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}

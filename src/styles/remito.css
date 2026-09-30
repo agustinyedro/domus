@@ -26,6 +26,8 @@
   .ticket-actions { flex-direction: column; }
   .ticket-actions .admin-btn { width: 100%; }
   .remito { padding: 1rem; }
+  .rm-head { flex-wrap: wrap; }
+  .rm-grid { grid-template-columns: 1fr; }
 }
 
 .remito { background: #fff; border: 1px solid rgba(96, 72, 17, 0.25); border-radius: 10px; padding: 1.5rem; color: #3d2b1f; }
