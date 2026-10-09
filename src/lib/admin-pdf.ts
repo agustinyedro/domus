@@ -62,7 +62,7 @@ export function descargarComprobantePdf(comprobante: PdfComprobante) {
   doc.text('D O M U S', 15, 18);
   doc.setFontSize(8);
   doc.setTextColor(110, 95, 66);
-  doc.text('domus.com.ar', 15, 23);
+  doc.text('tiendadomus.com.ar', 15, 23);
 
   doc.setTextColor(...OLIVA);
   doc.setFontSize(10);
@@ -166,7 +166,7 @@ export function descargarStockPdf(producto: ProductoPdf, movimientos: Array<any>
     y += 9;
   });
   doc.setFont('helvetica', 'italic');
-  doc.text('domus.com.ar', centro, alto - 8, { align: 'center' });
+  doc.text('tiendadomus.com.ar', centro, alto - 8, { align: 'center' });
   guardarPdf(doc, `stock-${archivoSeguro(String(producto.nombre || 'producto'))}.pdf`);
 }
 

@@ -32,9 +32,14 @@
       <!-- TODO: reemplazar por /images/hero-domus.jpg (foto editorial final: vela + sahumerio + lino) -->
       <img
         src="https://images.unsplash.com/photo-1602874801007-bd458bb1b8b6?q=80&w=1200&auto=format&fit=crop"
+        srcset="https://images.unsplash.com/photo-1602874801007-bd458bb1b8b6?q=80&w=640&auto=format&fit=crop 640w, https://images.unsplash.com/photo-1602874801007-bd458bb1b8b6?q=80&w=1200&auto=format&fit=crop 1200w"
+        sizes="(max-width: 900px) 100vw, 520px"
+        width="1200"
+        height="1500"
         alt="Vela encendida y sahumerio sobre cerámica junto a lino crudo, con luz cálida lateral"
         loading="eager"
         fetchpriority="high"
+        decoding="async"
       />
     </figure>
   </div>

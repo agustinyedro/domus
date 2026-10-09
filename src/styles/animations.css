@@ -184,12 +184,10 @@
   from {
     opacity: 0;
     transform: translateY(30px);
-    filter: blur(4px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0);
   }
 }
 
@@ -449,19 +447,23 @@
   animation: shimmer 1.5s infinite;
 }
 
+/* Sin JS: el contenido siempre visible */
+html:not(.js) .reveal,
+html:not(.js) .reveal-left,
+html:not(.js) .reveal-right,
+html:not(.js) .reveal-scale {
+  opacity: 1;
+  transform: none;
+}
+
 /* ============================================
-   12. REDUCED MOTION
+   12. REDUCED MOTION (intencional: conserva feedback)
    ============================================ */
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.15s !important;
-  }
-  
+  .logo-roof,
+  .scroll-indicator .scroll-arrow,
+  .skeleton,
   .hero-content .logo-container,
   .hero-content h1,
   .hero-content .subtitle,
@@ -469,9 +471,28 @@
   .hero-content .cta-buttons,
   .scroll-indicator {
     animation: none !important;
+  }
+
+  .reveal,
+  .reveal-left,
+  .reveal-right,
+  .reveal-scale {
     opacity: 1 !important;
     transform: none !important;
-    filter: none !important;
+    transition: opacity 0.15s ease-out !important;
+  }
+
+  .btn::before,
+  .card-hover:hover,
+  .pack-card:hover,
+  .sector-card:hover,
+  .pillar:hover,
+  .product-image:hover img {
+    transform: none !important;
+  }
+
+  html {
+    scroll-behavior: auto;
   }
 }
 

@@ -12,12 +12,23 @@
   --color-tierra-dark: #4A3815;
   --color-tierra-light: #5C4033;
 
-  /* Aliases legacy (compatibilidad con secciones existentes) */
+  /* Aliases legacy (deprecados: usar hueso/oliva/tierra directo) */
   --color-beige: var(--color-hueso);
   --color-beige-light: var(--color-hueso-soft);
   --color-brown: var(--color-tierra);
   --color-brown-light: var(--color-tierra-light);
   --color-olive: var(--color-oliva);
+  --color-olive-dark: var(--color-oliva-dark);
+
+  /* Semánticos (error/stock/oferta): no usar hex sueltos */
+  --color-peligro: #b3261e;
+  --color-peligro-suave: #fdecea;
+  --color-peligro-borde: #f5c6c2;
+  --color-exito: #22543d;
+  --color-exito-suave: #f0fff4;
+  --color-exito-borde: #c6f6d5;
+  --color-aviso: #92400e;
+  --color-aviso-suave: #fffbeb;
   
   /* Colores por sector */
   --color-aromas: #8B7355;
