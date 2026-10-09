@@ -2,10 +2,10 @@
 ---
 
 <!-- Cart Overlay -->
-<div class="cart-overlay" onclick="CartManager.toggleCart()"></div>
+<div class="cart-overlay" onclick="CartManager.toggleCart()" aria-hidden="true"></div>
 
 <!-- Cart Sidebar -->
-<aside class="cart-sidebar">
+<aside class="cart-sidebar" role="dialog" aria-modal="true" aria-label="Mi carrito">
   <div class="cart-header">
     <h3>Mi Carrito</h3>
     <button class="cart-close" onclick="CartManager.toggleCart()" aria-label="Cerrar carrito">
@@ -197,8 +197,8 @@
 
   /* Steppers circulares propios del carrito */
   .quantity-btn {
-    width: 38px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
     border: 1.5px solid rgba(61, 43, 31, 0.18);
     background: var(--color-beige-light);
     border-radius: 50%;
@@ -243,15 +243,19 @@
     background: none;
     border: 1px solid transparent;
     border-radius: 999px;
-    color: #dc3545;
+    color: var(--color-peligro);
     cursor: pointer;
     padding: 0.45rem;
+    min-width: 44px;
+    min-height: 44px;
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
     transition: background 0.2s ease, transform 0.15s ease;
   }
 
   .remove-btn:hover {
-    background: #fde8e8;
+    background: var(--color-peligro-suave);
   }
 
   .remove-btn:active {
@@ -337,9 +341,9 @@
   }
 
   .cart-clear:hover {
-    color: #dc3545;
-    border-color: #dc3545;
-    background: #fff5f5;
+    color: var(--color-peligro);
+    border-color: var(--color-peligro);
+    background: var(--color-peligro-suave);
     border-style: solid;
   }
 
@@ -403,7 +407,7 @@
     font-weight: 700;
     letter-spacing: 0.02em;
     padding: 0.55rem 1rem;
-    min-height: 38px;
+    min-height: 44px;
     border-radius: 999px;
     border: 1.5px solid var(--color-olive);
     background: var(--color-olive);
@@ -412,6 +416,9 @@
     cursor: pointer;
     white-space: nowrap;
     transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .cart-notification-action:hover {

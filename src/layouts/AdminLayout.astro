@@ -117,6 +117,7 @@ const nav: Array<NavLink | NavGroup> = [
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{title} | DOMUS Admin</title>
+  <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" sizes="32x32" href="/favicon-32.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -197,6 +198,7 @@ const nav: Array<NavLink | NavGroup> = [
             aria-label="Buscar en el panel"
             autocomplete="off"
             role="combobox"
+            aria-autocomplete="list"
             aria-expanded="false"
             aria-controls="admin-search-results"
           />
@@ -1350,12 +1352,15 @@ const nav: Array<NavLink | NavGroup> = [
         const cerrar = () => {
           searchResults.hidden = true;
           searchInput.setAttribute('aria-expanded', 'false');
+          searchInput.removeAttribute('aria-activedescendant');
           activo = -1;
         };
 
         const marcarActivo = () => {
           searchResults.querySelectorAll('.admin-search-item').forEach((el) => {
-            el.classList.toggle('is-active', Number((el as HTMLElement).dataset.idx) === activo);
+            const esActivo = Number((el as HTMLElement).dataset.idx) === activo;
+            el.classList.toggle('is-active', esActivo);
+            if (esActivo && el.id) searchInput.setAttribute('aria-activedescendant', el.id);
           });
         };
 
@@ -1372,7 +1377,7 @@ const nav: Array<NavLink | NavGroup> = [
               destinos.push({ href: `/admin/productos/${p.producto_id}` });
               const variante = p.variante && p.variante !== 'Única' ? ` — ${esc(p.variante)}` : '';
               partes.push(
-                `<button type="button" class="admin-search-item" data-idx="${idx}" role="option"><span>${esc(p.nombre)}${variante}</span><small>${esc(p.sku || '')} · stock ${esc(p.stock_actual ?? 0)}</small></button>`,
+                `<button type="button" id="admin-search-item-${idx}" class="admin-search-item" data-idx="${idx}" role="option"><span>${esc(p.nombre)}${variante}</span><small>${esc(p.sku || '')} · stock ${esc(p.stock_actual ?? 0)}</small></button>`,
               );
             }
           }
@@ -1386,7 +1391,7 @@ const nav: Array<NavLink | NavGroup> = [
               const origen = o.source === 'TIENDA' ? 'Tienda' : 'POS';
               const cliente = o.cliente_nombre ? ` · ${esc(o.cliente_nombre)}` : '';
               partes.push(
-                `<button type="button" class="admin-search-item" data-idx="${idx}" role="option"><span>#${id.slice(0, 8)} · ${origen}${cliente}</span><small>${fmt$(o.total)} · ${esc(o.estado)}</small></button>`,
+                `<button type="button" id="admin-search-item-${idx}" class="admin-search-item" data-idx="${idx}" role="option"><span>#${id.slice(0, 8)} · ${origen}${cliente}</span><small>${fmt$(o.total)} · ${esc(o.estado)}</small></button>`,
               );
             }
           }

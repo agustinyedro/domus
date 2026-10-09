@@ -14,7 +14,7 @@ import { resolverKit } from '@/lib/kits';
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const serviceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 const mpAccessToken = import.meta.env.MP_ACCESS_TOKEN;
-const siteUrl = import.meta.env.SITE_URL || 'https://domus.com.ar';
+const siteUrl = import.meta.env.SITE_URL || 'https://tiendadomus.com.ar';
 
 function getAdmin() {
   if (!supabaseUrl || !serviceKey) {

@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import vue from '@astrojs/vue';
+import sitemap from '@astrojs/sitemap';
 import cloudflare from '@astrojs/cloudflare';
 
 // El adaptador de Cloudflare (miniflare) corrompe la caché del
@@ -9,10 +10,18 @@ import cloudflare from '@astrojs/cloudflare';
 const isBuild = process.env.NODE_ENV === 'production';
 
 export default defineConfig({
-  site: 'https://domus.com.ar',
+  site: 'https://tiendadomus.com.ar',
   output: 'static',
   ...(isBuild ? { adapter: cloudflare() } : {}),
-  integrations: [vue()],
+  integrations: [
+    vue(),
+    sitemap({
+      filter: (page) =>
+        !/\/admin(\/|$)/.test(page) &&
+        !/\/(carrito|gracias)(\/|$)/.test(page) &&
+        !/\/(aromas|comida|ropa|experiencias)(\/|$)/.test(page),
+    }),
+  ],
   vite: {
     css: {
       preprocessorOptions: {}

@@ -12,8 +12,7 @@ export const config = {
 
   // Social Media Links
   social: {
-    instagram: 'https://instagram.com/domus', // Replace with real profile
-    tiktok: 'https://tiktok.com/@domus', // Replace with real profile
+    instagram: 'https://www.instagram.com/tienda.domus.vm',
     whatsapp: 'https://wa.me/5493512270298', // Generated from phone number
   },
 
