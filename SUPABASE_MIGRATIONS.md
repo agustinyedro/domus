@@ -55,6 +55,8 @@ Correr en este orden en una base nueva:
 
 13. `supabase-migration-banners.sql` — tabla `banners` (carrusel promocional de `/tienda`) con RLS completa + bucket público `banners`. Aditivo, no toca tablas existentes.
 
+14. `supabase-migration-categorias-multiples.sql` — columna `productos.categorias TEXT[]` (principal + secundarias) con backfill, índice GIN y `v_stock_actual` recreada **idéntica** + `p.categorias` (verificado por diff). **Va después de la 11** y re-aplica `security_invoker` (el DROP la pierde). `categoria` sigue siendo la principal.
+
 14. `supabase-migration-rls-views.sql` — `ALTER VIEW v_stock_actual SET (security_invoker = true)` para que la vista respete RLS (corrige el aviso del linter de Supabase). Si una migración futura recrea la vista con `DROP VIEW`, volver a aplicar esta línea.
 
 Semillas opcionales: `supabase-seed-productos.sql`.

@@ -714,12 +714,46 @@ const nav: Array<NavLink | NavGroup> = [
       }
     }
 
-    /* Forms */
+    /* Forms (ocupan todo el ancho; para 2 columnas usar .admin-form-grid) */
     .admin-form {
       display: flex;
       flex-direction: column;
       gap: 1rem;
-      max-width: 480px;
+    }
+
+    .admin-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem 1.25rem;
+    }
+
+    .admin-form-grid .span-2 {
+      grid-column: 1 / -1;
+    }
+
+    /* Secciones de formulario (agrupan campos con título) */
+    .admin-section {
+      background: var(--admin-card-bg);
+      border: 1px solid var(--admin-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      min-width: 0;
+    }
+
+    .admin-section-title {
+      margin: 0 0 1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    @media (max-width: 640px) {
+      .admin-form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-section {
+        padding: 1rem;
+      }
     }
 
     .admin-form-group {
@@ -744,6 +778,8 @@ const nav: Array<NavLink | NavGroup> = [
       color: var(--admin-text);
       transition: border-color 0.2s;
       min-width: 0;
+      max-width: 100%;
+      box-sizing: border-box;
     }
 
     select.admin-input {

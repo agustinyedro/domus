@@ -325,6 +325,7 @@ interface TiendaProducto {
   nombre: string;
   descripcion: string | null;
   categoria: string | null;
+  categorias?: string[] | null;
   imagen_url: string | null;
   precio_venta: number;
   precio_final: number;
@@ -464,10 +465,10 @@ const presetsPrecio = [
 
 const categorias = computed(() => {
   const map = new Map<string, number>();
-  // Conteo sobre el último resultado; la opción "Todas" siempre está
+  // Conteo sobre el último resultado; cada producto cuenta en su principal y sus secundarias
   for (const p of productos.value) {
-    const c = p.categoria || 'General';
-    map.set(c, (map.get(c) || 0) + 1);
+    const todas = new Set([p.categoria || 'General', ...((p.categorias ?? []).filter(Boolean) as string[])]);
+    for (const c of todas) map.set(c, (map.get(c) || 0) + 1);
   }
   const todas = { value: '', label: 'Todas', count: productos.value.length };
   return [todas, ...[...map.entries()].map(([value, count]) => ({ value, label: value, count }))];

@@ -1,8 +1,10 @@
 ---
-// src/pages/admin/productos/nuevo.astro
-export const prerender = false;
-import AdminLayout from '@/layouts/AdminLayout.astro';
-import ProductForm from '@/components/admin/ProductForm.vue';
+ // src/pages/admin/productos/nuevo.astro
+ export const prerender = false;
+ import AdminLayout from '@/layouts/AdminLayout.astro';
+ import ProductForm from '@/components/admin/ProductForm.vue';
+
+const grupoPreset = Astro.url.searchParams.get('grupo') || '';
 ---
 
 <AdminLayout title="Nuevo Producto">
@@ -11,6 +13,6 @@ import ProductForm from '@/components/admin/ProductForm.vue';
   </div>
 
   <div class="admin-card">
-    <ProductForm client:visible volverA="/admin/productos" />
+    <ProductForm client:visible volverA="/admin/productos" grupoPreset={grupoPreset} />
   </div>
 </AdminLayout>

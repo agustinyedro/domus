@@ -16,6 +16,7 @@ export const ProductoSchema = z.object({
   nombre: z.string().min(1, 'Nombre es requerido').max(255),
   descripcion: z.string().max(1000).nullable().optional(),
   categoria: z.string().max(100).nullable().optional(),
+  categorias: z.array(z.string().trim().min(1).max(100)).max(5, 'Máximo 5 categorías').optional(),
   imagen_url: z.string().url().max(500).nullable().optional(),
   costo: z.number().min(0, 'Costo debe ser >= 0'),
   precio_venta: z.number().min(0, 'Precio de venta debe ser >= 0'),
@@ -34,6 +35,7 @@ export const CompraSchema = z.object({
   cantidad: z.number().int().min(1, 'Cantidad mínima es 1'),
   costo_unitario: z.number().min(0, 'Costo unitario debe ser >= 0'),
   observaciones: z.string().max(500).optional(),
+  propagar_grupo: z.boolean().optional().default(false),
 });
 
 export const VentaSchema = z.object({
@@ -97,6 +99,7 @@ export const CompraBatchSchema = z.object({
         producto_id: z.string().uuid('ID de producto inválido'),
         cantidad: z.number().int().min(1, 'Cantidad mínima es 1'),
         costo_unitario: z.number().min(0, 'Costo unitario debe ser >= 0'),
+        propagar_grupo: z.boolean().optional().default(false),
       }),
     )
     .min(1, 'Agregá al menos un producto')

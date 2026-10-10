@@ -6,6 +6,10 @@
 // En la tienda el precio principal es el de efectivo y el de tarjeta se muestra tachado.
 export const RECARGO_TARJETA_DEFAULT = 15;
 
+// Margen % por defecto para productos nuevos: al cargar el costo se sugiere
+// el precio en efectivo automáticamente (costo / (1 - margen)).
+export const MARGEN_DEFAULT = 30;
+
 export const METODOS_PAGO_VENTA = ['EFECTIVO', 'TRANSFERENCIA', 'DEBITO', 'CREDITO', 'MP', 'OTRO'] as const;
 export type MetodoPagoVenta = (typeof METODOS_PAGO_VENTA)[number];
 

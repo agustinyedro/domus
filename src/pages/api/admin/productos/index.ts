@@ -44,6 +44,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   const supabase = createSupabaseServer(request, cookies);
   const producto = { ...parsed.data };
   if (!producto.grupo_id) delete producto.grupo_id;
+  // La principal siempre va primera en la lista.
+  const cats = [...new Set((producto.categorias ?? []).map((c) => String(c).trim()).filter(Boolean))].slice(0, 5);
+  if (producto.categoria && !cats.includes(producto.categoria)) cats.unshift(producto.categoria);
+  producto.categorias = cats.slice(0, 5);
+  if (!producto.categoria) producto.categoria = cats[0] ?? null;
   const { data, error } = await supabase
     .from('productos')
     .insert([{ ...producto, usuario_id: user.id }])

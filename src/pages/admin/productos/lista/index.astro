@@ -15,8 +15,14 @@ const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'lon
         <p>Vigente al {hoy}</p>
       </div>
       <div class="lista-actions no-print">
-        <button id="print-btn" class="admin-btn admin-btn-primary" onclick="window.print()">Imprimir</button>
-        <button id="pdf-btn" class="admin-btn admin-btn-success">Descargar PDF</button>
+        <button id="print-btn" class="admin-btn admin-btn-primary" onclick="window.print()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          <span>Imprimir</span>
+        </button>
+        <button id="pdf-btn" class="admin-btn admin-btn-success">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Descargar PDF</span>
+        </button>
       </div>
     </div>
 
@@ -104,16 +110,17 @@ const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'lon
 
     document.getElementById('pdf-btn')!.addEventListener('click', async (event) => {
       const button = event.currentTarget as HTMLButtonElement;
+      const label = button.querySelector('span')!;
       if (!productosLista.length) return;
       button.disabled = true;
-      button.textContent = 'Generando…';
+      label.textContent = 'Generando…';
       try {
         descargarListaPreciosPdf(productosLista, fechaLista);
       } catch {
         window.alert('No pudimos generar el PDF. Volvé a intentarlo.');
       } finally {
         button.disabled = false;
-        button.textContent = 'Descargar PDF';
+        label.textContent = 'Descargar PDF';
       }
     });
 
@@ -149,6 +156,24 @@ const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'lon
     }
 
     .lista-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+    .lista-actions .admin-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-radius: 10px;
+      box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
+    }
+
+    .lista-actions .admin-btn:hover:not(:disabled) {
+      filter: brightness(1.05);
+    }
+
+    .lista-actions .admin-btn svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
 
     .lista-nota {
       margin: 1.5rem 0 0;

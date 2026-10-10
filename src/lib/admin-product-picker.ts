@@ -85,7 +85,46 @@ export function setupProductPicker(root: HTMLElement, options: ProductPickerOpti
     select.value = item?.id || '';
     input.value = item?.label || '';
     close();
+    // No perder el foco cuando se elige con teclado o mouse
+    if (item && root.contains(document.activeElement)) input.focus();
   };
+
+  const opciones = () =>
+    [...results.querySelectorAll<HTMLButtonElement>('.product-picker-option')];
+
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      if (results.hidden) render();
+      opciones()[0]?.focus();
+    } else if (event.key === 'Escape') {
+      close();
+    } else if (event.key === 'Enter' && !results.hidden) {
+      // Elegir el primer resultado en vez de enviar el formulario
+      event.preventDefault();
+      opciones()[0]?.click();
+    }
+  });
+
+  results.addEventListener('keydown', (event) => {
+    const button = (event.target as HTMLElement).closest(
+      '.product-picker-option',
+    ) as HTMLButtonElement | null;
+    if (!button) return;
+    const lista = opciones();
+    const i = lista.indexOf(button);
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      (lista[i + 1] || lista[0])?.focus();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (i <= 0) input.focus();
+      else lista[i - 1]?.focus();
+    } else if (event.key === 'Escape') {
+      close();
+      input.focus();
+    }
+  });
 
   input.addEventListener('focus', render);
   input.addEventListener('input', () => {

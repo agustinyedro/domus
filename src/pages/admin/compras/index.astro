@@ -29,6 +29,10 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
       <p id="c-import-status" role="status" aria-live="polite"></p>
       <div id="c-import-error" class="admin-alert admin-alert-error" role="alert" hidden></div>
     </div>
+    <div id="c-borrador" class="c-borrador" hidden>
+      <span id="c-borrador-txt" role="status"></span>
+      <button type="button" id="c-borrador-off" class="admin-btn admin-btn-ghost admin-btn-sm">Descartar</button>
+    </div>
     <form id="compra-form" class="admin-form" style="max-width: none;">
       <div id="c-rows" style="display: flex; flex-direction: column; gap: 0.75rem;"></div>
 
@@ -100,7 +104,7 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
       return variante && !/^ú?nica$/i.test(variante) ? `${base} · ${variante}` : base;
     }
 
-    function agregarFila(selValue = '', cantidad = 1, costo?: number) {
+    function agregarFila(selValue = '', cantidad = 1, costo?: number, enfocar = false) {
       const row = document.createElement('div');
       row.className = 'c-row';
       row.innerHTML = `
@@ -141,10 +145,16 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
           data: { costo: String(p.costo ?? '') },
         })),
         value: selValue,
+        onSelect: (item) => {
+          if (item) (row.querySelector('.c-cant') as HTMLInputElement).focus();
+        },
       }));
       (row.querySelector('.c-cant') as HTMLInputElement).value = String(cantidad);
       if (costo !== undefined) (row.querySelector('.c-costo') as HTMLInputElement).value = String(costo);
       actualizarTotal();
+      evaluarFila(row);
+      guardarBorrador();
+      if (enfocar) (row.querySelector('.c-prod-search') as HTMLInputElement).focus();
     }
 
     function actualizarTotal() {
@@ -159,32 +169,124 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
       document.getElementById('c-total')!.textContent = fmt$(total);
     }
 
+    // Variantes hermanas: si el costo nuevo difiere, ofrecer propagarlo
+    function hermanasDe(productoId: string): Array<any> {
+      const p = productos.find((x: any) => String(x.producto_id || x.id) === String(productoId));
+      if (!p?.grupo_id) return [];
+      return productos.filter((x: any) =>
+        String(x.grupo_id || '') === String(p.grupo_id) &&
+        String(x.producto_id || x.id) !== String(productoId) &&
+        !x.kit_id
+      );
+    }
+
+    function pintarAviso(row: HTMLElement, nombre: string, actual: number, nuevo: number, n: number) {
+      let aviso = row.querySelector('[data-sib]') as HTMLElement | null;
+      if (!aviso) {
+        aviso = document.createElement('div');
+        aviso.className = 'c-sib admin-alert admin-alert-warning';
+        aviso.setAttribute('data-sib', '');
+        aviso.setAttribute('role', 'status');
+        row.appendChild(aviso);
+      }
+      if (row.dataset.propagar === '1') {
+        aviso.innerHTML = `<p style="margin: 0;">Al registrar, se actualizan costo y precio (mismo margen) de <strong>${n} ${n === 1 ? 'variante' : 'variantes'}</strong>.</p>
+          <div class="c-sib-actions"><button type="button" class="admin-btn admin-btn-ghost admin-btn-sm" data-sib-off>Deshacer</button></div>`;
+      } else {
+        aviso.innerHTML = `<p style="margin: 0 0 0.5rem;"><strong>«${escapeHtml(nombre)}» tiene ${n} ${n === 1 ? 'variante' : 'variantes'} con otro costo.</strong> El costo nuevo es ${fmt$(nuevo)} y el actual ${fmt$(actual)}. ¿Actualizo costo y precio de las variantes (conservando su margen)?</p>
+          <div class="c-sib-actions"><button type="button" class="admin-btn admin-btn-primary admin-btn-sm" data-sib-si>Sí, a las ${n}</button><button type="button" class="admin-btn admin-btn-ghost admin-btn-sm" data-sib-no>Solo esta</button></div>`;
+      }
+    }
+
+    function evaluarFila(row: HTMLElement) {
+      const sel = row.querySelector('.c-prod') as HTMLSelectElement | null;
+      const costoInput = row.querySelector('.c-costo') as HTMLInputElement | null;
+      const prod = productos.find((x: any) => String(x.producto_id || x.id) === String(sel?.value || ''));
+      const nuevo = costoInput ? Number(costoInput.value) : NaN;
+      const hermanas = prod ? hermanasDe(String(prod.producto_id || prod.id)) : [];
+      const difieren = hermanas.filter((h: any) => Number(h.costo) !== nuevo);
+      const vale = Boolean(prod) && Number.isFinite(nuevo) && nuevo >= 0 &&
+        nuevo !== Number(prod.costo) && difieren.length > 0;
+      if (!vale) {
+        delete row.dataset.propagar;
+        row.querySelector('[data-sib]')?.remove();
+        return;
+      }
+      pintarAviso(row, String(prod.nombre), Number(prod.costo), nuevo, difieren.length);
+    }
+
+    function evaluarTodas() {
+      rowsBox.querySelectorAll('.c-row').forEach((row) => evaluarFila(row as HTMLElement));
+    }
+
     rowsBox.addEventListener('input', (e) => {
       const t = e.target as HTMLElement;
       if (t.classList.contains('c-cant') || t.classList.contains('c-costo')) actualizarTotal();
+      if (t.classList.contains('c-costo')) {
+        const row = (t as HTMLElement).closest('.c-row');
+        if (row) evaluarFila(row as HTMLElement);
+      }
+      guardarBorrador();
     });
 
     rowsBox.addEventListener('change', (e) => {
       const t = e.target as HTMLElement;
       if (t.classList.contains('c-prod')) {
-        const row = (t as HTMLElement).closest('.c-row')!;
+        const row = (t as HTMLElement).closest('.c-row') as HTMLElement;
         const opt = (t as HTMLSelectElement).selectedOptions[0] as HTMLOptionElement | undefined;
         if (opt?.dataset.costo) {
           (row.querySelector('.c-costo') as HTMLInputElement).value = opt.dataset.costo;
           actualizarTotal();
         }
+        evaluarFila(row);
+        guardarBorrador();
+      }
+    });
+
+    // Avance rápido con Enter: cantidad → costo → próxima fila (o nueva)
+    rowsBox.addEventListener('keydown', (e) => {
+      if ((e as KeyboardEvent).key !== 'Enter') return;
+      const t = e.target as HTMLElement;
+      const row = (t as HTMLElement).closest('.c-row') as HTMLElement | null;
+      if (!row) return;
+      if (t.classList.contains('c-cant')) {
+        e.preventDefault();
+        (row.querySelector('.c-costo') as HTMLInputElement).focus();
+      } else if (t.classList.contains('c-costo')) {
+        e.preventDefault();
+        const filas = [...rowsBox.querySelectorAll('.c-row')];
+        const idx = filas.indexOf(row);
+        if (idx < 0) return;
+        if (idx === filas.length - 1) {
+          if (filas.length >= MAX_COMPRA_ROWS) {
+            (document.getElementById('c-btn') as HTMLButtonElement).focus();
+            return;
+          }
+          agregarFila('', 1, undefined, true);
+        } else {
+          ((filas[idx + 1] as HTMLElement).querySelector('.c-prod-search') as HTMLInputElement).focus();
+        }
       }
     });
 
     rowsBox.addEventListener('click', (e) => {
+      const sibBtn = (e.target as HTMLElement).closest('[data-sib-si],[data-sib-no],[data-sib-off]') as HTMLElement | null;
+      if (sibBtn) {
+        const row = (e.target as HTMLElement).closest('.c-row') as HTMLElement;
+        if (sibBtn.hasAttribute('data-sib-si')) row.dataset.propagar = '1';
+        else delete row.dataset.propagar;
+        evaluarFila(row);
+        return;
+      }
       const del = (e.target as HTMLElement).closest('.c-del') as HTMLElement | null;
       if (!del) return;
       if (rowsBox.querySelectorAll('.c-row').length <= 1) return;
       del.closest('.c-row')!.remove();
       actualizarTotal();
+      guardarBorrador();
     });
 
-    document.getElementById('c-add-row')!.addEventListener('click', () => agregarFila());
+    document.getElementById('c-add-row')!.addEventListener('click', () => agregarFila('', 1, undefined, true));
 
     const fileInput = document.getElementById('c-file') as HTMLInputElement;
     const sheetInput = document.getElementById('c-sheet') as HTMLSelectElement;
@@ -287,6 +389,7 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
             data: { costo: String(p.costo ?? '') },
           })));
         });
+        evaluarTodas();
       } catch { /* noop */ }
     }
 
@@ -308,13 +411,94 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
       } catch { /* noop */ }
     }
 
+    // Borrador automático: si algo falla o recargás, la compra se conserva
+    const CLAVE_BORRADOR = 'domus_compra_borrador_v1';
+    let borradorTimer = 0;
+
+    function leerFilas(): Array<{ id: string; cant: string; costo: string; propagar: boolean }> {
+      const filas = [];
+      for (const row of rowsBox.querySelectorAll('.c-row')) {
+        const id = (row.querySelector('.c-prod') as HTMLSelectElement).value;
+        const cant = (row.querySelector('.c-cant') as HTMLInputElement).value;
+        const costo = (row.querySelector('.c-costo') as HTMLInputElement).value;
+        if (id || costo || cant !== '1') {
+          filas.push({ id, cant, costo, propagar: (row as HTMLElement).dataset.propagar === '1' });
+        }
+      }
+      return filas;
+    }
+
+    function guardarBorrador() {
+      window.clearTimeout(borradorTimer);
+      borradorTimer = window.setTimeout(() => {
+        try {
+          const filas = leerFilas();
+          const obs = (document.getElementById('c-obs') as HTMLInputElement).value;
+          if (!filas.length && !obs.trim()) {
+            localStorage.removeItem(CLAVE_BORRADOR);
+            return;
+          }
+          localStorage.setItem(CLAVE_BORRADOR, JSON.stringify({ guardado: Date.now(), obs, filas }));
+        } catch { /* noop */ }
+      }, 300);
+    }
+
+    function mostrarBorrador(texto: string) {
+      (document.getElementById('c-borrador-txt') as HTMLElement).textContent = texto;
+      (document.getElementById('c-borrador') as HTMLElement).hidden = false;
+    }
+
+    function restaurarBorrador(): boolean {
+      let data: { guardado?: number; obs?: string; filas?: Array<{ id: string; cant: string; costo: string; propagar?: boolean }> } | null = null;
+      try {
+        data = JSON.parse(localStorage.getItem(CLAVE_BORRADOR) || 'null');
+      } catch { data = null; }
+      if (!data || (!data.filas?.length && !data.obs)) return false;
+      const enCatalogo = new Set(productos.map((p: any) => String(p.producto_id || p.id)));
+      const filas = (data.filas || [])
+        .filter((f) => f && (enCatalogo.has(String(f.id)) || f.costo || f.cant !== '1'))
+        .slice(0, MAX_COMPRA_ROWS);
+      rowsBox.innerHTML = '';
+      if (typeof data.obs === 'string') (document.getElementById('c-obs') as HTMLInputElement).value = data.obs;
+      for (const f of filas) {
+        agregarFila(
+          f.id && enCatalogo.has(String(f.id)) ? f.id : '',
+          Number(f.cant) || 1,
+          f.costo === '' || f.costo == null ? undefined : Number(f.costo),
+        );
+        if (f.propagar) {
+          const todas = rowsBox.querySelectorAll('.c-row');
+          const ultima = todas[todas.length - 1] as HTMLElement;
+          ultima.dataset.propagar = '1';
+          evaluarFila(ultima);
+        }
+      }
+      if (!filas.length) agregarFila();
+      const hora = data.guardado
+        ? new Date(data.guardado).toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+        : '';
+      mostrarBorrador(`Borrador recuperado${hora ? ` (${hora})` : ''}. Seguí editando o registrá la compra.`);
+      return true;
+    }
+
+    document.getElementById('c-borrador-off')!.addEventListener('click', () => {
+      try { localStorage.removeItem(CLAVE_BORRADOR); } catch { /* noop */ }
+      (document.getElementById('c-borrador') as HTMLElement).hidden = true;
+      rowsBox.innerHTML = '';
+      agregarFila('', 1, undefined, true);
+      (document.getElementById('c-obs') as HTMLInputElement).value = '';
+      actualizarTotal();
+    });
+
+    (document.getElementById('c-obs') as HTMLInputElement).addEventListener('input', guardarBorrador);
+
     document.getElementById('compra-form')!.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (importing || btn.disabled) return;
       errDiv.style.display = 'none';
       okDiv.style.display = 'none';
 
-      const items: Array<{ producto_id: string; cantidad: number; costo_unitario: number }> = [];
+      const items: Array<{ producto_id: string; cantidad: number; costo_unitario: number; propagar_grupo: boolean }> = [];
       for (const row of rowsBox.querySelectorAll('.c-row')) {
         const producto_id = (row.querySelector('.c-prod') as HTMLSelectElement).value;
         const cantidad = Number((row.querySelector('.c-cant') as HTMLInputElement).value);
@@ -324,7 +508,7 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
           errDiv.style.display = 'block';
           return;
         }
-        items.push({ producto_id, cantidad, costo_unitario });
+        items.push({ producto_id, cantidad, costo_unitario, propagar_grupo: (row as HTMLElement).dataset.propagar === '1' });
       }
       if (!items.length || items.length > MAX_COMPRA_ROWS) {
         errDiv.textContent = `La compra debe tener entre 1 y ${MAX_COMPRA_ROWS} filas.`;
@@ -348,8 +532,11 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
           errDiv.style.display = 'block';
           return;
         }
-        okDiv.textContent = `Compra registrada: ${data.cantidad_items} productos por ${fmt$(Number(data.total))}.`;
+        okDiv.textContent = `Compra registrada: ${data.cantidad_items} productos por ${fmt$(Number(data.total))}.` +
+          (Number(data.variantes_actualizadas) > 0 ? ` Además se actualizaron costo y precio de ${data.variantes_actualizadas} ${Number(data.variantes_actualizadas) === 1 ? 'variante' : 'variantes'}.` : '');
         okDiv.style.display = 'block';
+        try { localStorage.removeItem(CLAVE_BORRADOR); } catch { /* noop */ }
+        (document.getElementById('c-borrador') as HTMLElement).hidden = true;
         importStatus.textContent = '';
         importError.hidden = true;
         rowsBox.innerHTML = '';
@@ -365,9 +552,11 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
       }
     });
 
-    agregarFila();
-    cargarProductos();
-    cargarHistorial();
+    void (async () => {
+      await cargarProductos();
+      if (!restaurarBorrador()) agregarFila();
+      cargarHistorial();
+    })();
   </script>
 
   <style is:global>
@@ -376,6 +565,29 @@ import ProductoModal from '@/components/admin/ProductoModal.vue';
       grid-template-columns: 2fr 1fr 1fr auto auto;
       gap: 0.5rem;
       align-items: end;
+    }
+    .c-borrador {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      padding: 0.625rem 0.875rem;
+      border: 1px dashed var(--admin-primary);
+      border-radius: 8px;
+      background: rgba(152, 140, 45, 0.07);
+      font-size: 0.875rem;
+    }
+    .c-borrador[hidden] { display: none; }
+    .c-sib {
+      grid-column: 1 / -1;
+      margin: 0;
+    }
+    .c-sib-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
     }
     .compra-import { padding: 1rem; margin-bottom: 1.5rem; border: 1px dashed var(--admin-border); border-radius: 8px; background: var(--admin-bg); }
     .compra-import h3 { font-size: 1rem; margin: 0 0 0.5rem; }

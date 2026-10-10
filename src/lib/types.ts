@@ -11,6 +11,7 @@ export interface Producto {
   nombre: string;
   descripcion: string | null;
   categoria: string | null;
+  categorias?: string[] | null;
   imagen_url: string | null;
   costo: number;
   precio_venta: number;

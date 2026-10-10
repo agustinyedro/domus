@@ -55,6 +55,22 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
   // partial() aplica defaults (ej: activo=true) a los campos ausentes:
   // sólo se actualizan los campos realmente presentes en el body.
   const campos = Object.fromEntries(Object.entries(parsed.data).filter(([k]) => k in body));
+
+  // Categorías múltiples: `categoria` es la principal (primera de la lista).
+  if (Array.isArray((parsed.data as { categorias?: unknown }).categorias)) {
+    const cats = [...new Set((parsed.data as { categorias?: string[] }).categorias!)].slice(0, 5);
+    if ('categoria' in body) {
+      const principal = campos.categoria as string | null;
+      campos.categorias = principal
+        ? [principal, ...cats.filter((c) => c !== principal)].slice(0, 5)
+        : cats;
+    } else if (cats.length > 0) {
+      campos.categorias = cats;
+      campos.categoria = cats[0];
+    } else {
+      delete campos.categorias;
+    }
+  }
   if (Object.keys(campos).length === 0) {
     return new Response(JSON.stringify({ error: 'Sin campos para actualizar' }), { status: 400 });
   }

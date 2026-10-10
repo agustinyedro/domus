@@ -5,6 +5,7 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import { getUsuarioActual, createSupabaseServer } from '@/lib/supabase';
 import { CompraSchema, CompraBatchSchema } from '@/lib/validations';
+import { precioEfectivo, precioTarjeta, clampRecargo, RECARGO_TARJETA_DEFAULT } from '@/lib/precios';
 
 export const GET: APIRoute = async ({ request, cookies, url }) => {
   const user = await getUsuarioActual(request, cookies);
@@ -46,18 +47,54 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   const items = esBatch
-    ? (parsed.data as { items: Array<{ producto_id: string; cantidad: number; costo_unitario: number }>; observaciones?: string }).items
-    : [{ producto_id: (parsed.data as { producto_id: string }).producto_id, cantidad: (parsed.data as { cantidad: number }).cantidad, costo_unitario: (parsed.data as { costo_unitario: number }).costo_unitario }];
+    ? (parsed.data as { items: Array<{ producto_id: string; cantidad: number; costo_unitario: number; propagar_grupo?: boolean }>; observaciones?: string }).items
+    : [{ producto_id: (parsed.data as { producto_id: string }).producto_id, cantidad: (parsed.data as { cantidad: number }).cantidad, costo_unitario: (parsed.data as { costo_unitario: number }).costo_unitario, propagar_grupo: (parsed.data as { propagar_grupo?: boolean }).propagar_grupo }];
   const observaciones = (parsed.data as { observaciones?: string }).observaciones;
   const supabase = createSupabaseServer(request, cookies);
   const fecha = new Date().toISOString();
   const registradas = [];
+  let variantesActualizadas = 0;
+  const uid = user.id;
+
+  // Propaga costo + precio (conservando el margen de cada una) a las
+  // variantes hermanas del mismo grupo (excluye espejos de kits).
+  async function propagarAGrupo(grupoId: string, exceptoId: string, costoNuevo: number) {
+    const { data: hermanas } = await supabase
+      .from('productos')
+      .select('id, costo, precio_venta, recargo_tarjeta')
+      .eq('usuario_id', uid)
+      .eq('grupo_id', grupoId)
+      .neq('id', exceptoId)
+      .is('kit_id', null);
+    if (!hermanas?.length) return 0;
+    let actualizadas = 0;
+    for (const h of hermanas) {
+      const costoNuevoRedondo = Math.round(Number(costoNuevo));
+      const recargo = clampRecargo(Number(h.recargo_tarjeta ?? RECARGO_TARJETA_DEFAULT));
+      const campos: { costo: number; precio_venta?: number } = { costo: costoNuevoRedondo };
+      const costoViejo = Number(h.costo);
+      const efectivoViejo = precioEfectivo(Number(h.precio_venta), recargo);
+      if (costoViejo > 0 && efectivoViejo > 0) {
+        const margen = (efectivoViejo - costoViejo) / efectivoViejo;
+        if (margen > 0 && margen < 1) {
+          campos.precio_venta = precioTarjeta(Math.round(costoNuevoRedondo / (1 - margen)), recargo);
+        }
+      }
+      const { error } = await supabase
+        .from('productos')
+        .update(campos)
+        .eq('id', h.id)
+        .eq('usuario_id', uid);
+      if (!error) actualizadas += 1;
+    }
+    return actualizadas;
+  }
 
   for (const item of items) {
     // Verificar producto del usuario
     const { data: prod, error: prodError } = await supabase
       .from('productos')
-      .select('id, nombre')
+      .select('id, nombre, grupo_id')
       .eq('id', item.producto_id)
       .eq('usuario_id', user.id)
       .single();
@@ -102,12 +139,17 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       .eq('id', item.producto_id)
       .eq('usuario_id', user.id);
 
+    // 4. Propagar costo + precio a las variantes hermanas (si se pidió)
+    if (item.propagar_grupo && prod.grupo_id) {
+      variantesActualizadas += await propagarAGrupo(prod.grupo_id, item.producto_id, item.costo_unitario);
+    }
+
     registradas.push({ ...compra, producto_nombre: prod.nombre });
   }
 
   const total = registradas.reduce((s, r) => s + Number(r.costo_total), 0);
 
-  return new Response(JSON.stringify({ items: registradas, total, cantidad_items: registradas.length }), {
+  return new Response(JSON.stringify({ items: registradas, total, cantidad_items: registradas.length, variantes_actualizadas: variantesActualizadas }), {
     status: 201,
     headers: { 'Content-Type': 'application/json' },
   });

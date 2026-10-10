@@ -47,9 +47,11 @@ export const GET: APIRoute = async ({ url }) => {
       query = query.or(`nombre.ilike.%${q}%,variante.ilike.%${q}%,sku.ilike.%${q}%,descripcion.ilike.%${q}%`);
     }
 
-    // Filtro sector/categoría
+    // Filtro sector/categoría (principal o cualquiera de las secundarias)
     if (sector) {
-      query = query.eq('categoria', sector);
+      query = /[,()]/.test(sector)
+        ? query.eq('categoria', sector)
+        : query.or(`categoria.eq.${sector},categorias.cs.{${sector}}`);
     }
 
     // Filtro precio (sobre el precio en efectivo, que es el que se muestra)
