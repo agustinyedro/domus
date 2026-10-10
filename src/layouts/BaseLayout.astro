@@ -5,21 +5,62 @@ import '../styles/animations.css';
 interface Props {
   title?: string;
   description?: string;
+  canonical?: string;
+  noindex?: boolean;
+  ogImage?: string;
+  ogType?: string;
+  jsonLd?: Record<string, unknown>;
 }
 
-const { 
+const {
   title = 'DOMUS - Sentir tu hogar en cada detalle',
-  description = 'Aromas, momentos y sensaciones diseñadas para que cada espacio se sienta verdaderamente tuyo. Descubrí nuestra historia y nuestros packs de suscripción.'
+  description = 'Aromas, momentos y sensaciones diseñadas para que cada espacio se sienta verdaderamente tuyo. Descubrí nuestra historia y nuestros packs de suscripción.',
+  canonical,
+  noindex = false,
+  ogImage,
+  ogType = 'website',
+  jsonLd,
 } = Astro.props;
+
+const site = Astro.site?.href ?? 'https://tiendadomus.com.ar/';
+const canonicalUrl = canonical
+  ? new URL(canonical, site).href
+  : new URL(Astro.url.pathname, site).href;
+const ogImageUrl = ogImage ? new URL(ogImage, site).href : undefined;
+
+const organizacion = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'DOMUS',
+  url: site,
+  logo: new URL('/favicon.svg', site).href,
+  sameAs: ['https://www.instagram.com/tienda.domus.vm'],
+};
 ---
 
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <script>document.documentElement.classList.add('js');</script>
   <meta name="description" content={description}>
   <meta name="theme-color" content="#DBD190">
+  <link rel="canonical" href={canonicalUrl}>
+  {noindex && <meta name="robots" content="noindex, nofollow">}
+  <meta property="og:type" content={ogType}>
+  <meta property="og:site_name" content="DOMUS">
+  <meta property="og:locale" content="es_AR">
+  <meta property="og:title" content={title}>
+  <meta property="og:description" content={description}>
+  <meta property="og:url" content={canonicalUrl}>
+  {ogImageUrl && <meta property="og:image" content={ogImageUrl}>}
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content={title}>
+  <meta name="twitter:description" content={description}>
+  {ogImageUrl && <meta name="twitter:image" content={ogImageUrl}>}
+  <script type="application/ld+json" set:html={JSON.stringify(organizacion)} />
+  {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" sizes="32x32" href="/favicon-32.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">

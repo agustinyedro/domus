@@ -134,7 +134,10 @@
                 <img
                   :src="fotoDe(g.principal)"
                   :alt="g.principal.nombre"
+                  width="400"
+                  height="300"
                   loading="lazy"
+                  decoding="async"
                   @error="onImgError($event, g.principal.categoria)"
                 />
               </a>
@@ -178,7 +181,7 @@
               <p v-if="g.variantes.length > 1" class="shop-variant-summary">{{ g.variantes.length }} opciones de {{ (g.principal.nombre_opcion || 'producto').toLowerCase() }}</p>
               <p v-if="g.principal.descripcion" class="shop-card-description">{{ g.principal.descripcion }}</p>
 
-              <div class="shop-card-price">
+              <div class="shop-card-price" :aria-label="`Precio desde ${efectivoDesde(g).toLocaleString('es-AR')} pesos`">
                 <span v-if="descuentoCard(g) > 0" class="shop-price-old">${{ Number(g.principal.precio_venta).toLocaleString('es-AR') }}</span>
                 <span class="shop-price">
                   <span v-if="precioDesde(g) < precioHasta(g)" class="shop-price-from">desde </span>${{ efectivoDesde(g).toLocaleString('es-AR') }}
@@ -206,7 +209,7 @@
         <section class="product-modal" role="dialog" aria-modal="true" :aria-labelledby="`product-title-${modalGrupo.grupo_id}`">
           <button type="button" class="product-modal-close" aria-label="Cerrar" @click="cerrarProducto">×</button>
           <div class="product-modal-media">
-            <img :src="fotoDe(modalProducto)" :alt="modalProducto.nombre" @error="onImgError($event, modalProducto.categoria)" />
+            <img :src="fotoDe(modalProducto)" :alt="modalProducto.nombre" width="800" height="600" decoding="async" @error="onImgError($event, modalProducto.categoria)" />
             <span
               v-if="modalProducto.stock_actual > 0 && modalProducto.stock_actual <= modalProducto.stock_minimo"
               class="shop-badge shop-badge-low product-modal-low"
@@ -567,12 +570,16 @@ function limpiarTodo() {
 }
 
 function abrirProducto(grupo: GrupoProducto) {
+  ultimoFoco = document.activeElement as HTMLElement | null;
   modalGrupo.value = grupo;
   const primeraDisponible = grupo.variantes.find((v) => v.stock_actual > 0) || grupo.principal;
   modalVarianteId.value = primeraDisponible.producto_id;
   cantidad.value = 1;
   shareStatus.value = '';
   document.body.style.overflow = 'hidden';
+  window.setTimeout(() => {
+    document.querySelector<HTMLElement>('.product-modal-close')?.focus();
+  }, 30);
 }
 
 async function compartirProducto() {
@@ -603,6 +610,27 @@ function cerrarProducto() {
   modalVarianteId.value = '';
   cantidad.value = 1;
   document.body.style.overflow = '';
+  ultimoFoco?.focus?.();
+  ultimoFoco = null;
+}
+
+let ultimoFoco: HTMLElement | null = null;
+
+function atraparTab(event: KeyboardEvent) {
+  const modal = document.querySelector('.product-modal');
+  if (!modal) return;
+  const focos = [...modal.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter((el) => el.offsetParent !== null);
+  if (!focos.length) return;
+  const primero = focos[0];
+  const ultimo = focos[focos.length - 1];
+  if (event.shiftKey && document.activeElement === primero) {
+    event.preventDefault();
+    ultimo.focus();
+  } else if (!event.shiftKey && document.activeElement === ultimo) {
+    event.preventDefault();
+    primero.focus();
+  }
 }
 
 function agregar(p: TiendaProducto, unidades = 1) {
@@ -643,7 +671,9 @@ onMounted(() => {
 });
 
 function onKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape' && modalGrupo.value) cerrarProducto();
+  if (!modalGrupo.value) return;
+  if (event.key === 'Escape') cerrarProducto();
+  if (event.key === 'Tab') atraparTab(event);
 }
 
 function recargarPorCompra() {
@@ -719,6 +749,11 @@ onBeforeUnmount(() => {
   cursor: pointer;
   color: var(--color-brown-light);
   padding: 0.25rem 0.5rem;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .shop-toolbar-actions {
@@ -906,9 +941,9 @@ onBeforeUnmount(() => {
 }
 
 .shop-error {
-  background: #fff5f5;
-  border: 1px solid #fed7d7;
-  color: #742a2a;
+  background: var(--color-peligro-suave);
+  border: 1px solid var(--color-peligro-borde);
+  color: var(--color-peligro);
   border-radius: 8px;
   padding: 1rem;
 }
@@ -969,8 +1004,8 @@ onBeforeUnmount(() => {
   right: 0.625rem;
   bottom: 0.625rem;
   z-index: 2;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 1px solid rgba(61, 43, 31, 0.16);
   background: white;
@@ -1066,17 +1101,17 @@ onBeforeUnmount(() => {
 
 .shop-badge-sold {
   left: 0.625rem;
-  background: var(--color-olive);
+  background: var(--color-oliva-dark);
 }
 
 .shop-badge-low {
   left: 0.625rem;
-  background: #a74424;
+  background: var(--color-aviso);
 }
 
 .shop-badge-off {
   right: 0.625rem;
-  background: #e53e3e;
+  background: var(--color-peligro);
 }
 
 .shop-card-body {
@@ -1092,8 +1127,8 @@ onBeforeUnmount(() => {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--color-olive);
-  font-weight: 600;
+  color: var(--color-oliva-dark);
+  font-weight: 700;
 }
 
 .shop-card-name {
@@ -1195,11 +1230,11 @@ onBeforeUnmount(() => {
 }
 
 .shop-stock-low {
-  color: #c05621;
+  color: var(--color-aviso);
 }
 
 .shop-stock-out {
-  color: #9b2c2c;
+  color: var(--color-peligro);
 }
 
 .shop-card-title {

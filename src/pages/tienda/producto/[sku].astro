@@ -26,9 +26,39 @@ const descripcion = producto?.descripcion?.trim()
   || (producto
     ? `${producto.nombre}${etiqueta} en DOMUS. ${producto.categoria || 'Catálogo DOMUS'}. Envío y retiro coordinado por WhatsApp.`
     : 'Buscaste un producto que ya no está disponible en la tienda DOMUS.');
+
+const principal = variantes.find((v) => v.stock_actual > 0) || variantes[0] || producto;
+const canonicalSku = principal ? principal.sku : sku;
+const jsonLd = producto
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: `${producto.nombre}${etiqueta}`,
+      description: descripcion,
+      image: producto.imagen_url ? [producto.imagen_url] : undefined,
+      sku: producto.sku,
+      category: producto.categoria || undefined,
+      offers: {
+        '@type': 'Offer',
+        url: `/tienda/producto/${encodeURIComponent(canonicalSku)}`,
+        priceCurrency: 'ARS',
+        price: producto.precio_efectivo,
+        availability:
+          producto.stock_actual > 0
+            ? 'https://schema.org/InStock'
+            : 'https://schema.org/OutOfStock',
+      },
+    }
+  : undefined;
 ---
 
-<BaseLayout title={titulo} description={descripcion}>
+<BaseLayout
+  title={titulo}
+  description={descripcion}
+  canonical={producto ? `/tienda/producto/${encodeURIComponent(canonicalSku)}` : undefined}
+  noindex={!producto}
+  jsonLd={jsonLd}
+>
   <Navbar />
   <Cart />
 

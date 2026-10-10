@@ -585,7 +585,7 @@ onMounted(async () => {
             <div class="rm-head">
               <div>
                 <p class="rm-logo">DOMUS</p>
-                <p class="rm-sub">domus.com.ar</p>
+                <p class="rm-sub">tiendadomus.com.ar</p>
               </div>
               <div class="rm-doc">
                 <p class="rm-doctitle">NOTA DE VENTA</p>

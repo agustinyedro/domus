@@ -145,7 +145,7 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
       <article class="t-card" data-id="${p.producto_id}">
         <div class="t-media">
           <a class="t-media-link" href="${href}" aria-label="Ver ${visible}">
-            <img src="${img}" alt="${visible}" loading="lazy" onerror="this.src='${fallbackImg}'" />
+            <img src="${img}" alt="${visible}" width="400" height="400" loading="lazy" decoding="async" onerror="this.src='${fallbackImg}'" />
           </a>
           <button class="t-add-icon" type="button" data-item="${item}"
             data-label-alta="Agregar ${visible} al carrito"
@@ -407,8 +407,8 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
   }
 
   .t-nav {
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     border: 1px solid rgba(96, 72, 17, 0.25);
     background: #fff;
@@ -541,8 +541,8 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
     right: 0.5rem;
     bottom: 0.5rem;
     z-index: 2;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     padding: 0;
     border-radius: 50%;
     border: 1px solid rgba(61, 43, 31, 0.16);
@@ -638,12 +638,12 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
 
   .t-badge-sold {
     left: 0.625rem;
-    background: var(--color-olive);
+    background: var(--color-oliva-dark);
   }
 
   .t-badge-off {
     right: 0.625rem;
-    background: #e53e3e;
+    background: var(--color-peligro);
   }
 
   .t-badge-out {
@@ -664,8 +664,8 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: var(--color-olive);
-    font-weight: 600;
+    color: var(--color-oliva-dark);
+    font-weight: 700;
   }
 
   .t-body h3 {
@@ -765,10 +765,6 @@ const sectorInicial = Astro.url.searchParams.get('sector') || '';
 
     .tienda-strip .t-card {
       flex: 0 0 158px;
-    }
-
-    .tienda-nav {
-      display: none;
     }
 
     .tienda-tagline {
