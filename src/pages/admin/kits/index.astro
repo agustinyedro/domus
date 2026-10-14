@@ -22,7 +22,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
             <th class="text-center">Ítems</th>
             <th class="text-right">Valor separado</th>
             <th class="text-right">Costo</th>
-            <th class="text-right">Precio</th>
+            <th class="text-right">Precio efec. / tarjeta</th>
             <th class="text-center">Margen</th>
             <th class="text-center">Tienda</th>
             <th class="text-center">Acciones</th>
@@ -40,6 +40,9 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
 
     const fmt$ = (n: number) => `$${Math.round(n).toLocaleString('es-AR')}`;
     const num = (n: unknown) => Number(n) || 0;
+    const RECARGO_KIT = 15;
+    const efectivoDeTarjeta = (t: number) => Math.round(num(t) / (1 + RECARGO_KIT / 100));
+    const tarjetaDeEfectivo = (e: number) => Math.round(num(e) * (1 + RECARGO_KIT / 100));
     let productos: Array<any> = [];
     let kitsCache: Array<any> = [];
     const kitPickers = new Map<string, ProductPicker>();
@@ -54,9 +57,10 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     function calcular(kit: any) {
       const items = kit.items || [];
       const valor = items.reduce((s: number, i: any) => s + precioVigente(i.productos) * num(i.cantidad), 0);
+      const valorEfectivo = items.reduce((s: number, i: any) => s + efectivoDeTarjeta(precioVigente(i.productos)) * num(i.cantidad), 0);
       const costo = items.reduce((s: number, i: any) => s + num(i.productos?.costo) * num(i.cantidad), 0);
       const unidades = items.reduce((s: number, i: any) => s + num(i.cantidad), 0);
-      return { valor, costo, unidades, items: items.length };
+      return { valor, valorEfectivo, costo, unidades, items: items.length };
     }
 
     function margenInfo(margen: number) {
@@ -72,7 +76,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
           id: String(p.producto_id || p.id),
           label: `${p.nombre}${opcion}`,
           search: `${p.nombre || ''} ${p.variante || ''} ${p.nombre_opcion || ''} ${p.sku || ''}`,
-          meta: `${p.sku ? `${p.sku} · ` : ''}${fmt$(precioVigente(p))} · stock ${p.stock_actual ?? 0}`,
+          meta: `${p.sku ? `${p.sku} · ` : ''}${fmt$(efectivoDeTarjeta(precioVigente(p)))} efec. · stock ${p.stock_actual ?? 0}`,
         };
       });
     }
@@ -91,9 +95,10 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
         return;
       }
       body.innerHTML = kitsCache.map((k) => {
-        const { valor, costo, unidades, items } = calcular(k);
+        const { valorEfectivo, costo, unidades, items } = calcular(k);
         const precio = num(k.precio_venta);
-        const margen = precio > 0 ? Math.round((1 - costo / precio) * 100) : 0;
+        const efectivo = efectivoDeTarjeta(precio);
+        const margen = efectivo > 0 ? Math.round((1 - costo / efectivo) * 100) : 0;
         const sem = margenInfo(margen);
         const publicado = Boolean(k.publicado);
         return `<tr>
@@ -102,9 +107,9 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
             ${k.descripcion ? `<br/><span class="kit-muted">${k.descripcion}</span>` : ''}
           </td>
           <td class="text-center">${items} · ${unidades} u.</td>
-          <td class="text-right">${fmt$(valor)}</td>
+          <td class="text-right">${fmt$(valorEfectivo)}</td>
           <td class="text-right">${fmt$(costo)}</td>
-          <td class="text-right"><strong>${precio > 0 ? fmt$(precio) : '—'}</strong></td>
+          <td class="text-right"><strong>${precio > 0 ? fmt$(efectivo) : '—'}</strong>${precio > 0 ? `<br/><span class="kit-muted">con tarjeta ${fmt$(precio)}</span>` : ''}</td>
           <td class="text-center"><span class="kit-semaforo ${sem.clase}">${margen}%</span></td>
           <td class="text-center">
             ${publicado
@@ -177,7 +182,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
           <label class="admin-form-label" for="km-desc">Descripción</label>
           <input id="km-desc" type="text" class="admin-input" maxlength="1000" placeholder="Opcional" />
         </div>
-        <p class="kit-muted" style="margin: 0 0 1rem;">Después de crearlo vas a poder agregar productos y calcular el precio.</p>
+        <p class="kit-muted" style="margin: 0 0 1rem;">Después de crearlo agregás productos y cargás el precio en efectivo (la tarjeta se calcula sola).</p>
         <div id="km-error" class="admin-alert admin-alert-error" style="display:none;"></div>
         <div class="kit-modal-actions">
           <button type="button" class="admin-btn admin-btn-ghost" id="km-cancel">Cancelar</button>
@@ -264,7 +269,8 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
       root.querySelector('#ke-save')!.addEventListener('click', async () => {
         const nombre = (root.querySelector('#ke-nombre') as HTMLInputElement).value.trim();
         const descripcion = (root.querySelector('#ke-desc') as HTMLInputElement).value.trim() || null;
-        const precio = num((root.querySelector(`[data-kit-price="${kit.id}"]`) as HTMLInputElement)?.value);
+        const efectivo = num((root.querySelector(`[data-kit-price="${kit.id}"]`) as HTMLInputElement)?.value);
+        const precio = tarjetaDeEfectivo(efectivo);
         const err = root.querySelector('#km-error2') as HTMLElement;
         if (!nombre) {
           err.textContent = 'Poné un nombre.';
@@ -287,7 +293,7 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
         }
         await cargarKits();
         cerrarModal();
-        aviso(`Kit "${nombre}" actualizado.`, 'ok');
+        aviso(`Kit "${nombre}" actualizado: efectivo ${fmt$(efectivo)} · tarjeta ${fmt$(precio)}.`, 'ok');
       });
 
       actualizarEditor(kit.id);
@@ -297,31 +303,34 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     function actualizarEditor(kitId: string) {
       const kit = kitsCache.find((k) => k.id === kitId);
       if (!kit) return;
-      const { valor, costo } = calcular(kit);
-      const precio = num(kit.precio_venta);
-      const ahorro = valor - precio;
+      const { valorEfectivo, costo } = calcular(kit);
+      const valor = valorEfectivo;
+      const efectivo = efectivoDeTarjeta(num(kit.precio_venta));
+      const precio = tarjetaDeEfectivo(efectivo);
+      const ahorro = valor - efectivo;
       const ahorroPct = valor > 0 ? Math.round((ahorro / valor) * 100) : 0;
-      const ganancia = precio - costo;
-      const margen = precio > 0 ? Math.round((1 - costo / precio) * 100) : 0;
+      const ganancia = efectivo - costo;
+      const margen = efectivo > 0 ? Math.round((1 - costo / efectivo) * 100) : 0;
       const sem = margenInfo(margen);
-      const perdida = precio > 0 && precio < costo;
+      const perdida = efectivo > 0 && efectivo < costo;
       const pocoAtractivo = ahorroPct < 15 && valor > 0;
 
       const itemsBox = document.querySelector('#ke-items');
       if (itemsBox) {
         const filas = (kit.items || []).map((i: any) => {
           const p = i.productos || {};
-          const sub = precioVigente(p) * num(i.cantidad);
+          const unitEfec = efectivoDeTarjeta(precioVigente(p));
+          const sub = unitEfec * num(i.cantidad);
           return `<tr>
             <td class="kit-col-cant">${i.cantidad}</td>
             <td>${p.nombre || ''}</td>
-            <td class="text-right">${fmt$(precioVigente(p))}</td>
+            <td class="text-right">${fmt$(unitEfec)}</td>
             <td class="text-right">${fmt$(sub)}</td>
             <td class="kit-col-del"><button type="button" data-item="${i.id}" data-kit="${kit.id}" class="row-del kit-del-item" aria-label="Quitar" title="Quitar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>
           </tr>`;
         }).join('');
         itemsBox.innerHTML = `<div class="kit-items-table-wrap"><table class="kit-items-table">
-          <thead><tr><th class="kit-col-cant">Cant.</th><th>Producto</th><th class="text-right">Precio</th><th class="text-right">Subtotal</th><th class="kit-col-del"></th></tr></thead>
+          <thead><tr><th class="kit-col-cant">Cant.</th><th>Producto</th><th class="text-right">Efec.</th><th class="text-right">Subtotal</th><th class="kit-col-del"></th></tr></thead>
           <tbody>${filas || '<tr><td colspan="5" class="kit-empty">Sin productos todavía.</td></tr>'}</tbody>
         </table></div>`;
       }
@@ -339,16 +348,17 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
         ].filter((s) => s.val > 0);
         panel.innerHTML = `
           <div class="kit-metrics">
-            <div><span>Valor por separado</span><strong data-m="valor">${fmt$(valor)}</strong></div>
+            <div><span>Valor por separado (efec.)</span><strong data-m="valor">${fmt$(valor)}</strong></div>
             <div><span>Costo total</span><strong data-m="costo">${fmt$(costo)}</strong></div>
             <div><span>Ahorro cliente</span><strong data-m="ahorro" class="${ahorro > 0 ? 'ok' : ''}">${fmt$(Math.max(ahorro, 0))} · ${Math.max(ahorroPct, 0)}%</strong></div>
-            <div><span>Ganancia</span><strong data-m="ganancia" class="${ganancia >= 0 ? 'ok' : 'bad'}">${fmt$(ganancia)}</strong></div>
+            <div><span>Ganancia (efec.)</span><strong data-m="ganancia" class="${ganancia >= 0 ? 'ok' : 'bad'}">${fmt$(ganancia)}</strong></div>
           </div>
           <div class="kit-price-row">
-            <label>Precio del kit</label>
-            <input data-kit-price="${kit.id}" type="number" class="admin-input" min="0" step="1" value="${precio}" />
+            <label for="ke-precio">Precio del kit en efectivo</label>
+            <input id="ke-precio" data-kit-price="${kit.id}" type="number" class="admin-input" min="0" step="1" value="${efectivo}" />
             <span class="kit-semaforo ${sem.clase}" data-m="semaforo">${margen}% · ${sem.label}</span>
           </div>
+          <p class="kit-dual" data-m="dual">Con tarjeta se cobra: <strong>${fmt$(precio)}</strong> · vos cargás ${fmt$(efectivo)} en efectivo</p>
           <div class="kit-chips">
             ${sugerencias.map((s) => `<button type="button" class="kit-chip" data-kit-suggest="${kit.id}" data-val="${s.val}">${s.label} · ${fmt$(s.val)}</button>`).join('')}
           </div>
@@ -459,15 +469,17 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
       }
     });
 
-    function recalcularPanel(kitId: string, precio: number) {
+    function recalcularPanel(kitId: string, efectivo: number) {
       const kit = kitsCache.find((k) => k.id === kitId);
       const panel = document.querySelector(`.kit-panel[data-kit-panel="${kitId}"]`);
       if (!kit || !panel) return;
-      const { valor, costo } = calcular(kit);
-      const margen = precio > 0 ? Math.round((1 - costo / precio) * 100) : 0;
-      const ahorro = valor - precio;
+      const { valorEfectivo, costo } = calcular(kit);
+      const valor = valorEfectivo;
+      const precio = tarjetaDeEfectivo(efectivo);
+      const margen = efectivo > 0 ? Math.round((1 - costo / efectivo) * 100) : 0;
+      const ahorro = valor - efectivo;
       const ahorroPct = valor > 0 ? Math.round((ahorro / valor) * 100) : 0;
-      const ganancia = precio - costo;
+      const ganancia = efectivo - costo;
       const sem = margenInfo(margen);
       const set = (m: string, txt: string, cls?: string) => {
         const el = panel.querySelector(`[data-m="${m}"]`);
@@ -478,6 +490,8 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
       set('ahorro', `${fmt$(Math.max(ahorro, 0))} · ${Math.max(ahorroPct, 0)}%`, ahorro > 0 ? 'ok' : '');
       set('ganancia', fmt$(ganancia), ganancia >= 0 ? 'ok' : 'bad');
       set('semaforo', `${margen}% · ${sem.label}`, `kit-semaforo ${sem.clase}`);
+      const dual = panel.querySelector('[data-m="dual"]');
+      if (dual) dual.innerHTML = `Con tarjeta se cobra: <strong>${fmt$(precio)}</strong> · vos cargás ${fmt$(efectivo)} en efectivo`;
     }
 
     await cargarProductos();
@@ -535,9 +549,11 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
     .kit-metrics strong { font-size: 1.125rem; }
     .kit-metrics strong.ok { color: #2f855a; }
     .kit-metrics strong.bad { color: #e53e3e; }
-    .kit-price-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .kit-price-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
     .kit-price-row label { font-size: 0.8125rem; font-weight: 600; }
     .kit-price-row input { max-width: 160px; }
+    .kit-dual { margin: 0 0 1rem; font-size: 0.875rem; }
+    .kit-dual strong { font-size: 1.125rem; }
     .kit-chips { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .kit-chip { font: inherit; font-size: 0.75rem; padding: 0.375rem 0.75rem; border: 1px solid var(--admin-border); border-radius: 999px; background: #fff; cursor: pointer; transition: border-color 0.2s ease, color 0.2s ease; }
     .kit-chip:hover { border-color: #988C2D; color: #988C2D; }
