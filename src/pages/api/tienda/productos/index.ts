@@ -4,6 +4,7 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
+import { palabrasBusqueda } from '@/lib/busqueda';
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const serviceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -42,9 +43,12 @@ export const GET: APIRoute = async ({ url }) => {
       .select('*')
       .eq('activo', true);
 
-    // Filtro búsqueda
-    if (q) {
-      query = query.or(`nombre.ilike.%${q}%,variante.ilike.%${q}%,sku.ilike.%${q}%,descripcion.ilike.%${q}%`);
+    // Filtro búsqueda: AND entre palabras, OR entre campos.
+    // Cada `.or()` de PostgREST se combina con AND, así "vela lavanda"
+    // matchea "Velas de Noche Aromáticas (Lavanda del Valle)".
+    const palabras = palabrasBusqueda(q);
+    for (const w of palabras) {
+      query = query.or(`nombre.ilike.%${w}%,variante.ilike.%${w}%,sku.ilike.%${w}%,descripcion.ilike.%${w}%`);
     }
 
     // Filtro sector/categoría (principal o cualquiera de las secundarias)

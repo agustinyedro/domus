@@ -9,13 +9,58 @@
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
         <input
+          id="shop-search-input"
           v-model="filtros.q"
           type="search"
-          placeholder="Buscar en DOMUS… (ej: sahumerio, pizza, vela)"
+          role="combobox"
           aria-label="Buscar productos"
-          @input="onFiltrosChange"
+          aria-autocomplete="list"
+          aria-controls="shop-search-suggest"
+          :aria-expanded="sugAbiertas"
+          :aria-activedescendant="sugActiva >= 0 ? `sug-${sugActiva}` : undefined"
+          placeholder="Buscar en DOMUS… (ej: sahumerio, pizza, vela)"
+          autocomplete="off"
+          @input="onBuscarInput"
+          @focus="onBuscarFoco"
+          @keydown="teclaSugerencia"
         />
-        <button v-if="filtros.q" class="shop-clear-q" @click="filtros.q = ''; onFiltrosChange()" aria-label="Limpiar búsqueda">×</button>
+        <button v-if="filtros.q" class="shop-clear-q" @click="limpiarBusqueda" aria-label="Limpiar búsqueda">×</button>
+        <div
+          v-if="sugAbiertas"
+          id="shop-search-suggest"
+          class="shop-suggest"
+          role="listbox"
+          aria-label="Sugerencias de búsqueda"
+        >
+          <p v-if="sugCargando" class="shop-suggest-loading" role="status">Buscando sugerencias…</p>
+          <template v-else-if="sugerencias.length > 0">
+            <button
+              v-for="(s, i) in sugerencias"
+              :id="`sug-${i}`"
+              :key="s.producto_id"
+              type="button"
+              role="option"
+              :aria-selected="i === sugActiva"
+              :aria-label="nombreSug(s)"
+              class="shop-suggest-item"
+              :class="{ active: i === sugActiva }"
+              @click="irASugerencia(s)"
+              @mousemove="sugActiva = i"
+            >
+              <img :src="fotoDe(s)" alt="" width="48" height="48" loading="lazy" decoding="async" @error="onImgError($event, s.categoria)" />
+              <span class="shop-suggest-text">
+                <span class="shop-suggest-name" v-html="nombreResaltado(s)"></span>
+                <span v-if="s.categoria" class="shop-suggest-cat">{{ s.categoria }}</span>
+              </span>
+              <span class="shop-suggest-price">${{ precioSug(s).toLocaleString('es-AR') }}</span>
+            </button>
+            <button type="button" class="shop-suggest-all" @click="verTodos">Ver todos los resultados</button>
+          </template>
+          <div v-else class="shop-suggest-empty">
+            <p>No encontramos sugerencias para “{{ filtros.q }}”. Probá con menos palabras.</p>
+            <button type="button" class="shop-suggest-all" @click="verTodos">Ver todos los resultados</button>
+          </div>
+        </div>
       </div>
 
       <div class="shop-toolbar-actions">
@@ -317,6 +362,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { fotoDe, FALLBACKS, fallbackImg } from '@/lib/fotos';
 import { precioEfectivo, RECARGO_TARJETA_DEFAULT } from '@/lib/precios';
+import { palabrasBusqueda, resaltarCoincidencia } from '@/lib/busqueda';
 
 interface TiendaProducto {
   producto_id: string;
@@ -401,6 +447,25 @@ const grupos = computed(() => {
     };
   });
 });
+interface Sugerencia {
+  producto_id: string;
+  sku: string;
+  nombre: string;
+  variante: string | null;
+  imagen_url: string | null;
+  categoria: string | null;
+  precio_final: number;
+  precio_efectivo: number | null;
+  descuento_pct: number;
+  stock_actual: number;
+}
+
+const sugerencias = ref<Sugerencia[]>([]);
+const sugCargando = ref(false);
+const sugAbiertas = ref(false);
+const sugActiva = ref(-1);
+let sugTimer: ReturnType<typeof setTimeout> | null = null;
+
 const loading = ref(true);
 const error = ref(false);
 const mostrarFiltros = ref(false);
@@ -489,7 +554,7 @@ const filtrosActivos = computed(() => {
 
 const chips = computed(() => {
   const list: Array<{ key: string; label: string; limpiar: () => void }> = [];
-  if (filtros.value.q) list.push({ key: 'q', label: `"${filtros.value.q}"`, limpiar: () => { filtros.value.q = ''; cargar(); } });
+  if (filtros.value.q) list.push({ key: 'q', label: `"${filtros.value.q}"`, limpiar: () => { filtros.value.q = ''; cerrarSugerencias(); cargar(); } });
   if (filtros.value.sector) list.push({ key: 'sector', label: filtros.value.sector, limpiar: () => { filtros.value.sector = ''; cargar(); } });
   if (filtros.value.min !== null || filtros.value.max !== null) list.push({ key: 'precio', label: 'Precio', limpiar: () => { filtros.value.min = null; filtros.value.max = null; cargar(); } });
   if (filtros.value.ofertas) list.push({ key: 'ofertas', label: 'Ofertas', limpiar: () => { filtros.value.ofertas = false; cargar(); } });
@@ -533,6 +598,110 @@ function onFiltrosChange() {
   debounce = setTimeout(() => cargar(), 350);
 }
 
+function nombreSug(s: Sugerencia): string {
+  return s.variante && s.variante !== 'Única' ? `${s.nombre} — ${s.variante}` : s.nombre;
+}
+
+function precioSug(s: Sugerencia): number {
+  const col = Number(s.precio_efectivo);
+  return Number.isFinite(col) ? col : Number(s.precio_final);
+}
+
+function nombreResaltado(s: Sugerencia): string {
+  return resaltarCoincidencia(nombreSug(s), palabrasBusqueda(filtros.value.q));
+}
+
+function onBuscarInput() {
+  onFiltrosChange();
+  programarSugerencias();
+}
+
+function onBuscarFoco() {
+  if (filtros.value.q.trim().length >= 2) programarSugerencias(true);
+}
+
+function programarSugerencias(inmediato = false) {
+  if (sugTimer) clearTimeout(sugTimer);
+  if (filtros.value.q.trim().length < 2) {
+    cerrarSugerencias();
+    return;
+  }
+  sugTimer = setTimeout(() => cargarSugerencias(), inmediato ? 0 : 250);
+}
+
+async function cargarSugerencias() {
+  const consulta = filtros.value.q.trim();
+  if (consulta.length < 2) {
+    cerrarSugerencias();
+    return;
+  }
+  sugCargando.value = true;
+  sugAbiertas.value = true;
+  try {
+    const res = await fetch(`/api/tienda/buscar-sugerencias?q=${encodeURIComponent(consulta)}`);
+    if (!res.ok) throw new Error('sugerencias failed');
+    if (filtros.value.q.trim() !== consulta) return;
+    sugerencias.value = await res.json();
+    sugActiva.value = -1;
+    sugAbiertas.value = true;
+  } catch {
+    cerrarSugerencias();
+  } finally {
+    sugCargando.value = false;
+  }
+}
+
+function cerrarSugerencias() {
+  sugAbiertas.value = false;
+  sugActiva.value = -1;
+  sugerencias.value = [];
+  sugCargando.value = false;
+}
+
+function limpiarBusqueda() {
+  filtros.value.q = '';
+  cerrarSugerencias();
+  onFiltrosChange();
+}
+
+function teclaSugerencia(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    if (sugAbiertas.value) {
+      event.preventDefault();
+      cerrarSugerencias();
+    }
+    return;
+  }
+  if (!sugAbiertas.value || !sugerencias.value.length) return;
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    sugActiva.value = (sugActiva.value + 1) % sugerencias.value.length;
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    sugActiva.value = (sugActiva.value - 1 + sugerencias.value.length) % sugerencias.value.length;
+  } else if (event.key === 'Enter' && sugActiva.value >= 0) {
+    event.preventDefault();
+    const s = sugerencias.value[sugActiva.value];
+    if (s) irASugerencia(s);
+  }
+}
+
+function irASugerencia(s: Sugerencia) {
+  cerrarSugerencias();
+  window.location.href = urlProducto(s);
+}
+
+function verTodos() {
+  cerrarSugerencias();
+  if (debounce) clearTimeout(debounce);
+  cargar();
+}
+
+function clickFueraSugerencias(event: MouseEvent) {
+  const el = event.target as HTMLElement;
+  if (!el.closest('.shop-search')) cerrarSugerencias();
+}
+
 async function cargar() {
   loading.value = true;
   error.value = false;
@@ -566,6 +735,7 @@ async function cargar() {
 
 function limpiarTodo() {
   filtros.value = { q: '', sector: '', min: null, max: null, orden: 'relevancia', ofertas: false, stock: false };
+  cerrarSugerencias();
   cargar();
 }
 
@@ -668,6 +838,7 @@ onMounted(() => {
   window.addEventListener('storage', sincronizarCarrito);
   window.addEventListener('domus:cart-cleared', recargarPorCompra);
   window.addEventListener('keydown', onKeydown);
+  document.addEventListener('click', clickFueraSugerencias);
 });
 
 function onKeydown(event: KeyboardEvent) {
@@ -687,6 +858,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('storage', sincronizarCarrito);
   window.removeEventListener('domus:cart-cleared', recargarPorCompra);
   window.removeEventListener('keydown', onKeydown);
+  document.removeEventListener('click', clickFueraSugerencias);
 });
 </script>
 
@@ -1711,5 +1883,126 @@ onBeforeUnmount(() => {
   .shop-price {
     font-size: 1.25rem;
   }
+}
+
+.shop-suggest {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: white;
+  border: 1px solid rgba(61, 43, 31, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(61, 43, 31, 0.18);
+  overflow: hidden;
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+}
+
+.shop-suggest-loading,
+.shop-suggest-empty p {
+  margin: 0;
+  padding: 1rem 1.125rem;
+  color: var(--color-brown-light);
+  font-size: 0.9375rem;
+}
+
+.shop-suggest-item {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+  width: 100%;
+  min-height: 64px;
+  padding: 0.625rem 0.875rem;
+  border: none;
+  border-bottom: 1px solid rgba(61, 43, 31, 0.08);
+  background: white;
+  color: var(--color-brown);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.shop-suggest-item:last-of-type {
+  border-bottom: none;
+}
+
+.shop-suggest-item.active,
+.shop-suggest-item:hover {
+  background: var(--color-hueso-soft);
+}
+
+.shop-suggest-item:focus-visible,
+.shop-suggest-all:focus-visible {
+  outline: 2px solid var(--color-olive);
+  outline-offset: -2px;
+}
+
+.shop-suggest-item img {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--color-beige);
+}
+
+.shop-suggest-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.shop-suggest-name {
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.shop-suggest :deep(mark) {
+  background: var(--color-hueso);
+  color: var(--color-tierra);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.shop-suggest-cat {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-oliva-dark);
+  font-weight: 700;
+}
+
+.shop-suggest-price {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-brown);
+  white-space: nowrap;
+}
+
+.shop-suggest-all {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.75rem;
+  border: none;
+  background: var(--color-olive);
+  color: white;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.shop-suggest-all:hover {
+  filter: brightness(1.06);
 }
 </style>
