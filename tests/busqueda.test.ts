@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { escapeHtml, palabrasBusqueda, resaltarCoincidencia } from '../src/lib/busqueda.ts';
+import { escapeHtml, palabrasBusqueda, resaltarCoincidencia, coincideBusqueda } from '../src/lib/busqueda.ts';
 
 test('parte multi-palabra en AND: "vela lavanda" son dos palabras', () => {
   assert.deepEqual(palabrasBusqueda('vela lavanda'), ['vela', 'lavanda']);
@@ -37,4 +37,11 @@ test('escapa HTML antes de resaltar (sin XSS)', () => {
 test('sin palabras devuelve el nombre escapado', () => {
   assert.equal(resaltarCoincidencia('Vela <b>', []), 'Vela &lt;b&gt;');
   assert.equal(escapeHtml('a&b"c'), 'a&amp;b&quot;c');
+});
+
+test('coincideBusqueda: AND entre palabras, case-insensitive', () => {
+  const hay = 'Velas de Noche Aromáticas Lavanda P2854942-LAVANDA Velas';
+  assert.equal(coincideBusqueda(hay, ['vela', 'lavanda']), true);
+  assert.equal(coincideBusqueda(hay, ['vela', 'jazmin']), false);
+  assert.equal(coincideBusqueda(hay, []), true);
 });

@@ -40,3 +40,12 @@ export function resaltarCoincidencia(nombre: string, palabras: string[]): string
   const patron = new RegExp(`(${unicas.map(escaparRegex).join('|')})`, 'gi');
   return base.replace(patron, '<mark>$1</mark>');
 }
+
+// Búsqueda admin (filtrado en memoria): AND entre palabras sobre un texto
+// ya concatenado (nombre + variante + sku + categoría). Misma semántica que
+// el `or()` por palabra de los endpoints de tienda.
+export function coincideBusqueda(haystack: string, palabras: string[]): boolean {
+  if (!palabras.length) return true;
+  const h = haystack.toLowerCase();
+  return palabras.every((w) => h.includes(w.toLowerCase()));
+}

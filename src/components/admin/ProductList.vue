@@ -1,18 +1,57 @@
 <!-- src/components/admin/ProductList.vue -->
 <template>
   <div>
-    <input
-      v-model="busqueda"
-      type="text"
-      class="admin-input"
-      placeholder="Buscar por nombre o SKU..."
-      style="margin-bottom: 1rem; width: 100%; max-width: 400px;"
-    />
+    <div class="admin-searchbar">
+      <input
+        v-model="busqueda"
+        type="search"
+        class="admin-input admin-search-q"
+        placeholder="Buscar por nombre, variante o SKU…"
+        aria-label="Buscar productos por nombre, variante o SKU"
+      />
+      <select v-model="filtroCategoria" class="admin-input" aria-label="Filtrar por categoría">
+        <option value="">Todas las categorías</option>
+        <option v-for="c in categorias" :key="c" :value="c">{{ c }}</option>
+      </select>
+      <select v-model="filtroStock" class="admin-input" aria-label="Filtrar por stock">
+        <option value="todos">Todo el stock</option>
+        <option value="con">Con stock</option>
+        <option value="bajo">Stock bajo</option>
+        <option value="sin">Sin stock</option>
+      </select>
+      <select v-model="filtroOferta" class="admin-input" aria-label="Filtrar por oferta">
+        <option value="todos">Con y sin oferta</option>
+        <option value="oferta">Solo ofertas</option>
+      </select>
+      <select v-model="filtroEstado" class="admin-input" aria-label="Filtrar por visibilidad">
+        <option value="todos">Activos e inactivos</option>
+        <option value="activos">Solo activos</option>
+        <option value="inactivos">Solo inactivos</option>
+      </select>
+      <select v-model="orden" class="admin-input" aria-label="Organizar resultados">
+        <option value="nombre">Organizar: Nombre A–Z</option>
+        <option value="stock_asc">Organizar: Menor stock</option>
+        <option value="precio_asc">Organizar: Menor precio</option>
+        <option value="precio_desc">Organizar: Mayor precio</option>
+      </select>
+      <button v-if="hayFiltros" type="button" class="admin-btn-ghost" @click="limpiarFiltros">Limpiar</button>
+    </div>
+
+    <div class="admin-search-meta">
+      <p class="admin-results-count" role="status">{{ textoResultados }}</p>
+      <button
+        type="button"
+        class="admin-btn-ghost"
+        :disabled="loading || productosFiltrados.length === 0"
+        @click="exportarCsv"
+      >Exportar CSV</button>
+    </div>
 
     <div v-if="loading" class="admin-empty">Cargando productos...</div>
 
     <div v-else-if="gruposFiltrados.length === 0" class="admin-empty">
-      {{ busqueda ? 'No se encontraron productos' : 'No hay productos. Creá el primero.' }}
+      {{ hayFiltros ? 'Sin resultados para esta búsqueda o filtros.' : 'No hay productos. Creá el primero.' }}
+      <button v-if="hayFiltros" type="button" class="admin-btn-ghost" @click="limpiarFiltros">Limpiar búsqueda y filtros</button>
     </div>
 
     <div v-else class="admin-table-wrapper">
@@ -152,8 +191,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import Papa from 'papaparse';
 import { fotoDe, urlFallback } from '@/lib/fotos';
 import { precioEfectivo, precioTarjeta, clampRecargo, RECARGO_TARJETA_DEFAULT } from '@/lib/precios';
+import { palabrasBusqueda, coincideBusqueda } from '@/lib/busqueda';
 
 interface ProductoConStock {
   producto_id: string;
@@ -172,6 +213,7 @@ interface ProductoConStock {
   stock_minimo: number;
   stock_actual: number;
   activo: boolean;
+  es_oferta?: boolean;
   kit_id?: string | null;
 }
 
@@ -184,6 +226,11 @@ function avisar(mensaje: string) {
 const productos = ref<ProductoConStock[]>([]);
 const loading = ref(true);
 const busqueda = ref('');
+const filtroCategoria = ref('');
+const filtroStock = ref('todos');
+const filtroOferta = ref('todos');
+const filtroEstado = ref('todos');
+const orden = ref('nombre');
 const ocupado = ref('');
 
 onMounted(async () => {
@@ -199,16 +246,89 @@ onMounted(async () => {
   }
 });
 
-const productosFiltrados = computed(() => {
-  if (!busqueda.value.trim()) return productos.value;
-  const term = busqueda.value.toLowerCase();
-  return productos.value.filter(
-    (p) =>
-      p.nombre.toLowerCase().includes(term) ||
-      (p.variante || '').toLowerCase().includes(term) ||
-      p.sku.toLowerCase().includes(term)
-  );
+function textoDe(p: ProductoConStock): string {
+  return `${p.nombre} ${p.variante || ''} ${p.sku} ${p.categoria || ''}`;
+}
+
+const categorias = computed(() => {
+  const set = new Set<string>();
+  for (const p of productos.value) {
+    if (p.categoria) set.add(p.categoria);
+    for (const c of p.categorias ?? []) if (c) set.add(c);
+  }
+  return [...set].sort((a, b) => a.localeCompare(b, 'es'));
 });
+
+const hayFiltros = computed(
+  () =>
+    busqueda.value.trim() !== '' ||
+    filtroCategoria.value !== '' ||
+    filtroStock.value !== 'todos' ||
+    filtroOferta.value !== 'todos' ||
+    filtroEstado.value !== 'todos',
+);
+
+function limpiarFiltros() {
+  busqueda.value = '';
+  filtroCategoria.value = '';
+  filtroStock.value = 'todos';
+  filtroOferta.value = 'todos';
+  filtroEstado.value = 'todos';
+  orden.value = 'nombre';
+}
+
+const productosFiltrados = computed(() => {
+  const palabras = palabrasBusqueda(busqueda.value);
+  return productos.value.filter((p) => {
+    if (!coincideBusqueda(textoDe(p), palabras)) return false;
+    if (filtroCategoria.value) {
+      const cats = new Set([p.categoria, ...((p.categorias ?? []) as string[])].filter(Boolean));
+      if (!cats.has(filtroCategoria.value)) return false;
+    }
+    const stock = Number(p.stock_actual || 0);
+    if (filtroStock.value === 'con' && stock <= 0) return false;
+    if (filtroStock.value === 'sin' && stock > 0) return false;
+    if (filtroStock.value === 'bajo' && (stock <= 0 || stock > Number(p.stock_minimo ?? 5))) return false;
+    if (filtroOferta.value === 'oferta' && !p.es_oferta) return false;
+    if (filtroEstado.value === 'activos' && !p.activo) return false;
+    if (filtroEstado.value === 'inactivos' && p.activo) return false;
+    return true;
+  });
+});
+
+const textoResultados = computed(() => {
+  if (loading.value) return '';
+  const n = productosFiltrados.value.length;
+  const g = gruposFiltrados.value.length;
+  if (n === 0) return 'Sin resultados.';
+  return `${n} ${n === 1 ? 'opción' : 'opciones'} en ${g} ${g === 1 ? 'producto' : 'productos'}`;
+});
+
+function exportarCsv() {
+  const filas = productosFiltrados.value.map((p) => ({
+    sku: p.sku,
+    nombre: p.nombre,
+    variante: p.variante || '',
+    categoria: p.categoria || '',
+    costo: Number(p.costo),
+    precio_efectivo: efectivoDe(p),
+    precio_tarjeta: Number(p.precio_venta),
+    stock: Number(p.stock_actual || 0),
+    oferta: p.es_oferta ? 'SI' : 'NO',
+    activo: p.activo ? 'SI' : 'NO',
+  }));
+  const csv = Papa.unparse(filas);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `productos-domus-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  avisar(`CSV exportado: ${filas.length} opciones.`);
+};
 
 const gruposFiltrados = computed(() => {
   const mapa = new Map<string, ProductoConStock[]>();
@@ -218,13 +338,25 @@ const gruposFiltrados = computed(() => {
     items.push(p);
     mapa.set(key, items);
   }
-  return [...mapa.entries()].map(([grupo_id, items]) => ({
+  const grupos = [...mapa.entries()].map(([grupo_id, items]) => ({
     grupo_id,
     nombre: items[0].nombre,
     categoria: items[0].categoria,
     stock_total: items.reduce((total, p) => total + Number(p.stock_actual || 0), 0),
+    precio_min: Math.min(...items.map((p) => efectivoDe(p))),
     items: items.sort((a, b) => (a.variante || '').localeCompare(b.variante || '', 'es')),
-  })).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  }));
+  switch (orden.value) {
+    case 'stock_asc':
+      return grupos.sort((a, b) => a.stock_total - b.stock_total);
+    case 'precio_asc':
+      return grupos.sort((a, b) => a.precio_min - b.precio_min);
+    case 'precio_desc':
+      return grupos.sort((a, b) => b.precio_min - a.precio_min);
+    case 'nombre':
+    default:
+      return grupos.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  }
 });
 
 function efectivoDe(p: ProductoConStock): number {
@@ -408,6 +540,32 @@ async function eliminar(p: ProductoConStock) {
 </script>
 
 <style scoped>
+.admin-searchbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.admin-search-q {
+  flex: 1 1 220px;
+  min-width: 200px;
+}
+.admin-searchbar select.admin-input {
+  flex: 0 1 auto;
+  min-width: 150px;
+}
+.admin-search-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.admin-results-count {
+  margin: 0;
+  color: var(--admin-text-muted);
+  font-size: 0.875rem;
+}
 .product-group-row td {
   padding-top: 0.8rem;
   padding-bottom: 0.8rem;

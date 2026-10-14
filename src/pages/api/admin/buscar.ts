@@ -4,6 +4,7 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { createSupabaseServer, getUsuarioActual } from '@/lib/supabase';
+import { palabrasBusqueda } from '@/lib/busqueda';
 
 const esUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 
@@ -20,20 +21,26 @@ export const GET: APIRoute = async ({ request, cookies, url }) => {
     });
   }
 
-  // Sanitizar caracteres que rompen los filtros de PostgREST
-  const q = bruto
-    .replace(/[%,()*]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const like = `%${q}%`;
+  // Sanitizar con el mismo helper de tienda: cada palabra suma un `or()`
+  // (AND entre palabras) en vez de buscar la frase literal.
+  const palabras = palabrasBusqueda(bruto);
+  if (!palabras.length) {
+    return new Response(JSON.stringify({ productos: [], ordenes: [] }), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+    });
+  }
+  const like = `%${bruto.replace(/[%,()*]/g, ' ').replace(/\s+/g, ' ').trim()}%`;
   const supabase = createSupabaseServer(request, cookies);
 
-  const { data: productos } = await supabase
+  let qProductos = supabase
     .from('v_stock_actual')
     .select('producto_id, nombre, variante, sku, stock_actual')
-    .eq('usuario_id', user.id)
-    .or(`nombre.ilike.${like},sku.ilike.${like}`)
-    .limit(6);
+    .eq('usuario_id', user.id);
+
+  for (const w of palabras) {
+    qProductos = qProductos.or(`nombre.ilike.%${w}%,variante.ilike.%${w}%,sku.ilike.%${w}%`);
+  }
+  const { data: productos } = await qProductos.limit(6);
 
   const filtroOrden = esUuid(bruto)
     ? `cliente_nombre.ilike.${like},id.eq.${bruto}`
